@@ -1181,11 +1181,6 @@
         XLSX.utils.book_append_sheet(wb, ws, '재고실사');
         XLSX.writeFile(wb, `${dateStr} 재고실사.xlsx`);
       }
-        ];
-        
-        XLSX.utils.book_append_sheet(wb, ws, 'Daily Inventory');
-        XLSX.writeFile(wb, `${dateStr} Daily Inventory.xlsx`);
-      }
 
       function getItemUsageData(itemName) {
         const usageMap = {};
