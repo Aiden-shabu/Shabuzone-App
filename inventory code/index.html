@@ -1113,6 +1113,11 @@
           { wch: 12 }, // End Of day
           { wch: 15 }, // Daily Usage #
           { wch: 15 }  // Daily Usage $
+        ];
+        
+        XLSX.utils.book_append_sheet(wb, ws, 'Daily Inventory');
+        XLSX.writeFile(wb, `${dateStr} Daily Inventory.xlsx`);
+      }
 
       function downloadCountRecordExcel(record) {
         const wb = XLSX.utils.book_new();
