@@ -547,14 +547,18 @@
       const [language, setLanguage] = useState('ko');
       const [loading, setLoading] = useState(true);
       const [shoppingList, setShoppingList] = useState([]);
+      const [miscItems, setMiscItems] = useState([]);
+      const [newMisc, setNewMisc] = useState({ name: '', price: 0, quantity: 1 });
       const [shoppingStep, setShoppingStep] = useState('edit');
       const [purchaseHistory, setPurchaseHistory] = useState([]);
       const [categoryFilter, setCategoryFilter] = useState('all');
       const [showSimpleView, setShowSimpleView] = useState(false);
+      const [selectedPurchase, setSelectedPurchase] = useState(null);
       const [copySuccess, setCopySuccess] = useState(false);
       const [showResetModal, setShowResetModal] = useState(false);
       const [resetPassword, setResetPassword] = useState('');
       const [addSubTab, setAddSubTab] = useState('items');
+      const [itemSearch, setItemSearch] = useState('');
       const [vendors, setVendors] = useState([]);
       const [newVendor, setNewVendor] = useState('');
       const [newItem, setNewItem] = useState({ name: '', vendor: '', price: 0, par: 0, category: 'refrigerated' });
@@ -837,6 +841,19 @@
           };
         });
         
+        // Miscellaneous 아이템 추가
+        miscItems.forEach(item => {
+          totalCost += item.quantity * item.price;
+          purchaseItems.push({
+            name: item.name + ' (Misc)',
+            category: 'miscellaneous',
+            vendor: 'Miscellaneous',
+            quantity: item.quantity,
+            price: item.price,
+            total: item.quantity * item.price
+          });
+        });
+        
         const updatedItems = [...items];
         shoppingList.forEach(item => {
           const idx = updatedItems.findIndex(i => i.name === item.name);
@@ -864,6 +881,7 @@
         await window.db.ref(getPath('history')).set(newHistory);
         await window.db.ref(getPath('shopping')).set([]);
         
+        setMiscItems([]);
         setActiveTab('reports');
       }
 
@@ -1095,6 +1113,69 @@
           { wch: 12 }, // End Of day
           { wch: 15 }, // Daily Usage #
           { wch: 15 }  // Daily Usage $
+
+      function downloadCountRecordExcel(record) {
+        const wb = XLSX.utils.book_new();
+        const dateStr = record.date.replace(/-/g, '.');
+        
+        // 재고실사 데이터
+        const countData = [
+          [`${dateStr} 재고실사 기록`],
+          [],
+          ['아이템명', '카테고리', '벤더', '가격', '재고수량', '재고가치']
+        ];
+        
+        record.items.forEach(item => {
+          countData.push([
+            item.name,
+            item.category,
+            item.vendor || '',
+            item.price,
+            item.current_inventory,
+            (item.price * item.current_inventory).toFixed(2)
+          ]);
+        });
+        
+        countData.push([]);
+        countData.push(['총 아이템', record.totalItems]);
+        countData.push(['총 재고가치', '$' + record.totalValue.toFixed(2)]);
+        
+        // 쇼핑 리스트 (부족 재고)
+        const shoppingData = [
+          [],
+          [],
+          ['구매 필요 아이템'],
+          [],
+          ['아이템명', '현재 재고', 'PAR', '부족 수량', '가격', '구매 금액']
+        ];
+        
+        record.items.filter(item => item.par > item.current_inventory).forEach(item => {
+          const shortage = item.par - item.current_inventory;
+          shoppingData.push([
+            item.name,
+            item.current_inventory,
+            item.par,
+            shortage,
+            item.price,
+            (shortage * item.price).toFixed(2)
+          ]);
+        });
+        
+        const allData = [...countData, ...shoppingData];
+        const ws = XLSX.utils.aoa_to_sheet(allData);
+        
+        ws['!cols'] = [
+          { wch: 30 },
+          { wch: 15 },
+          { wch: 15 },
+          { wch: 12 },
+          { wch: 12 },
+          { wch: 15 }
+        ];
+        
+        XLSX.utils.book_append_sheet(wb, ws, '재고실사');
+        XLSX.writeFile(wb, `${dateStr} 재고실사.xlsx`);
+      }
         ];
         
         XLSX.utils.book_append_sheet(wb, ws, 'Daily Inventory');
@@ -1353,7 +1434,7 @@
             h('div', { key: 'filter', style: { display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }},
               (filterMode === 'storage' 
                 ? ['all', 'frozen', 'refrigerated', 'dry']
-                : ['all', ...categories]
+                : ['all', ...categories, 'Uncategorized']
               ).map(cat =>
                 h('button', {
                   key: cat,
@@ -1383,7 +1464,11 @@
               if (filterMode === 'storage' && categoryFilter !== 'all') {
                 filtered = tempItems.filter(i => i.category === categoryFilter);
               } else if (filterMode === 'category' && categoryFilter !== 'all') {
-                filtered = tempItems.filter(i => itemCategories[i.name] === categoryFilter);
+                if (categoryFilter === 'Uncategorized') {
+                  filtered = tempItems.filter(i => !itemCategories[i.name]);
+                } else {
+                  filtered = tempItems.filter(i => itemCategories[i.name] === categoryFilter);
+                }
               }
               return filtered.map((item, i) => {
                 const globalIndex = tempItems.findIndex(it => it.name === item.name);
@@ -1411,8 +1496,7 @@
           activeTab === 'shopping' && h('div', { key: 'shop' }, [
             shoppingList.length === 0 ? h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 'No items in shopping list') : [
               
-              shoppingStep === 'edit' ? [
-                h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, '1단계: 품목 수정'),
+              h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.shoppingList || '쇼핑 리스트'),
                 
                 ['frozen', 'refrigerated', 'dry'].map(cat => {
                   const catItems = shoppingList.filter(item => item.category === cat);
@@ -1421,7 +1505,7 @@
                     h('div', { key: 'title', style: { fontSize: '1rem', fontWeight: '700', color: categoryColors[cat], marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
                       storageIcons[cat], ' ', t[cat]
                     ]),
-                    catItems.map((item, i) => {
+                    catItems.sort((a, b) => a.name.localeCompare(b.name)).map((item, i) => {
                       const globalIndex = shoppingList.findIndex(si => si.name === item.name);
                       return h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', padding: '1rem' }}, [
                         h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.75rem', color: '#2c3e50' }}, item.name),
@@ -1458,40 +1542,31 @@
                   ]);
                 }),
                 
-                h('button', { key: 'save', className: 'btn', onClick: () => setShoppingStep('confirm'), style: { marginTop: '1.5rem' }}, '✓ ' + t.saveAndContinue)
-                
-              ] : [
-                h('div', { key: 'header', style: { display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}, [
-                  h('button', { key: 'back', className: 'btn btn-secondary', style: { flex: 1 }, onClick: () => setShoppingStep('edit') }, t.backToEdit),
-                  h('button', { key: 'simple', className: 'btn btn-secondary', style: { flex: 1 }, onClick: () => setShowSimpleView(true) }, t.simpleView)
-                ]),
-                
-                h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#4ade80' }}, '2단계: 최종 확인'),
-                
-                Object.entries(shoppingByVendor).map(([vendor, vendorItems]) =>
-                  h('div', { key: vendor, className: 'vendor-group' }, [
-                    h('div', { key: 'title', className: 'vendor-title' }, vendor),
-                    vendorItems.map((item, i) =>
-                      h('div', { key: i, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: i < vendorItems.length - 1 ? '1px solid #e2e8f0' : 'none' }}, [
-                        h('div', { key: 'left', style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
-                          h('span', { key: 'icon' }, storageIcons[item.category]),
-                          h('span', { key: 'name' }, item.name)
-                        ]),
-                        h('div', { key: 'right', style: { textAlign: 'right' }}, [
-                          h('div', { key: 'qty', style: { fontWeight: '600', color: '#7f1d1d' }}, item.shortage + ' × $' + item.price),
-                          h('div', { key: 'total', style: { fontSize: '0.875rem', color: '#64748b' }}, '$' + (item.shortage * item.price).toFixed(2))
-                        ])
-                      ])
-                    )
+                h('div', { key: 'misc-section', style: { marginTop: '2rem', padding: '1.5rem', background: 'rgba(127,29,29,0.05)', borderRadius: '12px', border: '2px dashed #7f1d1d' }}, [
+                  h('h4', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', fontWeight: '700' }}, 'Miscellaneous'),
+                  h('p', { key: 'desc', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}, '재고 외 구매 아이템 (구매내역에만 기록)'),
+                  
+                  miscItems.map((item, i) =>
+                    h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}, [
+                      h('div', { key: 'info' }, [
+                        h('div', { key: 'name', style: { fontWeight: '600', color: '#2c3e50' }}, item.name),
+                        h('div', { key: 'price', style: { fontSize: '0.875rem', color: '#64748b' }}, `${item.quantity} × $${item.price} = $${(item.quantity * item.price).toFixed(2)}`)
+                      ]),
+                      h('button', { key: 'delete', onClick: () => setMiscItems(miscItems.filter((_, idx) => idx !== i)), style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', cursor: 'pointer' }}, '삭제')
+                    ])
+                  ),
+                  
+                  h('div', { key: 'add-form', style: { display: 'grid', gap: '0.75rem', marginTop: '1rem' }}, [
+                    h('input', { key: 'name', type: 'text', placeholder: '아이템명', value: newMisc.name, onChange: (e) => setNewMisc({...newMisc, name: e.target.value}) }),
+                    h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
+                      h('input', { key: 'price', type: 'number', step: '0.01', placeholder: '가격', value: newMisc.price, onChange: (e) => setNewMisc({...newMisc, price: parseFloat(e.target.value) || 0}) }),
+                      h('input', { key: 'qty', type: 'number', step: '0.5', placeholder: '수량', value: newMisc.quantity, onChange: (e) => setNewMisc({...newMisc, quantity: parseFloat(e.target.value) || 1}) })
+                    ]),
+                    h('button', { key: 'add', className: 'btn btn-secondary', onClick: () => { if (newMisc.name) { setMiscItems([...miscItems, newMisc]); setNewMisc({ name: '', price: 0, quantity: 1 }); }}, disabled: !newMisc.name }, '+ 추가')
                   ])
-                ),
-                
-                h('div', { key: 'bottom-buttons', style: { display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}, [
-                  h('button', { key: 'back2', className: 'btn btn-secondary', style: { flex: 1 }, onClick: () => setShoppingStep('edit') }, t.backToEdit),
-                  h('button', { key: 'simple2', className: 'btn btn-secondary', style: { flex: 1 }, onClick: () => setShowSimpleView(true) }, t.simpleView)
                 ]),
                 
-                h('button', { key: 'complete', className: 'btn', onClick: completePurchase, style: { marginTop: '0.75rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
+                h('button', { key: 'complete', className: 'btn', onClick: () => { completePurchase(); setShowSimpleView(true); }, style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
               ]
             ]
           ]),
@@ -1507,7 +1582,12 @@
             reportsSubTab === 'history' && [
               purchaseHistory.length === 0 ? h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, t.noData) :
               purchaseHistory.map((purchase, i) =>
-                h('div', { key: i, className: 'card', style: { color: '#2c3e50' }}, [
+                h('div', { 
+                  key: i, 
+                  className: 'card', 
+                  style: { color: '#2c3e50', cursor: 'pointer' },
+                  onClick: () => setSelectedPurchase(purchase)
+                }, [
                   h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', paddingBottom: '0.75rem', borderBottom: '2px solid #e2e8f0' }}, [
                     h('div', { key: 'date', style: { fontWeight: '600' }}, purchase.date + ' ' + purchase.time),
                     h('div', { key: 'total', style: { fontWeight: '700', color: '#4ade80' }}, '$' + purchase.totalCost.toFixed(2))
@@ -1599,7 +1679,13 @@
                     h('div', { key: 'date', style: { fontWeight: '600' }}, record.date + ' ' + record.time),
                     h('div', { key: 'total', style: { fontWeight: '700', color: '#7f1d1d' }}, '$' + record.totalValue.toFixed(2))
                   ]),
-                  h('div', { key: 'summary', style: { fontSize: '0.875rem', color: '#64748b' }}, record.totalItems + ' items')
+                  h('div', { key: 'summary', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '0.75rem' }}, record.totalItems + ' items'),
+                  h('button', { 
+                    key: 'download', 
+                    className: 'btn', 
+                    onClick: () => downloadCountRecordExcel(record),
+                    style: { background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)', fontSize: '0.875rem', padding: '0.5rem 1rem' }
+                  }, '📥 엑셀 다운로드')
                 ])
               )
             ],
@@ -1663,8 +1749,17 @@
               ]),
 
               h('h3', { key: 'manage-title', style: { marginBottom: '1rem' }}, t.manageItems),
-              items.slice(0, 50).map((item, idx) =>
-                h('div', { key: idx, className: 'card', style: { color: '#2c3e50' }}, [
+              h('input', { 
+                key: 'search', 
+                type: 'text', 
+                placeholder: '🔍 아이템 검색...', 
+                value: itemSearch, 
+                onChange: (e) => setItemSearch(e.target.value),
+                style: { marginBottom: '1rem' }
+              }),
+              items.filter(item => item.name.toLowerCase().includes(itemSearch.toLowerCase())).map((item) => {
+                const idx = items.findIndex(i => i.name === item.name);
+                return h('div', { key: idx, className: 'card', style: { color: '#2c3e50' }}, [
                   editingItem === idx ? h('div', { key: 'edit', className: 'input-group' }, [
                     h('input', { key: 'name', type: 'text', value: item.name, onChange: (e) => { const u = [...items]; u[idx].name = e.target.value; setItems(u); }}),
                     h('select', { key: 'vendor', value: item.vendor, onChange: (e) => { const u = [...items]; u[idx].vendor = e.target.value; setItems(u); }},
@@ -1696,8 +1791,8 @@
                       h('button', { key: 'delete', onClick: () => deleteItem(idx), style: { background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', cursor: 'pointer', padding: '0.5rem', fontSize: '0.875rem' }}, '🗑️')
                     ])
                   ])
-                ])
-              ),
+                ]);
+              })
               items.length > 50 && h('div', { key: 'more', style: { textAlign: 'center', padding: '1rem', color: 'rgba(255,255,255,0.5)' }}, 'Showing first 50 items')
             ]),
 
@@ -1805,6 +1900,27 @@
             h('h3', { key: 'title', style: { marginBottom: '1rem' }}, t.simpleView),
             h('pre', { key: 'text', style: { background: '#f3f4f6', padding: '1rem', borderRadius: '8px', fontSize: '0.875rem', whiteSpace: 'pre-wrap', marginBottom: '1rem', maxHeight: '50vh', overflow: 'auto' }}, generateSimpleText()),
             h('button', { key: 'copy', className: 'btn', onClick: copyToClipboard }, copySuccess ? t.copied : t.copyAll)
+          ])
+        ),
+
+        selectedPurchase && h('div', { key: 'purchase-modal', className: 'modal', onClick: () => setSelectedPurchase(null) },
+          h('div', { className: 'modal-content', onClick: (e) => e.stopPropagation() }, [
+            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, '구매 내역 - ' + selectedPurchase.date),
+            h('div', { key: 'summary', style: { marginBottom: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}, [
+              h('div', { key: 'total', style: { fontSize: '1.5rem', fontWeight: '700', color: '#4ade80' }}, '$' + selectedPurchase.totalCost.toFixed(2)),
+              h('div', { key: 'items', style: { fontSize: '0.875rem', color: '#64748b' }}, selectedPurchase.totalItems + ' items')
+            ]),
+            h('pre', { key: 'text', style: { background: '#f3f4f6', padding: '1rem', borderRadius: '8px', fontSize: '0.875rem', whiteSpace: 'pre-wrap', marginBottom: '1rem', maxHeight: '50vh', overflow: 'auto' }}, 
+              Object.entries(selectedPurchase.items.reduce((acc, item) => {
+                const vendor = item.vendor || 'Unknown';
+                if (!acc[vendor]) acc[vendor] = [];
+                acc[vendor].push(item);
+                return acc;
+              }, {})).map(([vendor, items]) =>
+                vendor + ':\n' + items.map(item => '  ' + item.name + ' - ' + item.quantity + ' × $' + item.price + ' = $' + item.total.toFixed(2)).join('\n')
+              ).join('\n\n')
+            ),
+            h('button', { key: 'close', className: 'btn', onClick: () => setSelectedPurchase(null) }, '닫기')
           ])
         ),
 
