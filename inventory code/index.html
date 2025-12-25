@@ -1670,9 +1670,9 @@
               })
             ],
 
-            reportsSubTab === 'count' && [
+            reportsSubTab === 'count' && (
               countRecords.length === 0 ? h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, t.noData) :
-              countRecords.map((record, i) =>
+              h('div', { key: 'count-list' }, countRecords.map((record, i) =>
                 h('div', { key: i, className: 'card', style: { color: '#2c3e50' }}, [
                   h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', paddingBottom: '0.75rem', borderBottom: '2px solid #e2e8f0' }}, [
                     h('div', { key: 'date', style: { fontWeight: '600' }}, record.date + ' ' + record.time),
@@ -1686,8 +1686,8 @@
                     style: { background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)', fontSize: '0.875rem', padding: '0.5rem 1rem' }
                   }, '📥 엑셀 다운로드')
                 ])
-              )
-            ],
+              ))
+            ),
 
             reportsSubTab === 'excel' && h('div', { key: 'excel-tab', className: 'card', style: { textAlign: 'center', padding: '3rem' }}, [
               h('div', { key: 'icon', style: { fontSize: '3rem', marginBottom: '1rem' }}, canExportExcel() ? '📥' : '❌'),
@@ -1791,7 +1791,7 @@
                     ])
                   ])
                 ]);
-              })
+              }),
               items.length > 50 && h('div', { key: 'more', style: { textAlign: 'center', padding: '1rem', color: 'rgba(255,255,255,0.5)' }}, 'Showing first 50 items')
             ]),
 
