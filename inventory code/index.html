@@ -1567,7 +1567,7 @@
                   ])
                 ]),
                 
-                h('button', { key: 'complete', className: 'btn', onClick: () => { setPurchaseData([...shoppingList]); setShowSimpleView(true); setTimeout(() => { completePurchase(); setPurchaseData(null); }, 500); }, style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
+                h('button', { key: 'complete', className: 'btn', onClick: () => { setPurchaseData([...shoppingList, ...miscItems.map(m => ({...m, selected_vendor: 'Miscellaneous', category: 'miscellaneous', shortage: m.quantity}))]); setShowSimpleView(true); }, style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
               ]
           ]),
 
@@ -1895,11 +1895,14 @@
           ])
         ]),
 
-        showSimpleView && h('div', { key: 'simple-modal', className: 'modal', onClick: () => setShowSimpleView(false) },
+        showSimpleView && h('div', { key: 'simple-modal', className: 'modal', onClick: () => { if (!purchaseData) setShowSimpleView(false); } },
           h('div', { className: 'modal-content', onClick: (e) => e.stopPropagation() }, [
-            h('h3', { key: 'title', style: { marginBottom: '1rem' }}, t.simpleView),
+            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, purchaseData ? '구매 확인' : t.simpleView),
             h('pre', { key: 'text', style: { background: '#f3f4f6', padding: '1rem', borderRadius: '8px', fontSize: '0.875rem', whiteSpace: 'pre-wrap', marginBottom: '1rem', maxHeight: '50vh', overflow: 'auto' }}, generateSimpleText()),
-            h('button', { key: 'copy', className: 'btn', onClick: copyToClipboard }, copySuccess ? t.copied : t.copyAll)
+            purchaseData ? h('div', { key: 'buttons', style: { display: 'flex', gap: '0.75rem' }}, [
+              h('button', { key: 'cancel', className: 'btn btn-secondary', onClick: () => { setShowSimpleView(false); setPurchaseData(null); }}, '취소'),
+              h('button', { key: 'confirm', className: 'btn', onClick: () => { completePurchase(); setShowSimpleView(false); setPurchaseData(null); setActiveTab('reports'); }, style: { background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ 구매 완료')
+            ]) : h('button', { key: 'copy', className: 'btn', onClick: copyToClipboard }, copySuccess ? t.copied : t.copyAll)
           ])
         ),
 
