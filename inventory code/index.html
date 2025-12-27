@@ -553,6 +553,7 @@
       const [purchaseHistory, setPurchaseHistory] = useState([]);
       const [categoryFilter, setCategoryFilter] = useState('all');
       const [showSimpleView, setShowSimpleView] = useState(false);
+      const [purchaseData, setPurchaseData] = useState(null);
       const [selectedPurchase, setSelectedPurchase] = useState(null);
       const [copySuccess, setCopySuccess] = useState(false);
       const [showResetModal, setShowResetModal] = useState(false);
@@ -1207,8 +1208,9 @@
       }
 
       function generateSimpleText() {
+        const dataToUse = purchaseData || shoppingList;
         const grouped = {};
-        shoppingList.forEach(item => {
+        dataToUse.forEach(item => {
           if (!grouped[item.selected_vendor]) grouped[item.selected_vendor] = [];
           grouped[item.selected_vendor].push(item);
         });
@@ -1566,7 +1568,7 @@
                   ])
                 ]),
                 
-                h('button', { key: 'complete', className: 'btn', onClick: () => { completePurchase(); setShowSimpleView(true); }, style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
+                h('button', { key: 'complete', className: 'btn', onClick: () => { setPurchaseData([...shoppingList]); setShowSimpleView(true); setTimeout(() => { completePurchase(); setPurchaseData(null); }, 500); }, style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
               ]
           ]),
 
