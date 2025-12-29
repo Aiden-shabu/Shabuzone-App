@@ -1182,6 +1182,80 @@
         XLSX.writeFile(wb, `${dateStr} 재고실사.xlsx`);
       }
 
+      function downloadMonthlyUsageExcel() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth(); // 0-11
+        const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+        
+        // 이번 달 시작/끝
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0);
+        
+        // 이번 달 구매 내역 필터
+        const monthlyPurchases = purchaseHistory.filter(p => {
+          const pDate = new Date(p.date);
+          return pDate >= startDate && pDate <= endDate;
+        });
+        
+        // 아이템별 사용량 집계
+        const itemUsage = {};
+        monthlyPurchases.forEach(purchase => {
+          purchase.items.forEach(item => {
+            if (!itemUsage[item.name]) {
+              itemUsage[item.name] = {
+                name: item.name,
+                category: item.category,
+                vendor: item.vendor,
+                totalQuantity: 0,
+                totalCost: 0,
+                avgPrice: item.price
+              };
+            }
+            itemUsage[item.name].totalQuantity += item.quantity;
+            itemUsage[item.name].totalCost += item.total || (item.quantity * item.price);
+          });
+        });
+        
+        const wb = XLSX.utils.book_new();
+        
+        // 월간 사용량 데이터
+        const usageData = [
+          [`${year}년 ${monthNames[month]} 사용량 리포트`],
+          [`기간: ${startDate.toISOString().split('T')[0]} ~ ${endDate.toISOString().split('T')[0]}`],
+          [],
+          ['아이템명', '카테고리', '벤더', '총 사용량', '평균 가격', '총 비용']
+        ];
+        
+        Object.values(itemUsage).sort((a, b) => b.totalCost - a.totalCost).forEach(item => {
+          usageData.push([
+            item.name,
+            item.category,
+            item.vendor,
+            item.totalQuantity,
+            '$' + item.avgPrice.toFixed(2),
+            '$' + item.totalCost.toFixed(2)
+          ]);
+        });
+        
+        const totalCost = Object.values(itemUsage).reduce((sum, item) => sum + item.totalCost, 0);
+        usageData.push([]);
+        usageData.push(['총 비용', '', '', '', '', '$' + totalCost.toFixed(2)]);
+        
+        const ws = XLSX.utils.aoa_to_sheet(usageData);
+        ws['!cols'] = [
+          { wch: 30 },
+          { wch: 15 },
+          { wch: 15 },
+          { wch: 12 },
+          { wch: 12 },
+          { wch: 15 }
+        ];
+        
+        XLSX.utils.book_append_sheet(wb, ws, '월간 사용량');
+        XLSX.writeFile(wb, `${year}년 ${monthNames[month]} 사용량.xlsx`);
+      }
+
       function getItemUsageData(itemName) {
         const usageMap = {};
         purchaseHistory.forEach(purchase => {
@@ -1383,6 +1457,15 @@
                 h('div', { key: 'v', className: 'stat-value', style: { color: '#4ade80' }}, '$' + totalValue.toFixed(0))
               ])
             ]),
+            
+            // 주간 가격 업데이트 알람 (매주 수요일)
+            (new Date().getDay() === 3) && h('div', { key: 'price-alert', className: 'card', style: { background: 'linear-gradient(135deg, rgba(127,29,29,0.1), rgba(153,27,27,0.1))', border: '2px solid #7f1d1d', marginBottom: '1rem' }}, [
+              h('div', { key: 'icon', style: { fontSize: '2rem', marginBottom: '0.5rem' }}, '💰'),
+              h('h3', { key: 'title', style: { marginBottom: '0.5rem', color: '#7f1d1d', fontWeight: '700' }}, '가격 업데이트 알림'),
+              h('p', { key: 'desc', style: { color: '#64748b', fontSize: '0.875rem', marginBottom: '1rem' }}, '매주 수요일은 가격 업데이트 날입니다. 벤더 가격을 확인하고 업데이트해주세요.'),
+              h('button', { key: 'btn', className: 'btn', onClick: () => setActiveTab('add'), style: { background: 'linear-gradient(135deg, #7f1d1d, #991b1b)' }}, '품목 관리로 이동')
+            ]),
+            
             lowStockItems.length > 0 && h('div', { key: 'alert', className: 'card', style: { background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.2)' }}, [
               h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#f87171' }}, t.lowStockAlert),
               h('div', { key: 'list', style: { display: 'grid', gap: '0.75rem' }},
@@ -1397,6 +1480,60 @@
                 )
               )
             ]),
+            
+            // 재고실사 달력
+            h('div', { key: 'calendar', className: 'card', style: { marginTop: '1.5rem' }}, [
+              h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+                h('span', { key: 'icon' }, '📅'),
+                h('span', { key: 'text' }, '재고실사 기록')
+              ]),
+              h('div', { key: 'dates', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: '0.5rem' }},
+                (() => {
+                  const dates = [];
+                  const countDates = new Set(countRecords.map(r => r.date));
+                  const today = new Date();
+                  
+                  // 최근 30일
+                  for (let i = 29; i >= 0; i--) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const hasCount = countDates.has(dateStr);
+                    const isToday = i === 0;
+                    
+                    dates.push(
+                      h('div', { 
+                        key: dateStr, 
+                        style: { 
+                          padding: '0.5rem',
+                          borderRadius: '8px',
+                          textAlign: 'center',
+                          background: hasCount ? 'linear-gradient(135deg, #4ade80, #22c55e)' : (isToday ? '#f8fafc' : 'white'),
+                          border: isToday ? '2px solid #7f1d1d' : '1px solid #e2e8f0',
+                          fontSize: '0.75rem'
+                        }
+                      }, [
+                        h('div', { key: 'date', style: { fontWeight: '600', color: hasCount ? 'white' : '#2c3e50' }}, date.getDate()),
+                        h('div', { key: 'day', style: { fontSize: '0.625rem', color: hasCount ? 'rgba(255,255,255,0.8)' : '#64748b' }}, 
+                          ['일', '월', '화', '수', '목', '금', '토'][date.getDay()])
+                      ])
+                    );
+                  }
+                  return dates;
+                })()
+              ),
+              h('div', { key: 'legend', style: { display: 'flex', gap: '1rem', marginTop: '1rem', fontSize: '0.75rem', justifyContent: 'center' }}, [
+                h('div', { key: 'done', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
+                  h('div', { key: 'box', style: { width: '16px', height: '16px', borderRadius: '4px', background: 'linear-gradient(135deg, #4ade80, #22c55e)' }}),
+                  h('span', { key: 'text', style: { color: '#64748b' }}, '실사 완료')
+                ]),
+                h('div', { key: 'today', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
+                  h('div', { key: 'box', style: { width: '16px', height: '16px', borderRadius: '4px', border: '2px solid #7f1d1d', background: '#f8fafc' }}),
+                  h('span', { key: 'text', style: { color: '#64748b' }}, '오늘')
+                ])
+              ])
+            ]),
+            
             h('button', { key: 'gen', className: 'btn', onClick: generateShoppingList, style: { marginTop: '2rem' }}, t.generateShopping)
           ]),
 
@@ -1713,7 +1850,26 @@
                   cursor: canExportExcel() ? 'pointer' : 'not-allowed',
                   background: canExportExcel() ? 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)' : 'rgba(255,255,255,0.1)'
                 }
-              }, '📥 ' + t.exportExcel)
+              }, '📥 ' + t.exportExcel),
+              
+              h('div', { key: 'divider', style: { margin: '2rem 0', borderTop: '1px solid #e2e8f0' }}),
+              
+              h('div', { key: 'monthly-section' }, [
+                h('div', { key: 'icon', style: { fontSize: '2.5rem', marginBottom: '1rem' }}, '📊'),
+                h('h3', { key: 'title', style: { marginBottom: '0.5rem', color: '#7f1d1d' }}, '월간 사용량 리포트'),
+                h('p', { key: 'desc', style: { color: '#64748b', marginBottom: '1.5rem', fontSize: '0.875rem' }}, 
+                  '이번 달 구매 내역을 기반으로 아이템별 사용량과 비용을 분석합니다.'),
+                h('button', { 
+                  key: 'monthly-btn', 
+                  className: 'btn', 
+                  onClick: downloadMonthlyUsageExcel,
+                  style: { 
+                    maxWidth: '300px', 
+                    margin: '0 auto',
+                    background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)'
+                  }
+                }, '📥 월간 사용량 다운로드')
+              ])
             ])
           ]),
 
