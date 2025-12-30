@@ -704,6 +704,7 @@
       const [loginError, setLoginError] = useState('');
       const [currentLocation, setCurrentLocation] = useState('');
       const [currentModule, setCurrentModule] = useState('');
+      const [managementType, setManagementType] = useState(''); // 'server' or 'kitchen'
       
       const [activeTab, setActiveTab] = useState('dashboard');
       const [language, setLanguage] = useState('ko');
@@ -860,8 +861,13 @@
           setScreen('inventory');
           setActiveTab('dashboard');
         } else if (mod === 'management') {
-          setScreen('management');
+          setScreen('management-select');
         }
+      }
+      
+      function selectManagementType(type) {
+        setManagementType(type);
+        setScreen('management');
       }
       
       function goBack() {
@@ -869,6 +875,9 @@
           setScreen('menu');
           setCurrentModule('');
         } else if (screen === 'management') {
+          setScreen('management-select');
+          setManagementType('');
+        } else if (screen === 'management-select') {
           setScreen('menu');
           setCurrentModule('');
         } else if (screen === 'menu') {
@@ -1558,6 +1567,28 @@
         ]);
       }
 
+      // Management 타입 선택 화면
+      if (screen === 'management-select') {
+        return h('div', { className: 'screen-container' }, [
+          h('div', { key: 'back-header', className: 'back-btn-container' }, [
+            h('button', { key: 'back', className: 'back-btn', onClick: goBack }, '←'),
+            h('h1', { key: 'title', className: 'screen-title', style: { margin: 0 }}, 'Management')
+          ]),
+          h('div', { key: 'grid', className: 'selection-grid' }, [
+            h('div', { key: 'server', className: 'selection-card', onClick: () => selectManagementType('server') }, [
+              h('div', { key: 'icon', className: 'selection-icon' }, '👔'),
+              h('div', { key: 'name', className: 'selection-name' }, 'Server'),
+              h('div', { key: 'desc', className: 'selection-desc' }, '서버 스케줄 관리')
+            ]),
+            h('div', { key: 'kitchen', className: 'selection-card', onClick: () => selectManagementType('kitchen') }, [
+              h('div', { key: 'icon', className: 'selection-icon' }, '👨‍🍳'),
+              h('div', { key: 'name', className: 'selection-name' }, 'Kitchen'),
+              h('div', { key: 'desc', className: 'selection-desc' }, '키친 스케줄 관리')
+            ])
+          ])
+        ]);
+      }
+
       // Management 화면
       if (screen === 'management') {
         return h('div', { 
@@ -1615,7 +1646,10 @@
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
               }
-            }, language === 'ko' ? '스케줄 관리' : 'Schedule'),
+            }, language === 'ko' ? 
+              (managementType === 'kitchen' ? '키친 관리' : '서버 관리') : 
+              (managementType === 'kitchen' ? 'Kitchen' : 'Server')
+            ),
             h('select', { 
               key: 'lang',
               value: language,
@@ -1641,7 +1675,7 @@
           // 스케줄러 iframe
           h('iframe', {
             key: 'scheduler',
-            src: 'scheduler.html?location=' + currentLocation + '&lang=' + language,
+            src: (managementType === 'kitchen' ? 'scheduler-kitchen.html' : 'scheduler.html') + '?location=' + currentLocation + '&lang=' + language,
             style: {
               width: '100%',
               height: 'calc(100vh - 60px)',
