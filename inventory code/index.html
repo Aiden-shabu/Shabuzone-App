@@ -1575,13 +1575,14 @@
           h('div', { 
             key: 'header',
             style: { 
-              padding: '1rem 1.5rem',
+              padding: '1rem',
               background: 'white',
               borderBottom: '2px solid #e2e8f0',
               display: 'flex',
               alignItems: 'center',
-              gap: '1rem',
-              minHeight: '70px'
+              gap: '0.75rem',
+              height: '60px',
+              flexShrink: 0
             }
           }, [
             h('button', { 
@@ -1591,26 +1592,30 @@
                 background: 'white',
                 border: '2px solid #e2e8f0',
                 borderRadius: '8px',
-                width: '44px',
-                height: '44px',
-                fontSize: '20px',
+                width: '40px',
+                height: '40px',
+                fontSize: '18px',
                 cursor: 'pointer',
                 color: '#7f1d1d',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                flexShrink: 0
               }
             }, '←'),
             h('h1', { 
               key: 'title',
               style: { 
                 margin: 0,
-                fontSize: '1.25rem',
+                fontSize: '1.1rem',
                 fontWeight: '700',
                 color: '#7f1d1d',
-                flex: 1
+                flex: 1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
               }
-            }, language === 'ko' ? '스케줄 관리' : 'Schedule Management'),
+            }, language === 'ko' ? '스케줄 관리' : 'Schedule'),
             h('select', { 
               key: 'lang',
               value: language,
@@ -1619,10 +1624,12 @@
                 background: 'white', 
                 border: '2px solid #e2e8f0', 
                 borderRadius: '6px', 
-                padding: '0.5rem', 
+                padding: '0.4rem', 
                 color: '#2c3e50', 
-                fontSize: '0.875rem',
-                minWidth: '60px'
+                fontSize: '0.8rem',
+                width: '50px',
+                flexShrink: 0,
+                cursor: 'pointer'
               }
             }, [
               h('option', { key: 'ko', value: 'ko' }, 'KR'),
@@ -1637,9 +1644,10 @@
             src: 'scheduler.html?location=' + currentLocation + '&lang=' + language,
             style: {
               width: '100%',
-              flex: 1,
+              height: 'calc(100vh - 60px)',
               border: 'none',
-              background: 'white'
+              background: 'white',
+              display: 'block'
             },
             allow: 'clipboard-write'
           })
