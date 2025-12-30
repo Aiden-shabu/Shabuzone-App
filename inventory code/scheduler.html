@@ -9,6 +9,10 @@
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   
+  <!-- Firebase v8 SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  
   <!-- ============================================ -->
   <!-- CSS STYLES - 스타일 정의 -->
   <!-- ============================================ -->
@@ -278,13 +282,9 @@
   <!-- ============================================ -->
   <!-- FIREBASE & JAVASCRIPT -->
   <!-- ============================================ -->
-  <script type="module">
-    // --- Firebase 라이브러리 Import (Realtime Database) ---
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, set, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
+  <script>
     // ============================================
-    // FIREBASE 설정 (Realtime Database)
+    // FIREBASE 설정 (v8 SDK)
     // ============================================
     const firebaseConfig = {
       apiKey: "AIzaSyAkAf6r0vaBfdF_VvhjFJUp_N4iQx7JXH4",
@@ -296,9 +296,9 @@
       appId: "1:584815119069:web:18d050cccf586e8f98e52b"
     };
 
-    // --- Firebase 초기화 ---
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    // --- Firebase 초기화 (v8) ---
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
     
     // --- URL 파라미터에서 location과 language 읽기 ---
     const urlParams = new URLSearchParams(window.location.search);
@@ -309,14 +309,14 @@
     console.log('🌐 Language:', INITIAL_LANG);
 
     // ============================================
-    // STORAGE - Firebase Realtime Database 저장/불러오기
+    // STORAGE - Firebase Realtime Database 저장/불러오기 (v8)
     // ============================================
     const storage = {
       // --- 데이터 저장 ---
       async saveData(key, data) {
         try {
           const path = `${LOCATION}/management/${key}`;
-          await set(ref(db, path), data);
+          await db.ref(path).set(data);
           console.log(`✅ Firebase saved: ${path}`);
           return true;
         } catch (error) {
@@ -330,7 +330,7 @@
       async loadData(key, defaultValue) {
         try {
           const path = `${LOCATION}/management/${key}`;
-          const snapshot = await get(ref(db, path));
+          const snapshot = await db.ref(path).once('value');
           if (snapshot.exists()) {
             console.log(`✅ Firebase loaded: ${path}`);
             return snapshot.val();
