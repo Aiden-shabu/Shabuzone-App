@@ -1141,11 +1141,14 @@
     // EXCEL VIEW TAB - 엑셀 뷰 탭
     // ============================================
     function renderExcelViewTab(t) {
+      // 번역 안전 접근
+      const excelT = t.excelView || {};
+      
       if (!state.schedule || Object.keys(state.schedule).length === 0) {
         return `
           <div style="padding:60px;text-align:center;">
             <div style="font-size:48px;margin-bottom:16px;">📊</div>
-            <h3>${t.excelView.noSchedule}</h3>
+            <h3>${excelT.noSchedule || 'No schedule yet. Generate schedule first!'}</h3>
           </div>
         `;
       }
@@ -1176,7 +1179,7 @@
       return `
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h2 style="margin:0;font-size:24px;font-weight:600;">${t.excelView.title}</h2>
+            <h2 style="margin:0;font-size:24px;font-weight:600;">${excelT.title || 'Excel View'}</h2>
             <button onclick="downloadExcel()" class="btn-primary" style="display:inline-flex;align-items:center;gap:8px;">
               📥 Download Excel
             </button>
