@@ -1601,25 +1601,16 @@
                 justifyContent: 'center'
               }
             }, '←'),
-            h('div', { key: 'title-section', style: { flex: 1 }}, [
-              h('h1', { 
-                key: 'title',
-                style: { 
-                  margin: 0,
-                  fontSize: '1.5rem',
-                  fontWeight: '700',
-                  color: '#7f1d1d'
-                }
-              }, language === 'ko' ? '스케줄 관리' : 'Schedule Management'),
-              h('div', {
-                key: 'location',
-                style: {
-                  fontSize: '0.875rem',
-                  color: '#64748b',
-                  marginTop: '0.25rem'
-                }
-              }, currentLocation === 'houston' ? 'Houston' : 'Seattle')
-            ]),
+            h('h1', { 
+              key: 'title',
+              style: { 
+                margin: 0,
+                fontSize: '1.25rem',
+                fontWeight: '700',
+                color: '#7f1d1d',
+                flex: 1
+              }
+            }, language === 'ko' ? '스케줄 관리' : 'Schedule Management'),
             h('select', { 
               key: 'lang',
               value: language,
@@ -1643,7 +1634,7 @@
           // 스케줄러 iframe
           h('iframe', {
             key: 'scheduler',
-            src: './scheduler.html?location=' + currentLocation + '&lang=' + language,
+            src: 'scheduler.html?location=' + currentLocation + '&lang=' + language,
             style: {
               width: '100%',
               flex: 1,
