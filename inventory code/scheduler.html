@@ -296,11 +296,17 @@
       appId: "1:584815119069:web:18d050cccf586e8f98e52b"
     };
 
-    // --- Firebase 초기화 (v8) - 중복 방지 ---
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+    // --- Firebase 초기화 (완전 독립) ---
+    let schedulerApp;
+    try {
+      // 기존 앱이 있으면 사용, 없으면 새로 생성
+      schedulerApp = firebase.apps.find(app => app.name === 'scheduler-app') || 
+                     firebase.initializeApp(firebaseConfig, 'scheduler-app');
+    } catch (error) {
+      console.log('Firebase 이미 초기화됨, 기존 인스턴스 사용');
+      schedulerApp = firebase.app('scheduler-app');
     }
-    const db = firebase.database();
+    const db = schedulerApp.database();
     
     // --- URL 파라미터에서 location과 language 읽기 ---
     const urlParams = new URLSearchParams(window.location.search);
