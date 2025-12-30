@@ -705,22 +705,6 @@
       const [currentLocation, setCurrentLocation] = useState('');
       const [currentModule, setCurrentModule] = useState('');
       
-      // Management States
-      const [managementTab, setManagementTab] = useState('employees');
-      const [managementEmployees, setManagementEmployees] = useState([]);
-      const [managementRequirements, setManagementRequirements] = useState({});
-      const [managementPreferences, setManagementPreferences] = useState({});
-      const [managementSchedule, setManagementSchedule] = useState({});
-      const [editingEmployee, setEditingEmployee] = useState(null);
-      const [selectedEmployee, setSelectedEmployee] = useState(null);
-      
-      // Management Constants
-      const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-      const SHIFTS = {
-        morning: ['open', 'eleven', 'elevenThirty'],
-        evening: ['threeThirty', 'six']
-      };
-      
       const [activeTab, setActiveTab] = useState('dashboard');
       const [language, setLanguage] = useState('ko');
       const [loading, setLoading] = useState(true);
@@ -877,7 +861,6 @@
           setActiveTab('dashboard');
         } else if (mod === 'management') {
           setScreen('management');
-          setManagementTab('employees');
         }
       }
       
