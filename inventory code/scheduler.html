@@ -296,8 +296,10 @@
       appId: "1:584815119069:web:18d050cccf586e8f98e52b"
     };
 
-    // --- Firebase 초기화 (v8) ---
-    firebase.initializeApp(firebaseConfig);
+    // --- Firebase 초기화 (v8) - 중복 방지 ---
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.database();
     
     // --- URL 파라미터에서 location과 language 읽기 ---
