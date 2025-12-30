@@ -435,7 +435,88 @@
         itemAnalysis: '아이템 분석', exportExcel: '엑셀 다운로드',
         lastUsed: '전날 사용', weeklyAvg: '주간 평균', showChart: '차트 보기', hideChart: '차트 닫기',
         usageChart: '사용량 그래프 (7일)', noHistory: '구매 내역이 없어 분석할 수 없습니다',
-        registerCount: '등록하기', countRecords: '재고 실사 내역', countRegistered: '재고 실사가 등록되었습니다!'
+        registerCount: '등록하기', countRecords: '재고 실사 내역', countRegistered: '재고 실사가 등록되었습니다!',
+        // Management/Schedule translations  
+        management: {
+          title: '스케줄 관리',
+          tabs: {
+            employees: '직원 관리',
+            requirements: '인원 설정',
+            preferences: '희망 스케줄',
+            schedule: '스케줄',
+            excelView: '엑셀 뷰',
+            sections: '섹션'
+          },
+          employees: {
+            title: '직원 관리',
+            addEmployee: '직원 추가',
+            name: '이름',
+            gender: '성별',
+            male: '남자',
+            female: '여자',
+            status: '상태',
+            active: '근무 가능',
+            cantWork: '근무 불가',
+            save: '저장',
+            cancel: '취소',
+            noEmployees: "아직 직원이 없습니다. '직원 추가'를 클릭하세요!",
+            cantWorkDetails: '근무 불가 상세',
+            reason: '사유',
+            startDate: '시작일',
+            endDate: '종료일'
+          },
+          requirements: {
+            title: '주간 필요 인원',
+            copyPrevious: '이전 주 복사',
+            lunch: '점심',
+            dinner: '저녁',
+            open: '오픈~브레이크',
+            eleven: '11:00~브레이크',
+            elevenThirty: '11:30~브레이크',
+            threeThirty: '3:30~마감',
+            six: '6:00~마감',
+            total: '합계',
+            holiday: '특별일'
+          },
+          preferences: {
+            title: '직원 희망 스케줄',
+            selectEmployee: '-- 직원 선택 --',
+            minGuarantee: '최소 보장 시프트',
+            savePreferences: '저장',
+            lastSaved: '마지막 저장',
+            clickToCycle: '클릭하여 색상 변경',
+            morning: '오전',
+            evening: '오후',
+            fixed: '고정'
+          },
+          schedule: {
+            title: '주간 스케줄',
+            runSchedule: '스케줄 생성',
+            noSchedule: "아직 스케줄이 없습니다. '스케줄 생성'을 클릭하세요!",
+            generating: '스케줄 생성 중...',
+            lunch: '점심',
+            dinner: '저녁'
+          },
+          excelView: {
+            title: '엑셀 뷰 - 스케줄 편집',
+            noSchedule: "아직 스케줄이 없습니다. 스케줄 탭에서 '스케줄 생성'을 먼저 실행하세요!",
+            lunchCount: '점심 인원',
+            dinnerCount: '저녁 인원',
+            allDayCount: '종일 인원',
+            clickToEdit: '클릭하여 시프트 편집',
+            changeShift: '시프트 변경',
+            currentShift: '현재',
+            changeTo: '변경',
+            switchEmployee: '직원 교체',
+            off: 'OFF',
+            availableEmployees: '교체 가능 직원',
+            swapWith: '클릭하여 교체'
+          },
+          sections: {
+            title: '섹션 배정',
+            comingSoon: '준비 중입니다!'
+          }
+        }
       },
       en: {
         dashboard: 'Dashboard', count: 'Count', shopping: 'Shopping', add: 'Add', reports: 'Reports',
@@ -448,6 +529,87 @@
         purchaseHistory: 'Purchase History', date: 'Date', items: 'Items', amount: 'Amount',
         noData: 'No purchase history yet',
         addNewItem: 'Add New Item', itemName: 'Item Name', selectVendor: 'Select Vendor', addItem: 'Add Item',
+        // Management/Schedule translations
+        management: {
+          title: 'Schedule Manager',
+          tabs: {
+            employees: 'Employees',
+            requirements: 'Requirements', 
+            preferences: 'Preferences',
+            schedule: 'Schedule',
+            excelView: 'Excel View',
+            sections: 'Sections'
+          },
+          employees: {
+            title: 'Employee Management',
+            addEmployee: 'Add Employee',
+            name: 'Name',
+            gender: 'Gender',
+            male: 'Male',
+            female: 'Female',
+            status: 'Status',
+            active: 'Active',
+            cantWork: "Can't Work",
+            save: 'Save',
+            cancel: 'Cancel',
+            noEmployees: "No employees yet. Click 'Add Employee' to start!",
+            cantWorkDetails: "Can't Work Details",
+            reason: 'Reason',
+            startDate: 'Start Date',
+            endDate: 'End Date'
+          },
+          requirements: {
+            title: 'Weekly Requirements',
+            copyPrevious: 'Copy Previous Week',
+            lunch: 'LUNCH',
+            dinner: 'DINNER',
+            open: 'Open~Break',
+            eleven: '11:00~Break',
+            elevenThirty: '11:30~Break',
+            threeThirty: '3:30~Close',
+            six: '6:00~Close',
+            total: 'Total',
+            holiday: 'Holiday'
+          },
+          preferences: {
+            title: 'Employee Preferences',
+            selectEmployee: '-- Select Employee --',
+            minGuarantee: 'Min. Guaranteed Shifts',
+            savePreferences: 'Save Preferences',
+            lastSaved: 'Last saved',
+            clickToCycle: 'Click to cycle colors',
+            morning: 'Morning',
+            evening: 'Evening',
+            fixed: 'Fixed'
+          },
+          schedule: {
+            title: 'Weekly Schedule',
+            runSchedule: 'Run Schedule',
+            noSchedule: "No schedule generated yet. Click 'Run Schedule' to create!",
+            generating: 'Generating schedule...',
+            lunch: 'Lunch',
+            dinner: 'Dinner'
+          },
+          excelView: {
+            title: 'Excel View - Edit Schedule',
+            noSchedule: "No schedule yet. Go to Schedule tab and click 'Run Schedule' first!",
+            lunchCount: 'Lunch Count',
+            dinnerCount: 'Dinner Count',
+            allDayCount: 'All Day Count',
+            clickToEdit: 'Click to edit shift',
+            changeShift: 'Change Shift',
+            currentShift: 'Current',
+            changeTo: 'Change to',
+            switchEmployee: 'Switch Employee',
+            off: 'OFF',
+            availableEmployees: 'Available Employees',
+            swapWith: 'Click to swap with'
+          },
+          sections: {
+            title: 'Section Assignment',
+            comingSoon: 'Coming soon!'
+          }
+        }
         manageItems: 'Manage Items', save: 'Save', edit: 'Edit', delete: 'Delete',
         addItems: 'Add Items', manageVendors: 'Manage Vendors', vendorName: 'Vendor Name', addVendor: 'Add Vendor', deleteVendor: 'Delete Vendor',
         resetData: 'Reset Data', enterPassword: 'Enter Password',
@@ -542,6 +704,22 @@
       const [loginError, setLoginError] = useState('');
       const [currentLocation, setCurrentLocation] = useState('');
       const [currentModule, setCurrentModule] = useState('');
+      
+      // Management States
+      const [managementTab, setManagementTab] = useState('employees');
+      const [managementEmployees, setManagementEmployees] = useState([]);
+      const [managementRequirements, setManagementRequirements] = useState({});
+      const [managementPreferences, setManagementPreferences] = useState({});
+      const [managementSchedule, setManagementSchedule] = useState({});
+      const [editingEmployee, setEditingEmployee] = useState(null);
+      const [selectedEmployee, setSelectedEmployee] = useState(null);
+      
+      // Management Constants
+      const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const SHIFTS = {
+        morning: ['open', 'eleven', 'elevenThirty'],
+        evening: ['threeThirty', 'six']
+      };
       
       const [activeTab, setActiveTab] = useState('dashboard');
       const [language, setLanguage] = useState('ko');
@@ -697,14 +875,22 @@
         if (mod === 'inventory') {
           setScreen('inventory');
           setActiveTab('dashboard');
+        } else if (mod === 'management') {
+          setScreen('management');
+          setManagementTab('employees');
         }
       }
       
       function goBack() {
         if (screen === 'inventory') {
           setScreen('menu');
+          setCurrentModule('');
+        } else if (screen === 'management') {
+          setScreen('menu');
+          setCurrentModule('');
         } else if (screen === 'menu') {
           setScreen('location');
+          setCurrentLocation('');
         } else if (screen === 'location') {
           setScreen('login');
         }
@@ -1383,9 +1569,106 @@
             h('div', { key: 'management', className: 'selection-card', onClick: () => selectModule('management') }, [
               h('div', { key: 'icon', className: 'selection-icon' }, '📅'),
               h('div', { key: 'name', className: 'selection-name' }, 'Management'),
-              h('div', { key: 'desc', className: 'selection-desc' }, '스케줄 관리 (개발 예정)')
+              h('div', { key: 'desc', className: 'selection-desc' }, '스케줄 관리 시스템')
             ])
           ])
+        ]);
+      }
+
+      // Management 화면
+      if (screen === 'management') {
+        return h('div', { 
+          key: 'management-wrapper',
+          style: { 
+            width: '100%', 
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            background: '#f5f5f0',
+            overflow: 'hidden'
+          }
+        }, [
+          // 헤더
+          h('div', { 
+            key: 'header',
+            style: { 
+              padding: '1rem 1.5rem',
+              background: 'white',
+              borderBottom: '2px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              minHeight: '70px'
+            }
+          }, [
+            h('button', { 
+              key: 'back',
+              onClick: goBack,
+              style: {
+                background: 'white',
+                border: '2px solid #e2e8f0',
+                borderRadius: '8px',
+                width: '44px',
+                height: '44px',
+                fontSize: '20px',
+                cursor: 'pointer',
+                color: '#7f1d1d',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }
+            }, '←'),
+            h('div', { key: 'title-section', style: { flex: 1 }}, [
+              h('h1', { 
+                key: 'title',
+                style: { 
+                  margin: 0,
+                  fontSize: '1.5rem',
+                  fontWeight: '700',
+                  color: '#7f1d1d'
+                }
+              }, language === 'ko' ? '스케줄 관리' : 'Schedule Management'),
+              h('div', {
+                key: 'location',
+                style: {
+                  fontSize: '0.875rem',
+                  color: '#64748b',
+                  marginTop: '0.25rem'
+                }
+              }, currentLocation === 'houston' ? 'Houston' : 'Seattle')
+            ]),
+            h('select', { 
+              key: 'lang',
+              value: language,
+              onChange: (e) => setLanguage(e.target.value),
+              style: { 
+                background: 'white', 
+                border: '2px solid #e2e8f0', 
+                borderRadius: '6px', 
+                padding: '0.5rem', 
+                color: '#2c3e50', 
+                fontSize: '0.875rem',
+                minWidth: '60px'
+              }
+            }, [
+              h('option', { key: 'ko', value: 'ko' }, 'KR'),
+              h('option', { key: 'en', value: 'en' }, 'EN'),
+              h('option', { key: 'es', value: 'es' }, 'ES')
+            ])
+          ]),
+          
+          // 스케줄러 iframe
+          h('iframe', {
+            key: 'scheduler',
+            src: './scheduler.html?location=' + currentLocation + '&lang=' + language,
+            style: {
+              width: '100%',
+              flex: 1,
+              border: 'none',
+              background: 'white'
+            },
+            allow: 'clipboard-write'
+          })
         ]);
       }
 
