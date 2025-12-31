@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shabu Zone Schedule Manager</title>
+  <title>Shabu Zone Kitchen Manager</title>
   
   <!-- ExcelJS for Excel export with colors -->
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
@@ -323,7 +323,7 @@
       // --- 데이터 저장 ---
       async saveData(key, data) {
         try {
-          const path = `${LOCATION}/management/${key}`;
+          const path = `${LOCATION}/kitchen/${key}`;
           await db.ref(path).set(data);
           console.log(`✅ Firebase saved: ${path}`);
           return true;
@@ -337,7 +337,7 @@
       // --- 데이터 불러오기 ---
       async loadData(key, defaultValue) {
         try {
-          const path = `${LOCATION}/management/${key}`;
+          const path = `${LOCATION}/kitchen/${key}`;
           const snapshot = await db.ref(path).once('value');
           if (snapshot.exists()) {
             console.log(`✅ Firebase loaded: ${path}`);
@@ -358,10 +358,17 @@
     // --- 요일 배열 ---
     const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     
-    // --- 시프트 종류 ---
+    // --- Kitchen 섹션 ---
+    const SECTIONS = ['Busser', 'Prep', 'Soup', 'Dish', 'Host', 'Manager'];
+    
+    // --- Kitchen 시프트 종류 ---
     const SHIFTS = {
-      morning: ['open', 'eleven', 'elevenThirty'],
-      evening: ['threeThirty', 'six']
+      '8:00-11:00': '8:00-11:00',
+      '11:00-3:30': '11:00-3:30',
+      '11:00-5:00': '11:00-5:00',
+      '3:30-Close': '3:30-Close',
+      '5:00-Close': '5:00-Close',
+      '6:00-Close': '6:00-Close'
     };
 
     // ============================================
@@ -630,9 +637,12 @@
       const reqs = {};
       DAYS.forEach(day => {
         reqs[day] = {
-          lunch: { open: 4, eleven: 2, elevenThirty: 3 },
-          dinner: { threeThirty: 8, six: 0 },
-          allDayMax: 0,
+          '8:00-11:00': 2,
+          '11:00-3:30': 3,
+          '11:00-5:00': 2,
+          '3:30-Close': 4,
+          '5:00-Close': 3,
+          '6:00-Close': 2,
           isHoliday: false
         };
       });
@@ -762,6 +772,16 @@
                         ${emp.status === 'cantWork' ? t.employees.cantWork : t.employees.active}
                       </span>
                     </div>
+                    ${emp.sections && emp.sections.length > 0 ? `
+                      <div style="font-size:11px;color:#666;margin-top:6px;">
+                        <strong>Sections:</strong> ${emp.sections.join(', ')}
+                      </div>
+                    ` : ''}
+                    ${emp.rate ? `
+                      <div style="font-size:11px;color:#666;margin-top:4px;">
+                        <strong>Rate:</strong> $${emp.rate}/hr
+                      </div>
+                    ` : ''}
                     ${emp.status === 'cantWork' && emp.cantWorkDetails ? `
                       <div style="font-size:12px;color:#666;margin-top:8px;padding:8px;background:white;border-radius:6px;">
                         <div><strong>${t.employees.reason}:</strong> ${emp.cantWorkDetails.reason || 'N/A'}</div>
@@ -793,47 +813,45 @@
     function renderRequirementsTab(t) {
       return `
         <div style="display:flex;justify-content:space-between;margin-bottom:24px;">
-          <h2 style="margin:0;font-size:24px;font-weight:600;">${t.requirements.title}</h2>
+          <h2 style="margin:0;font-size:24px;font-weight:600;">Kitchen Requirements</h2>
         </div>
 
         <table class="requirements-table">
           <thead>
             <tr>
-              <th rowspan="2" style="width:100px;">Day</th>
-              <th colspan="3">${t.requirements.lunch}</th>
-              <th rowspan="2" style="width:80px;">Lunch<br>Total</th>
-              <th colspan="2">${t.requirements.dinner}</th>
-              <th rowspan="2" style="width:80px;">Dinner<br>Total</th>
-              <th rowspan="2" style="width:80px;">All Day<br>Max</th>
-              <th rowspan="2" style="width:100px;">${t.requirements.holiday}</th>
-            </tr>
-            <tr>
-              <th>${t.requirements.open}</th>
-              <th>${t.requirements.eleven}</th>
-              <th>${t.requirements.elevenThirty}</th>
-              <th>${t.requirements.threeThirty}</th>
-              <th>${t.requirements.six}</th>
+              <th style="width:120px;">Day</th>
+              <th>8:00-11:00</th>
+              <th>11:00-3:30</th>
+              <th>11:00-5:00</th>
+              <th>3:30-Close</th>
+              <th>5:00-Close</th>
+              <th>6:00-Close</th>
+              <th style="width:100px;">Total</th>
+              <th style="width:100px;">Holiday</th>
             </tr>
           </thead>
           <tbody>
             ${DAYS.map(day => {
               const req = state.requirements[day];
-              const lunchTotal = (req.lunch.open || 0) + (req.lunch.eleven || 0) + (req.lunch.elevenThirty || 0);
-              const dinnerTotal = (req.dinner.threeThirty || 0) + (req.dinner.six || 0);
+              const total = (req['8:00-11:00'] || 0) + 
+                           (req['11:00-3:30'] || 0) + 
+                           (req['11:00-5:00'] || 0) + 
+                           (req['3:30-Close'] || 0) + 
+                           (req['5:00-Close'] || 0) + 
+                           (req['6:00-Close'] || 0);
               
               return `
                 <tr style="${req.isHoliday ? 'background:#FFF3E0;' : ''}">
-                  <td style="font-weight:600;">${t.days?.[day] || day}</td>
-                  <td><input type="number" min="0" value="${req.lunch.open}" onchange="updateRequirement('${day}', 'lunch', 'open', this.value)"></td>
-                  <td><input type="number" min="0" value="${req.lunch.eleven}" onchange="updateRequirement('${day}', 'lunch', 'eleven', this.value)"></td>
-                  <td><input type="number" min="0" value="${req.lunch.elevenThirty}" onchange="updateRequirement('${day}', 'lunch', 'elevenThirty', this.value)"></td>
-                  <td style="font-weight:700;background:#E8F5E9;color:#2E7D32;font-size:16px;">${lunchTotal}</td>
-                  <td><input type="number" min="0" value="${req.dinner.threeThirty}" onchange="updateRequirement('${day}', 'dinner', 'threeThirty', this.value)"></td>
-                  <td><input type="number" min="0" value="${req.dinner.six}" onchange="updateRequirement('${day}', 'dinner', 'six', this.value)"></td>
-                  <td style="font-weight:700;background:#E3F2FD;color:#1565C0;font-size:16px;">${dinnerTotal}</td>
-                  <td><input type="number" min="0" value="${req.allDayMax || 0}" onchange="updateAllDayMax('${day}', this.value)" style="width:60px;"></td>
+                  <td style="font-weight:600;">${day}</td>
+                  <td><input type="number" min="0" value="${req['8:00-11:00'] || 0}" onchange="updateKitchenRequirement('${day}', '8:00-11:00', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['11:00-3:30'] || 0}" onchange="updateKitchenRequirement('${day}', '11:00-3:30', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['11:00-5:00'] || 0}" onchange="updateKitchenRequirement('${day}', '11:00-5:00', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['3:30-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '3:30-Close', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['5:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '5:00-Close', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['6:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '6:00-Close', this.value)"></td>
+                  <td style="font-weight:700;background:#E8F5E9;color:#2E7D32;font-size:16px;">${total}</td>
                   <td>
-                    <input type="checkbox" ${req.isHoliday ? 'checked' : ''} onchange="toggleHoliday('${day}')" style="cursor:pointer;width:20px;height:20px;">
+                    <input type="checkbox" ${req.isHoliday ? 'checked' : ''} onchange="toggleKitchenHoliday('${day}')" style="cursor:pointer;width:20px;height:20px;">
                   </td>
                 </tr>
               `;
@@ -842,8 +860,7 @@
         </table>
 
         <div style="margin-top:20px;padding:16px;background:#E3F2FD;border-radius:8px;font-size:14px;">
-          💡 <strong>Holiday Mode:</strong> When checked, all available employees will be scheduled regardless of preferences to prevent shortages.<br>
-          <strong>Main Job employees</strong> will maintain their fixed schedule even on holidays.
+          💡 <strong>Tip:</strong> Set required number of staff for each time slot. Holiday mode schedules all available employees.
         </div>
       `;
     }
@@ -1368,6 +1385,32 @@
                 </div>
               </div>
 
+              <div class="form-group">
+                <label>Sections (Check all that apply)</label>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px;background:#f8fafc;border-radius:8px;">
+                  ${SECTIONS.map(section => `
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px;">
+                      <input type="checkbox" 
+                             class="section-checkbox" 
+                             value="${section}" 
+                             ${state.editingEmployee?.sections?.includes(section) ? 'checked' : ''}
+                             style="width:18px;height:18px;cursor:pointer;">
+                      <span style="font-size:14px;">${section}</span>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Hourly Rate ($)</label>
+                <input type="number" 
+                       id="emp-rate" 
+                       step="0.01" 
+                       min="0" 
+                       value="${state.editingEmployee?.rate || ''}" 
+                       placeholder="15.00">
+              </div>
+
               <div id="cant-work-details" style="display:${currentStatus === 'cantWork' ? 'block' : 'none'};padding:16px;background:#FFF3E0;border-radius:8px;margin-bottom:16px;">
                 <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;">${t.employees.cantWorkDetails}</h4>
                 
@@ -1455,20 +1498,18 @@
           e.preventDefault();
           
           const status = document.getElementById('emp-status').value;
+          
+          // 섹션 체크박스 수집
+          const selectedSections = Array.from(document.querySelectorAll('.section-checkbox:checked'))
+            .map(cb => cb.value);
+          
           const empData = {
             id: state.editingEmployee?.id || Date.now(),
             name: document.getElementById('emp-name').value.trim(),
             gender: document.getElementById('emp-gender').value,
             status: status,
-            availableSections: {
-              'A-F': true,
-              'G+Room': true,
-              'H-L': true,
-              'Helper': false,
-              'MH': false,
-              'FR': false
-            },
-            conflictWith: []
+            sections: selectedSections,
+            rate: parseFloat(document.getElementById('emp-rate').value) || 0
           };
 
           if (status === 'cantWork') {
@@ -2144,6 +2185,20 @@
 
     // --- Holiday 토글 ---
     window.toggleHoliday = (day) => {
+      state.requirements[day].isHoliday = !state.requirements[day].isHoliday;
+      saveRequirements();
+      render();
+    };
+
+    // --- Kitchen Requirement 업데이트 ---
+    window.updateKitchenRequirement = (day, shift, value) => {
+      state.requirements[day][shift] = parseInt(value) || 0;
+      saveRequirements();
+      render();
+    };
+
+    // --- Kitchen Holiday 토글 ---
+    window.toggleKitchenHoliday = (day) => {
       state.requirements[day].isHoliday = !state.requirements[day].isHoliday;
       saveRequirements();
       render();
