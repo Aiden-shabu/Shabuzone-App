@@ -702,6 +702,86 @@
     async function saveSchedule() {
       await storage.saveData('schedule', state.schedule);
     }
+    
+    // ============================================
+    // SCHEDULE GENERATION - 스케줄 생성
+    // ============================================
+    
+    async function generateSchedule() {
+      if (!confirm('새로운 스케줄을 생성하시겠습니까? (기존 스케줄은 덮어씌워집니다)')) {
+        return;
+      }
+      
+      state.generating = true;
+      render();
+      
+      // 간단한 알고리즘 (임시)
+      const newSchedule = {};
+      
+      DAYS.forEach(day => {
+        newSchedule[day] = {};
+        
+        // 각 섹션별 스케줄
+        SECTIONS.forEach(section => {
+          newSchedule[day][section] = {};
+          
+          // 해당 섹션의 직원들
+          const sectionEmployees = state.employees.filter(emp => 
+            emp.sections && emp.sections.includes(section) && emp.status === 'active'
+          );
+          
+          // 각 직원에게 랜덤 시프트 배정 (임시)
+          sectionEmployees.forEach((emp, idx) => {
+            const prefs = state.preferences[emp.id];
+            if (!prefs || !prefs[day]) return;
+            
+            const dayPref = prefs[day];
+            
+            // Fixed 우선
+            if (dayPref.morningFixed) {
+              const shift = '8:00-4:00'; // 임시
+              if (!newSchedule[day][section][shift]) {
+                newSchedule[day][section][shift] = [];
+              }
+              newSchedule[day][section][shift].push({ id: emp.id });
+            } else if (dayPref.eveningFixed) {
+              const shift = '4:00-Close';
+              if (!newSchedule[day][section][shift]) {
+                newSchedule[day][section][shift] = [];
+              }
+              newSchedule[day][section][shift].push({ id: emp.id });
+            } else if (dayPref.morning && dayPref.evening) {
+              // 올데이 - 랜덤
+              const shift = idx % 2 === 0 ? '8:00-4:00' : '11:00-Close';
+              if (!newSchedule[day][section][shift]) {
+                newSchedule[day][section][shift] = [];
+              }
+              newSchedule[day][section][shift].push({ id: emp.id });
+            } else if (dayPref.morning) {
+              const shift = '8:00-4:00';
+              if (!newSchedule[day][section][shift]) {
+                newSchedule[day][section][shift] = [];
+              }
+              newSchedule[day][section][shift].push({ id: emp.id });
+            } else if (dayPref.evening) {
+              const shift = '4:00-Close';
+              if (!newSchedule[day][section][shift]) {
+                newSchedule[day][section][shift] = [];
+              }
+              newSchedule[day][section][shift].push({ id: emp.id });
+            }
+          });
+        });
+      });
+      
+      state.schedule = newSchedule;
+      await saveSchedule();
+      
+      state.generating = false;
+      render();
+      
+      alert('스케줄이 생성되었습니다!');
+    }
 
     // ============================================
     // PREFERENCES 함수들
@@ -1453,31 +1533,138 @@
 
       return `
         <div style="display:flex;justify-content:space-between;margin-bottom:24px;">
-          <h2 style="margin:0;font-size:24px;font-weight:600;">${t.schedule.title}</h2>
-          <button class="btn-primary" onclick="runScheduleGeneration()" ${state.generating ? 'disabled' : ''}>
-            ${state.generating ? '⏳' : '▶️'} ${state.generating ? t.schedule.generating : t.schedule.runSchedule}
+          <h2 style="margin:0;font-size:24px;font-weight:600;">Kitchen Schedule - Week View</h2>
+          <button class="btn-primary" onclick="generateSchedule()" ${state.generating ? 'disabled' : ''}>
+            ${state.generating ? '⏳ Generating...' : '🎯 Generate Schedule'}
           </button>
         </div>
 
         ${!hasSchedule ? `
           <div style="padding:60px;text-align:center;background:#f9f9f9;border-radius:12px;border:2px dashed #ddd;">
             <div style="font-size:48px;margin-bottom:16px;">📅</div>
-            <p style="color:#999;font-size:16px;">${t.schedule.noSchedule}</p>
+            <p style="color:#999;font-size:16px;">스케줄을 생성하려면 위의 "Generate Schedule" 버튼을 클릭하세요</p>
           </div>
         ` : `
-          <div class="schedule-grid">
-            ${DAYS.map(day => {
-              const daySchedule = state.schedule[day] || {};
-              const isHoliday = state.requirements[day]?.isHoliday;
-              const req = state.requirements[day] || { lunch: {}, dinner: {} };
-              
-              // 필요 인원 계산
-              const lunchNeed = (req.lunch.open || 0) + (req.lunch.eleven || 0) + (req.lunch.elevenThirty || 0);
-              const dinnerNeed = (req.dinner.threeThirty || 0) + (req.dinner.six || 0);
-              
-              // 배정된 인원
-              const lunchAssigned = (daySchedule.lunch || []).length;
-              const dinnerAssigned = (daySchedule.dinner || []).length;
+          ${renderWeeklyScheduleTable()}
+        `}
+      `;
+    }
+    
+    function renderWeeklyScheduleTable() {
+      const schedule = state.schedule || {};
+      
+      return `
+        <div style="overflow-x:auto;">
+          ${SECTIONS.map(section => {
+            // 해당 섹션의 직원들만 필터
+            const sectionEmployees = state.employees.filter(emp => 
+              emp.sections && emp.sections.includes(section) && emp.status === 'active'
+            );
+            
+            if (sectionEmployees.length === 0) return '';
+            
+            return `
+              <div style="margin-bottom:32px;">
+                <h3 style="margin:0 0 12px 0;padding:12px 16px;background:#7f1d1d;color:white;border-radius:8px 8px 0 0;font-size:18px;font-weight:700;">
+                  ${section}
+                </h3>
+                
+                <table style="width:100%;border-collapse:collapse;background:white;border-radius:0 0 8px 8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                  <thead>
+                    <tr style="background:#f8fafc;">
+                      <th style="padding:12px;text-align:left;border:1px solid #e5e7eb;font-weight:700;min-width:120px;">Name</th>
+                      ${DAYS.map(day => `
+                        <th style="padding:12px;text-align:center;border:1px solid #e5e7eb;font-weight:700;min-width:100px;">${day.substring(0,3).toUpperCase()}</th>
+                      `).join('')}
+                      <th style="padding:12px;text-align:center;border:1px solid #e5e7eb;font-weight:700;background:#FFF9C4;min-width:80px;">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${sectionEmployees.map(emp => {
+                      let totalHours = 0;
+                      
+                      return `
+                        <tr style="border-bottom:1px solid #e5e7eb;">
+                          <td style="padding:12px;border:1px solid #e5e7eb;font-weight:600;">${emp.name}</td>
+                          ${DAYS.map(day => {
+                            const daySchedule = schedule[day] || {};
+                            const empShift = findEmployeeShift(daySchedule, emp.id);
+                            
+                            let cellContent = '';
+                            let hours = 0;
+                            
+                            if (empShift) {
+                              cellContent = formatShiftShort(empShift.shift);
+                              hours = calculateShiftHours(empShift.shift);
+                              totalHours += hours;
+                            } else {
+                              cellContent = '<span style="color:#999;">x</span>';
+                            }
+                            
+                            return `
+                              <td style="padding:12px;text-align:center;border:1px solid #e5e7eb;font-size:13px;">
+                                ${cellContent}
+                              </td>
+                            `;
+                          }).join('')}
+                          <td style="padding:12px;text-align:center;border:1px solid #e5e7eb;font-weight:700;background:#FFF9C4;font-size:15px;">
+                            ${totalHours.toFixed(1)}
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+    
+    function findEmployeeShift(daySchedule, empId) {
+      // 모든 섹션을 순회하며 직원 찾기
+      for (const section of SECTIONS) {
+        if (daySchedule[section]) {
+          for (const shift in daySchedule[section]) {
+            const employees = daySchedule[section][shift] || [];
+            const found = employees.find(e => e.id === empId || e === empId);
+            if (found) {
+              return { section, shift };
+            }
+          }
+        }
+      }
+      return null;
+    }
+    
+    function formatShiftShort(shift) {
+      // 짧게 표시
+      if (shift === '8:00-4:00') return '8-4';
+      if (shift === '8:00-5:00') return '8-5';
+      if (shift === '11:00-5:00') return '11-5';
+      if (shift === '11:00-Close') return '11-C';
+      if (shift === '3:30-Close') return '3:30-C';
+      if (shift === '4:00-Close') return '4-C';
+      if (shift === '5:00-Close') return '5-C';
+      if (shift === '6:00-Close') return '6-C';
+      return shift;
+    }
+    
+    function calculateShiftHours(shift) {
+      const closeTime = 24; // 12:00 AM = 24시
+      
+      if (shift === '8:00-4:00') return 8;
+      if (shift === '8:00-5:00') return 9;
+      if (shift === '11:00-5:00') return 6;
+      if (shift === '11:00-Close') return 13; // 11 AM to 12 AM
+      if (shift === '3:30-Close') return 8.5; // 3:30 PM to 12 AM
+      if (shift === '4:00-Close') return 8; // 4 PM to 12 AM
+      if (shift === '5:00-Close') return 7; // 5 PM to 12 AM
+      if (shift === '6:00-Close') return 6; // 6 PM to 12 AM
+      
+      return 0;
+    }
               
               // All Day 직원 찾기
               const lunchNames = (daySchedule.lunch || []).map(e => e.name);
@@ -1609,38 +1796,298 @@
     // EXCEL VIEW TAB - 엑셀 뷰 탭
     // ============================================
     function renderExcelViewTab(t) {
-      // 번역 안전 접근
-      const excelT = t.excelView || {};
-      
       if (!state.schedule || Object.keys(state.schedule).length === 0) {
         return `
           <div style="padding:60px;text-align:center;">
             <div style="font-size:48px;margin-bottom:16px;">📊</div>
-            <h3>${excelT.noSchedule || 'No schedule yet. Generate schedule first!'}</h3>
+            <h3>스케줄을 먼저 생성해주세요!</h3>
           </div>
         `;
       }
 
-      // 정해진 직원 순서
-      const employeeOrder = [
-        'Aiden', 'Carlos', 'Edgar', 'Hung', 'Thanh', 'Tien', 'Tommy', 'Judy', 
-        'Justin', 'Tina N', 'Alan', 'Chau', 'Le', 'Crystal', 'Tue', 'Cherry', 
-        'Christine', 'Hieu', 'Kai', 'Dat', 'Johnny', 'Ly', 'Tho', 'Kha', 
-        'Phung', 'Ye', 'Esther', 'Duc', 'Jimmy', 'Aca', 'Vivi', 'Catherine', 
-        'Tiffany', 'Steven', 'Chris', 'Dung'
-      ];
+      const selectedDay = state.selectedExcelDay || 'Monday';
 
-      // 활성 직원 정렬
-      const orderedEmployees = [];
-      employeeOrder.forEach(name => {
-        const emp = state.employees.find(e => e.name === name && e.status === 'active');
-        if (emp) orderedEmployees.push(emp);
-      });
-
-      // 순서에 없는 직원 추가
-      state.employees.filter(e => e.status === 'active').forEach(emp => {
-        if (!employeeOrder.includes(emp.name)) {
-          orderedEmployees.push(emp);
+      return `
+        <div>
+          <h2 style="margin:0 0 20px 0;font-size:24px;font-weight:600;">Excel View - Daily Timeline</h2>
+          
+          <!-- 요일 탭 -->
+          <div style="display:flex;gap:8px;margin-bottom:24px;overflow-x:auto;padding-bottom:8px;">
+            ${DAYS.map(day => `
+              <button 
+                onclick="selectExcelDay('${day}')"
+                style="
+                  padding:12px 20px;
+                  background:${selectedDay === day ? '#7f1d1d' : 'white'};
+                  color:${selectedDay === day ? 'white' : '#333'};
+                  border:2px solid ${selectedDay === day ? '#7f1d1d' : '#ddd'};
+                  border-radius:8px;
+                  font-weight:600;
+                  cursor:pointer;
+                  white-space:nowrap;
+                  transition:all 0.2s;
+                "
+              >
+                ${day}
+              </button>
+            `).join('')}
+          </div>
+          
+          <!-- 타임라인 -->
+          ${renderDailyTimeline(selectedDay)}
+        </div>
+      `;
+    }
+    
+    function selectExcelDay(day) {
+      state.selectedExcelDay = day;
+      render();
+    }
+    
+    function renderDailyTimeline(day) {
+      const daySchedule = state.schedule[day] || {};
+      
+      // 시간대 (8AM ~ 12AM)
+      const hours = [];
+      for (let i = 8; i <= 24; i++) {
+        hours.push(i);
+      }
+      
+      return `
+        <div style="overflow-x:auto;">
+          ${SECTIONS.map(section => {
+            const sectionSchedule = daySchedule[section] || {};
+            const employees = [];
+            
+            // 해당 섹션의 모든 직원 수집
+            for (const shift in sectionSchedule) {
+              const empList = sectionSchedule[shift] || [];
+              empList.forEach(empData => {
+                const empId = empData.id || empData;
+                const emp = state.employees.find(e => e.id === empId);
+                if (emp) {
+                  const actualIn = empData.actualIn || null;
+                  const actualOut = empData.actualOut || null;
+                  employees.push({
+                    ...emp,
+                    shift,
+                    actualIn,
+                    actualOut
+                  });
+                }
+              });
+            }
+            
+            if (employees.length === 0) return '';
+            
+            return `
+              <div style="margin-bottom:40px;">
+                <h3 style="margin:0 0 12px 0;padding:12px;background:#7f1d1d;color:white;border-radius:8px 8px 0 0;">
+                  ${day} - ${section}
+                </h3>
+                
+                <table style="width:100%;border-collapse:collapse;background:white;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                  <thead>
+                    <tr style="background:#f8fafc;">
+                      <th style="padding:10px;border:1px solid #e5e7eb;min-width:100px;position:sticky;left:0;background:#f8fafc;z-index:10;">Name</th>
+                      ${hours.map(h => {
+                        const is3pm = h === 15;
+                        const is4pm = h === 16;
+                        const displayHour = h > 12 ? h - 12 : h;
+                        const ampm = h < 12 ? 'AM' : (h === 24 ? 'AM' : 'PM');
+                        
+                        return `
+                          <th style="
+                            padding:8px 4px;
+                            border:1px solid #e5e7eb;
+                            ${is3pm || is4pm ? 'border-left:3px solid #7f1d1d;' : ''}
+                            font-size:11px;
+                            min-width:40px;
+                            text-align:center;
+                          ">
+                            ${displayHour === 24 ? 12 : displayHour}<br>
+                            <span style="font-size:9px;">${ampm}</span>
+                          </th>
+                        `;
+                      }).join('')}
+                      <th style="padding:10px;border:1px solid #e5e7eb;background:#FFF9C4;min-width:80px;">Clock</th>
+                      <th style="padding:10px;border:1px solid #e5e7eb;background:#FFF9C4;min-width:70px;">Rate</th>
+                      <th style="padding:10px;border:1px solid #e5e7eb;background:#E8F5E9;min-width:80px;">Pay</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${employees.map(emp => {
+                      const { startHour, endHour } = getShiftHours(emp.shift, emp.actualIn, emp.actualOut);
+                      const totalHours = endHour - startHour;
+                      const pay = (totalHours * emp.rate).toFixed(2);
+                      
+                      return `
+                        <tr>
+                          <td style="padding:10px;border:1px solid #e5e7eb;font-weight:600;position:sticky;left:0;background:white;z-index:10;">
+                            ${emp.name}
+                          </td>
+                          ${hours.map(h => {
+                            const isWorking = h >= startHour && h < endHour;
+                            const is3pm = h === 15;
+                            const is4pm = h === 16;
+                            
+                            return `
+                              <td style="
+                                padding:4px;
+                                border:1px solid #e5e7eb;
+                                ${is3pm || is4pm ? 'border-left:3px solid #7f1d1d;' : ''}
+                                background:${isWorking ? '#dcfce7' : 'white'};
+                                text-align:center;
+                              ">
+                                ${isWorking ? '█' : ''}
+                              </td>
+                            `;
+                          }).join('')}
+                          <td style="padding:8px;border:1px solid #e5e7eb;background:#FFF9C4;text-align:center;cursor:pointer;" 
+                              onclick="editClockTime('${day}', '${section}', '${emp.id}', '${emp.shift}')">
+                            <div style="font-size:11px;font-weight:600;">
+                              ${formatHour(startHour)} - ${formatHour(endHour)}
+                            </div>
+                            <div style="font-size:10px;color:#666;margin-top:2px;">
+                              ${totalHours.toFixed(1)}h
+                            </div>
+                          </td>
+                          <td style="padding:8px;border:1px solid #e5e7eb;background:#FFF9C4;text-align:center;font-weight:600;">
+                            $${emp.rate}/hr
+                          </td>
+                          <td style="padding:8px;border:1px solid #e5e7eb;background:#E8F5E9;text-align:center;font-weight:700;color:#16a34a;">
+                            $${pay}
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                    
+                    <!-- 섹션 합계 -->
+                    <tr style="background:#f0fdf4;font-weight:700;">
+                      <td colspan="${hours.length + 3}" style="padding:10px;border:1px solid #e5e7eb;text-align:right;">
+                        ${section} Total:
+                      </td>
+                      <td style="padding:10px;border:1px solid #e5e7eb;text-align:center;color:#16a34a;">
+                        $${employees.reduce((sum, emp) => {
+                          const { startHour, endHour } = getShiftHours(emp.shift, emp.actualIn, emp.actualOut);
+                          return sum + ((endHour - startHour) * emp.rate);
+                        }, 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            `;
+          }).join('')}
+          
+          <!-- 전체 합계 -->
+          <div style="padding:20px;background:#E8F5E9;border-radius:8px;border-left:4px solid #16a34a;margin-top:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h3 style="margin:0;font-size:20px;">Total Pay (${day})</h3>
+              <div style="font-size:28px;font-weight:700;color:#16a34a;">
+                $${calculateDayTotal(day).toFixed(2)}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    function getShiftHours(shift, actualIn, actualOut) {
+      // 실제 시간이 있으면 사용
+      if (actualIn && actualOut) {
+        return {
+          startHour: parseFloat(actualIn),
+          endHour: parseFloat(actualOut)
+        };
+      }
+      
+      // 스케줄 기본 시간
+      const shiftMap = {
+        '8:00-4:00': { start: 8, end: 16 },
+        '8:00-5:00': { start: 8, end: 17 },
+        '11:00-5:00': { start: 11, end: 17 },
+        '11:00-Close': { start: 11, end: 24 },
+        '3:30-Close': { start: 15.5, end: 24 },
+        '4:00-Close': { start: 16, end: 24 },
+        '5:00-Close': { start: 17, end: 24 },
+        '6:00-Close': { start: 18, end: 24 }
+      };
+      
+      const hours = shiftMap[shift] || { start: 9, end: 17 };
+      return { startHour: hours.start, endHour: hours.end };
+    }
+    
+    function formatHour(hour) {
+      if (hour === 24) return '12:00 AM';
+      if (hour < 12) return `${hour}:00 AM`;
+      if (hour === 12) return '12:00 PM';
+      const h = hour - 12;
+      const min = (hour % 1) * 60;
+      if (min > 0) {
+        return `${Math.floor(h)}:${min.toFixed(0).padStart(2, '0')} PM`;
+      }
+      return `${h}:00 PM`;
+    }
+    
+    function calculateDayTotal(day) {
+      const daySchedule = state.schedule[day] || {};
+      let total = 0;
+      
+      for (const section in daySchedule) {
+        for (const shift in daySchedule[section]) {
+          const employees = daySchedule[section][shift] || [];
+          employees.forEach(empData => {
+            const empId = empData.id || empData;
+            const emp = state.employees.find(e => e.id === empId);
+            if (emp) {
+              const { startHour, endHour } = getShiftHours(shift, empData.actualIn, empData.actualOut);
+              total += (endHour - startHour) * emp.rate;
+            }
+          });
+        }
+      }
+      
+      return total;
+    }
+    
+    function editClockTime(day, section, empId, shift) {
+      // 모달로 시간 수정
+      const daySchedule = state.schedule[day] || {};
+      const sectionSchedule = daySchedule[section] || {};
+      const employees = sectionSchedule[shift] || [];
+      const empData = employees.find(e => (e.id || e) === empId);
+      
+      const { startHour, endHour } = getShiftHours(shift, empData?.actualIn, empData?.actualOut);
+      
+      const inTime = prompt(`Clock In (시간, 예: 8 or 15.5):`, startHour);
+      if (inTime === null) return;
+      
+      const outTime = prompt(`Clock Out (시간, 예: 16 or 24):`, endHour);
+      if (outTime === null) return;
+      
+      // 업데이트
+      if (!state.schedule[day]) state.schedule[day] = {};
+      if (!state.schedule[day][section]) state.schedule[day][section] = {};
+      if (!state.schedule[day][section][shift]) state.schedule[day][section][shift] = [];
+      
+      const idx = state.schedule[day][section][shift].findIndex(e => (e.id || e) === empId);
+      if (idx !== -1) {
+        if (typeof state.schedule[day][section][shift][idx] === 'string') {
+          state.schedule[day][section][shift][idx] = {
+            id: empId,
+            actualIn: parseFloat(inTime),
+            actualOut: parseFloat(outTime)
+          };
+        } else {
+          state.schedule[day][section][shift][idx].actualIn = parseFloat(inTime);
+          state.schedule[day][section][shift][idx].actualOut = parseFloat(outTime);
+        }
+      }
+      
+      saveSchedule();
+      render();
+    }
         }
       });
 
