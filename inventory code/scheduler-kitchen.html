@@ -647,30 +647,33 @@
       render();
     }
 
-    // --- 기본 Requirements 구조 생성 (섹션별) ---
+    // --- 기본 Requirements 구조 생성 (Weekday/Weekend) ---
     function getDefaultRequirements() {
-      const reqs = {};
-      DAYS.forEach(day => {
-        reqs[day] = {
-          isHoliday: false
+      return {
+        Weekday: getDefaultDayRequirements(),
+        Weekend: getDefaultDayRequirements(),
+        // 개별 Holiday 체크
+        holidays: {
+          Monday: false,
+          Tuesday: false,
+          Wednesday: false,
+          Thursday: false,
+          Friday: false
+        }
+      };
+    }
+    
+    function getDefaultDayRequirements() {
+      const dayReq = {};
+      
+      SECTIONS.forEach(section => {
+        dayReq[section] = {
+          morning: section === 'Prep' ? 3 : (section === 'Dish' ? 1 : 0),
+          evening: section === 'Prep' ? 2 : (section === 'Dish' ? 2 : (section === 'Busser' ? 2 : 0))
         };
-        
-        // 섹션별 기본값
-        SECTIONS.forEach(section => {
-          reqs[day][section] = {
-            '8:00-4:00': section === 'Prep' ? 2 : 0,
-            '8:00-5:00': section === 'Prep' ? 1 : 0,
-            '11:00-5:00': section === 'Prep' ? 1 : (section === 'Dish' ? 1 : 0),
-            '11:00-Close': section === 'Manager' ? 1 : 0,
-            '12:00-Close': 0,
-            '3:30-Close': section === 'Dish' ? 1 : 0,
-            '4:00-Close': section === 'Dish' ? 2 : (section === 'Busser' ? 1 : 0),
-            '5:00-Close': section === 'Dish' ? 1 : (section === 'Busser' ? 1 : 0),
-            '6:00-Close': section === 'Busser' ? 1 : 0
-          };
-        });
       });
-      return reqs;
+      
+      return dayReq;
     }
 
     // ============================================
@@ -705,35 +708,29 @@
         
         // Preferences 구조 초기화 (없으면)
         if (!state.preferences[empId]) {
-          state.preferences[empId] = {};
-          DAYS.forEach(day => {
-            state.preferences[empId][day] = {};
-          });
+          state.preferences[empId] = {
+            Weekday: { morning: false, evening: false },
+            Weekend: { morning: false, evening: false }
+          };
         }
       }
       render();
     }
     
-    function toggleShiftPreference(day, shift) {
+    function toggleSimplePreference(period, timeOfDay) {
       const empId = state.selectedEmployee.id;
       if (!state.preferences[empId]) {
-        state.preferences[empId] = {};
+        state.preferences[empId] = {
+          Weekday: { morning: false, evening: false },
+          Weekend: { morning: false, evening: false }
+        };
       }
-      if (!state.preferences[empId][day]) {
-        state.preferences[empId][day] = {};
+      if (!state.preferences[empId][period]) {
+        state.preferences[empId][period] = { morning: false, evening: false };
       }
       
       // 토글
-      const current = state.preferences[empId][day][shift] || false;
-      state.preferences[empId][day][shift] = !current;
-      
-      // 11시/12시 시작 검증
-      if (shift === '11:00-5:00' || shift === '11:00-Close' || shift === '12:00-Close') {
-        if (state.preferences[empId][day][shift]) {
-          // 체크할 때 경고
-          console.log(`⚠️ ${shift} selected - minimum 5PM or Close required!`);
-        }
-      }
+      state.preferences[empId][period][timeOfDay] = !state.preferences[empId][period][timeOfDay];
       
       render();
     }
@@ -742,10 +739,10 @@
       if (!confirm('정말로 이 직원의 모든 희망 근무를 초기화하시겠습니까?')) return;
       
       const empId = state.selectedEmployee.id;
-      state.preferences[empId] = {};
-      DAYS.forEach(day => {
-        state.preferences[empId][day] = {};
-      });
+      state.preferences[empId] = {
+        Weekday: { morning: false, evening: false },
+        Weekend: { morning: false, evening: false }
+      };
       
       render();
     }
@@ -754,29 +751,35 @@
     // REQUIREMENTS 함수들
     // ============================================
     
-    function updateKitchenRequirementBySection(day, section, shift, value) {
+    function updateSimpleRequirement(period, section, timeOfDay, value) {
       const num = parseInt(value) || 0;
       
-      if (!state.requirements[day]) {
-        state.requirements[day] = { isHoliday: false };
+      if (!state.requirements[period]) {
+        state.requirements[period] = getDefaultDayRequirements();
       }
-      if (!state.requirements[day][section]) {
-        state.requirements[day][section] = {};
+      if (!state.requirements[period][section]) {
+        state.requirements[period][section] = { morning: 0, evening: 0 };
       }
       
-      state.requirements[day][section][shift] = num;
+      state.requirements[period][section][timeOfDay] = num;
       
       // Firebase 저장
       saveRequirements();
       render();
     }
     
-    function toggleKitchenHoliday(day) {
-      if (!state.requirements[day]) {
-        state.requirements[day] = { isHoliday: false };
+    function toggleHolidayDay(day) {
+      if (!state.requirements.holidays) {
+        state.requirements.holidays = {
+          Monday: false,
+          Tuesday: false,
+          Wednesday: false,
+          Thursday: false,
+          Friday: false
+        };
       }
       
-      state.requirements[day].isHoliday = !state.requirements[day].isHoliday;
+      state.requirements.holidays[day] = !state.requirements.holidays[day];
       
       // Firebase 저장
       saveRequirements();
@@ -929,66 +932,119 @@
     // 수정: 테이블 구조 변경하려면 이 함수!
     // ============================================
     function renderRequirementsTab(t) {
+      const weekdayDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+      const holidays = state.requirements.holidays || {};
+      
       return `
         <div style="display:flex;justify-content:space-between;margin-bottom:24px;">
-          <h2 style="margin:0;font-size:24px;font-weight:600;">Kitchen Requirements (섹션별)</h2>
+          <h2 style="margin:0;font-size:24px;font-weight:600;">Kitchen Requirements (주중/주말)</h2>
         </div>
 
-        <div style="margin-bottom:20px;padding:16px;background:#FFF9C4;border-radius:8px;border-left:4px solid #F57C00;">
-          ⚠️ <strong>중요:</strong> 8시 시작 = 최소 3:30(4시)까지 | 11시/12시 시작 = 최소 5시 또는 Close까지
+        <div style="margin-bottom:20px;padding:16px;background:#E3F2FD;border-radius:8px;border-left:4px solid #2196F3;">
+          💡 <strong>간단해졌어요!</strong> Weekday(월~금)와 Weekend(토~일)만 설정하세요. Holiday 체크한 날은 Weekend 인원이 적용됩니다.
         </div>
 
-        ${DAYS.map(day => {
-          const req = state.requirements[day] || {};
+        <!-- Holiday 선택 -->
+        <div style="margin-bottom:24px;padding:20px;background:#FFF3E0;border-radius:12px;border:2px solid #F57C00;">
+          <h3 style="margin:0 0 16px 0;font-size:18px;font-weight:700;color:#F57C00;">
+            🎉 Holidays (주중에 Weekend 인원 적용)
+          </h3>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;">
+            ${weekdayDays.map(day => {
+              const isChecked = holidays[day] || false;
+              return `
+                <label style="
+                  flex:1;
+                  min-width:140px;
+                  padding:12px 16px;
+                  background:${isChecked ? '#FFE0B2' : 'white'};
+                  border:2px solid ${isChecked ? '#F57C00' : '#ddd'};
+                  border-radius:8px;
+                  cursor:pointer;
+                  display:flex;
+                  align-items:center;
+                  gap:10px;
+                  font-weight:600;
+                  transition:all 0.2s;
+                ">
+                  <input type="checkbox" 
+                         ${isChecked ? 'checked' : ''}
+                         onchange="toggleHolidayDay('${day}')"
+                         style="width:20px;height:20px;cursor:pointer;">
+                  <span style="color:${isChecked ? '#F57C00' : '#333'};">${day}</span>
+                  ${isChecked ? '<span style="margin-left:auto;">✓</span>' : ''}
+                </label>
+              `;
+            }).join('')}
+          </div>
+          <div style="margin-top:12px;font-size:13px;color:#666;">
+            체크한 날짜는 Weekend 인원 수가 적용됩니다
+          </div>
+        </div>
+
+        ${['Weekday', 'Weekend'].map(period => {
+          const req = state.requirements[period] || {};
+          const icon = period === 'Weekday' ? '📅' : '🎉';
+          const label = period === 'Weekday' ? 'Weekday (월~금 기본)' : 'Weekend (토~일)';
           
           return `
-            <div style="margin-bottom:32px;padding:20px;background:white;border-radius:12px;border:2px solid ${req.isHoliday ? '#F57C00' : '#7f1d1d'};">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                <h3 style="margin:0;font-size:20px;font-weight:600;">${day}</h3>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                  <input type="checkbox" ${req.isHoliday ? 'checked' : ''} 
-                         onchange="toggleKitchenHoliday('${day}')" 
-                         style="width:20px;height:20px;cursor:pointer;">
-                  <span style="font-weight:600;color:#F57C00;">Holiday</span>
-                </label>
+            <div style="margin-bottom:32px;padding:24px;background:white;border-radius:12px;border:2px solid #7f1d1d;">
+              <div style="margin-bottom:20px;">
+                <h3 style="margin:0;font-size:22px;font-weight:700;">
+                  ${icon} ${label}
+                </h3>
               </div>
 
-              ${SECTIONS.map(section => {
-                const sectionReq = req[section] || {};
-                const sectionTotal = Object.keys(SHIFTS).reduce((sum, shift) => sum + (sectionReq[shift] || 0), 0);
-                
-                return `
-                  <div style="margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:8px;">
-                    <div style="font-weight:600;margin-bottom:8px;color:#7f1d1d;font-size:15px;">
-                      ${section} (Total: ${sectionTotal})
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+                ${SECTIONS.map(section => {
+                  const sectionReq = req[section] || { morning: 0, evening: 0 };
+                  const total = (sectionReq.morning || 0) + (sectionReq.evening || 0);
+                  
+                  return `
+                    <div style="padding:16px;background:#f8fafc;border-radius:10px;border:2px solid #e2e8f0;">
+                      <div style="font-weight:700;margin-bottom:12px;color:#7f1d1d;font-size:16px;display:flex;justify-content:space-between;align-items:center;">
+                        <span>${section}</span>
+                        <span style="background:#E8F5E9;color:#2E7D32;padding:4px 10px;border-radius:6px;font-size:14px;">
+                          Total: ${total}
+                        </span>
+                      </div>
+                      
+                      <div style="display:flex;gap:12px;">
+                        <div style="flex:1;">
+                          <label style="display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:600;">
+                            ☀️ 오전
+                          </label>
+                          <input type="number" min="0" max="20"
+                                 value="${sectionReq.morning || 0}" 
+                                 onchange="updateSimpleRequirement('${period}', '${section}', 'morning', this.value)"
+                                 style="width:100%;padding:10px;border:2px solid #ddd;border-radius:6px;font-size:16px;font-weight:700;text-align:center;">
+                        </div>
+                        
+                        <div style="flex:1;">
+                          <label style="display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:600;">
+                            🌙 오후
+                          </label>
+                          <input type="number" min="0" max="20"
+                                 value="${sectionReq.evening || 0}" 
+                                 onchange="updateSimpleRequirement('${period}', '${section}', 'evening', this.value)"
+                                 style="width:100%;padding:10px;border:2px solid #ddd;border-radius:6px;font-size:16px;font-weight:700;text-align:center;">
+                        </div>
+                      </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;">
-                      ${Object.keys(SHIFTS).map(shift => {
-                        const shortLabel = shift.replace(':00', '').replace('Close', 'C');
-                        const isWarning = shift === '11:00-5:00';
-                        return `
-                          <div style="background:${isWarning ? '#FFF9C4' : 'white'};padding:8px;border-radius:6px;border:1px solid #ddd;">
-                            <div style="font-size:11px;color:#666;margin-bottom:4px;" title="${shift}">${shortLabel}</div>
-                            <input type="number" min="0" 
-                                   value="${sectionReq[shift] || 0}" 
-                                   onchange="updateKitchenRequirementBySection('${day}', '${section}', '${shift}', this.value)"
-                                   style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:14px;font-weight:600;">
-                          </div>
-                        `;
-                      }).join('')}
-                    </div>
-                  </div>
-                `;
-              }).join('')}
+                  `;
+                }).join('')}
+              </div>
             </div>
           `;
         }).join('')}
 
-        <div style="margin-top:20px;padding:16px;background:#E3F2FD;border-radius:8px;font-size:14px;line-height:1.6;">
-          💡 <strong>사용 방법:</strong><br>
-          • 각 섹션별로 필요한 인원수를 입력하세요<br>
-          • Holiday 체크시 모든 가능한 직원이 자동 배정됩니다<br>
-          • 노란색 칸 (11-5): 11시 시작은 최소 5시까지 근무 필수!
+        <div style="margin-top:24px;padding:20px;background:#FFF9C4;border-radius:8px;font-size:14px;line-height:1.8;border-left:4px solid #F57C00;">
+          <div style="font-weight:700;margin-bottom:8px;font-size:16px;">⚠️ 중요 규칙:</div>
+          • <strong>오전</strong>: 8시~5시 사이 모든 시간 (8-4, 8-5, 11-5 등)<br>
+          • <strong>오후</strong>: 3:30~Close 사이 모든 시간 (3:30-C, 4-C, 5-C 등)<br>
+          • <strong>11-5</strong>도 "오전" 취급 (11시 시작 = 최소 5시까지)<br>
+          • <strong>Holiday</strong> 체크한 날은 Weekend 인원이 적용됩니다<br>
+          • 알고리즘이 자동으로 공평하게 시간 배분합니다
         </div>
       `;
     }
@@ -1022,61 +1078,85 @@
         ` : `
           <div style="padding:24px;background:white;border-radius:12px;border:2px solid #7f1d1d;">
             <h3 style="margin:0 0 8px 0;font-size:20px;">${selectedEmp.name}</h3>
-            <div style="margin-bottom:16px;padding:10px;background:#FFF9C4;border-radius:6px;border-left:3px solid #F57C00;font-size:13px;">
-              ⚠️ <strong>중요:</strong> 11시 또는 12시 시작은 <strong>무조건 5시 또는 Close까지</strong> 근무해야 합니다!
+            <div style="margin-bottom:20px;padding:12px;background:#E3F2FD;border-radius:6px;border-left:3px solid #2196F3;font-size:13px;">
+              💡 <strong>간단해졌어요!</strong> 오전/오후만 체크하세요. 알고리즘이 자동으로 공평하게 시간을 배분합니다.
             </div>
             
-            <table class="preferences-table" style="width:100%;">
-              <thead>
-                <tr style="background:#f5f5f5;">
-                  <th style="text-align:left;padding:12px;">요일</th>
-                  <th style="text-align:center;padding:8px;" title="8:00-11:00 (3시간)">8-11</th>
-                  <th style="text-align:center;padding:8px;" title="8:00-4:00 (8시간)">8-4</th>
-                  <th style="text-align:center;padding:8px;" title="8:00-5:00 (9시간)">8-5</th>
-                  <th style="text-align:center;padding:8px;background:#FFF9C4;" title="11:00-5:00 (6시간) - 최소 5시!">11-5⚠️</th>
-                  <th style="text-align:center;padding:8px;" title="11:00-Close">11-C</th>
-                  <th style="text-align:center;padding:8px;" title="12:00-Close">12-C</th>
-                  <th style="text-align:center;padding:8px;" title="3:30-Close">3:30-C</th>
-                  <th style="text-align:center;padding:8px;" title="4:00-Close">4-C</th>
-                  <th style="text-align:center;padding:8px;" title="5:00-Close">5-C</th>
-                  <th style="text-align:center;padding:8px;" title="6:00-Close">6-C</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${DAYS.map(day => {
-                  const dayPrefs = empPrefs[day] || {};
-                  return `
-                    <tr>
-                      <td style="font-weight:600;padding:12px;">${day}</td>
-                      ${Object.keys(SHIFTS).map(shift => {
-                        const isAvailable = dayPrefs[shift] || false;
-                        const isWarning = shift === '11:00-5:00';
-                        return `
-                          <td style="text-align:center;padding:4px;${isWarning ? 'background:#FFF9C4;' : ''}">
-                            <button 
-                              onclick="toggleShiftPreference('${day}', '${shift}')"
-                              style="
-                                width:40px;
-                                height:40px;
-                                border-radius:6px;
-                                border:2px solid ${isAvailable ? '#2E7D32' : '#ddd'};
-                                background:${isAvailable ? '#E8F5E9' : 'white'};
-                                cursor:pointer;
-                                font-size:18px;
-                                transition:all 0.2s;
-                              "
-                              title="${shift}"
-                            >
-                              ${isAvailable ? '✓' : ''}
-                            </button>
-                          </td>
-                        `;
-                      }).join('')}
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;">
+              ${['Weekday', 'Weekend'].map(period => {
+                const periodPrefs = empPrefs[period] || { morning: false, evening: false };
+                const icon = period === 'Weekday' ? '📅' : '🎉';
+                const label = period === 'Weekday' ? 'Weekday (월~금)' : 'Weekend (토~일)';
+                
+                return `
+                  <div style="padding:20px;background:#f8fafc;border-radius:10px;border:2px solid #7f1d1d;">
+                    <h4 style="margin:0 0 16px 0;font-size:18px;font-weight:700;color:#7f1d1d;">
+                      ${icon} ${label}
+                    </h4>
+                    
+                    <div style="display:flex;gap:12px;">
+                      <label style="flex:1;cursor:pointer;">
+                        <div style="
+                          padding:20px;
+                          background:${periodPrefs.morning ? '#E8F5E9' : 'white'};
+                          border:3px solid ${periodPrefs.morning ? '#2E7D32' : '#ddd'};
+                          border-radius:8px;
+                          text-align:center;
+                          transition:all 0.2s;
+                        ">
+                          <input type="checkbox" 
+                                 ${periodPrefs.morning ? 'checked' : ''}
+                                 onchange="toggleSimplePreference('${period}', 'morning')"
+                                 style="display:none;">
+                          <div style="font-size:32px;margin-bottom:8px;">☀️</div>
+                          <div style="font-weight:700;font-size:16px;color:${periodPrefs.morning ? '#2E7D32' : '#666'};">
+                            오전
+                          </div>
+                          <div style="font-size:12px;color:#666;margin-top:4px;">
+                            8:00~5:00
+                          </div>
+                          ${periodPrefs.morning ? `
+                            <div style="margin-top:8px;font-size:20px;">✓</div>
+                          ` : ''}
+                        </div>
+                      </label>
+                      
+                      <label style="flex:1;cursor:pointer;">
+                        <div style="
+                          padding:20px;
+                          background:${periodPrefs.evening ? '#E8F5E9' : 'white'};
+                          border:3px solid ${periodPrefs.evening ? '#2E7D32' : '#ddd'};
+                          border-radius:8px;
+                          text-align:center;
+                          transition:all 0.2s;
+                        ">
+                          <input type="checkbox" 
+                                 ${periodPrefs.evening ? 'checked' : ''}
+                                 onchange="toggleSimplePreference('${period}', 'evening')"
+                                 style="display:none;">
+                          <div style="font-size:32px;margin-bottom:8px;">🌙</div>
+                          <div style="font-weight:700;font-size:16px;color:${periodPrefs.evening ? '#2E7D32' : '#666'};">
+                            오후
+                          </div>
+                          <div style="font-size:12px;color:#666;margin-top:4px;">
+                            3:30~Close
+                          </div>
+                          ${periodPrefs.evening ? `
+                            <div style="margin-top:8px;font-size:20px;">✓</div>
+                          ` : ''}
+                        </div>
+                      </label>
+                    </div>
+                    
+                    ${periodPrefs.morning && periodPrefs.evening ? `
+                      <div style="margin-top:12px;padding:10px;background:#FFF3E0;border-radius:6px;text-align:center;font-size:13px;font-weight:600;color:#F57C00;">
+                        🎯 올데이 가능!
+                      </div>
+                    ` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
 
             <div style="margin-top:20px;display:flex;gap:12px;">
               <button onclick="savePreferences()" style="padding:12px 24px;background:#7f1d1d;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:15px;">
@@ -1087,12 +1167,12 @@
               </button>
             </div>
 
-            <div style="margin-top:20px;padding:16px;background:#E3F2FD;border-radius:8px;font-size:13px;line-height:1.6;">
-              <div style="font-weight:700;margin-bottom:8px;">💡 사용 방법:</div>
-              • 각 박스를 클릭해서 근무 가능 시간대를 선택하세요 (✓)<br>
-              • <span style="background:#FFF9C4;padding:2px 6px;border-radius:3px;">노란색 (11-5)</span>: 11시 시작은 <strong>무조건 최소 5시까지!</strong><br>
-              • 여러 시간대 선택 가능 (알고리즘이 최적 배치)<br>
-              • 저장 버튼을 눌러야 Firebase에 저장됩니다
+            <div style="margin-top:20px;padding:16px;background:#FFF9C4;border-radius:8px;font-size:13px;line-height:1.8;border-left:4px solid #F57C00;">
+              <div style="font-weight:700;margin-bottom:8px;">⚠️ 규칙:</div>
+              • <strong>오전</strong>: 8-4, 8-5, 11-5 중 자동 배정<br>
+              • <strong>오후</strong>: 3:30-C, 4-C, 5-C 중 자동 배정<br>
+              • <strong>둘 다 체크</strong>: 올데이 가능 (모든 시간)<br>
+              • 알고리즘이 최대한 공평하게 시간을 나눕니다
             </div>
           </div>
         `}
