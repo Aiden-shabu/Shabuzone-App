@@ -668,8 +668,15 @@
       
       SECTIONS.forEach(section => {
         dayReq[section] = {
-          morning: section === 'Prep' ? 3 : (section === 'Dish' ? 1 : (section === 'Meat' ? 1 : 0)),
-          evening: section === 'Prep' ? 2 : (section === 'Dish' ? 2 : (section === 'Busser' ? 2 : (section === 'Meat' ? 2 : 0)))
+          // 기본값 모두 0 (사용자가 직접 설정)
+          '8:00-4:00': 0,
+          '8:00-5:00': 0,
+          '11:00-5:00': 0,
+          '11:00-Close': 0,
+          '3:30-Close': 0,
+          '4:00-Close': 0,
+          '5:00-Close': 0,
+          '6:00-Close': 0
         };
       });
       
@@ -706,43 +713,75 @@
       } else {
         state.selectedEmployee = state.employees.find(e => e.id === empId);
         
-        // Preferences 구조 초기화 (없으면)
+        // Preferences 구조 초기화 (월~일 개별)
         if (!state.preferences[empId]) {
-          state.preferences[empId] = {
-            Weekday: { morning: false, evening: false },
-            Weekend: { morning: false, evening: false }
-          };
+          state.preferences[empId] = {};
+          DAYS.forEach(day => {
+            state.preferences[empId][day] = {
+              morning: false,
+              evening: false,
+              morningFixed: false,
+              eveningFixed: false
+            };
+          });
         }
       }
       render();
     }
     
-    function toggleSimplePreference(period, timeOfDay) {
+    function toggleTimePreference(day, timeOfDay) {
       const empId = state.selectedEmployee.id;
       if (!state.preferences[empId]) {
-        state.preferences[empId] = {
-          Weekday: { morning: false, evening: false },
-          Weekend: { morning: false, evening: false }
+        state.preferences[empId] = {};
+      }
+      if (!state.preferences[empId][day]) {
+        state.preferences[empId][day] = {
+          morning: false,
+          evening: false,
+          morningFixed: false,
+          eveningFixed: false
         };
       }
-      if (!state.preferences[empId][period]) {
-        state.preferences[empId][period] = { morning: false, evening: false };
+      
+      // 오전/오후 토글
+      const fieldName = timeOfDay; // 'morning' or 'evening'
+      state.preferences[empId][day][fieldName] = !state.preferences[empId][day][fieldName];
+      
+      // 체크 해제시 Fixed도 해제
+      if (!state.preferences[empId][day][fieldName]) {
+        state.preferences[empId][day][`${fieldName}Fixed`] = false;
       }
       
-      // 토글
-      state.preferences[empId][period][timeOfDay] = !state.preferences[empId][period][timeOfDay];
+      render();
+    }
+    
+    function toggleFixedPreference(day, timeOfDay) {
+      const empId = state.selectedEmployee.id;
+      const fieldName = `${timeOfDay}Fixed`; // 'morningFixed' or 'eveningFixed'
+      
+      state.preferences[empId][day][fieldName] = !state.preferences[empId][day][fieldName];
       
       render();
+    }
+    
+    function toggleSimplePreference(day, timeOfDay) {
+      // 이전 호환성 유지
+      toggleTimePreference(day, timeOfDay);
     }
     
     function clearAllPreferences() {
       if (!confirm('정말로 이 직원의 모든 희망 근무를 초기화하시겠습니까?')) return;
       
       const empId = state.selectedEmployee.id;
-      state.preferences[empId] = {
-        Weekday: { morning: false, evening: false },
-        Weekend: { morning: false, evening: false }
-      };
+      state.preferences[empId] = {};
+      DAYS.forEach(day => {
+        state.preferences[empId][day] = {
+          morning: false,
+          evening: false,
+          morningFixed: false,
+          eveningFixed: false
+        };
+      });
       
       render();
     }
@@ -750,6 +789,188 @@
     // ============================================
     // REQUIREMENTS 함수들
     // ============================================
+    
+    function openSectionDetailModal(period, section) {
+      state.modalOpen = { period, section };
+      render();
+    }
+    
+    function closeSectionDetailModal() {
+      state.modalOpen = null;
+      render();
+    }
+    
+    function renderSectionDetailModal() {
+      if (!state.modalOpen) return '';
+      
+      const { period, section } = state.modalOpen;
+      const sectionReq = state.requirements[period][section] || {};
+      
+      // 오전/오후 시간대 분류 (11-C는 오후!)
+      const morningShifts = ['8:00-4:00', '8:00-5:00', '11:00-5:00'];
+      const eveningShifts = ['11:00-Close', '3:30-Close', '4:00-Close', '5:00-Close', '6:00-Close'];
+      
+      // 시간 표기 함수
+      const formatShift = (shift) => {
+        if (shift === '8:00-4:00') return '8:00 AM - 4:00 PM';
+        if (shift === '8:00-5:00') return '8:00 AM - 5:00 PM';
+        if (shift === '11:00-5:00') return '11:00 AM - 5:00 PM';
+        if (shift === '11:00-Close') return '11:00 AM - Close';
+        if (shift === '3:30-Close') return '3:30 PM - Close';
+        if (shift === '4:00-Close') return '4:00 PM - Close';
+        if (shift === '5:00-Close') return '5:00 PM - Close';
+        if (shift === '6:00-Close') return '6:00 PM - Close';
+        return shift;
+      };
+      
+      const morningTotal = morningShifts.reduce((sum, shift) => sum + (sectionReq[shift] || 0), 0);
+      const eveningTotal = eveningShifts.reduce((sum, shift) => sum + (sectionReq[shift] || 0), 0);
+      
+      return `
+        <div style="
+          position:fixed;
+          top:0;
+          left:0;
+          right:0;
+          bottom:0;
+          background:rgba(0,0,0,0.5);
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          z-index:9999;
+          padding:20px;
+        " onclick="closeSectionDetailModal()">
+          <div style="
+            background:white;
+            border-radius:16px;
+            max-width:500px;
+            width:100%;
+            max-height:90vh;
+            overflow-y:auto;
+            box-shadow:0 20px 60px rgba(0,0,0,0.3);
+          " onclick="event.stopPropagation()">
+            
+            <!-- Header -->
+            <div style="padding:24px;border-bottom:2px solid #f0f0f0;position:sticky;top:0;background:white;border-radius:16px 16px 0 0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="margin:0;font-size:20px;font-weight:700;color:#7f1d1d;">
+                  ${section} - ${period === 'Weekday' ? '📅 Weekday' : '🎉 Weekend'}
+                </h3>
+                <button onclick="closeSectionDetailModal()" style="
+                  background:none;
+                  border:none;
+                  font-size:28px;
+                  cursor:pointer;
+                  color:#999;
+                  line-height:1;
+                  padding:0;
+                  width:32px;
+                  height:32px;
+                ">×</button>
+              </div>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding:24px;">
+              
+              <!-- 오전 시간대 -->
+              <div style="margin-bottom:24px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                  <h4 style="margin:0;font-size:16px;font-weight:700;">☀️ 오전 시간대</h4>
+                  <span style="background:#E8F5E9;color:#2E7D32;padding:4px 12px;border-radius:6px;font-size:14px;font-weight:700;">
+                    합계: ${morningTotal}명
+                  </span>
+                </div>
+                
+                <div style="display:grid;gap:12px;">
+                  ${morningShifts.map(shift => {
+                    const label = formatShift(shift);
+                    const value = sectionReq[shift] || 0;
+                    return `
+                      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#f8fafc;border-radius:8px;">
+                        <label style="flex:1;font-weight:600;color:#333;font-size:14px;">${label}</label>
+                        <input type="number" min="0" max="10"
+                               value="${value}"
+                               onchange="updateDetailedShift('${period}', '${section}', '${shift}', this.value)"
+                               style="width:80px;padding:8px;border:2px solid #ddd;border-radius:6px;font-size:16px;font-weight:700;text-align:center;">
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+              
+              <!-- 오후 시간대 -->
+              <div style="margin-bottom:24px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                  <h4 style="margin:0;font-size:16px;font-weight:700;">🌙 오후 시간대</h4>
+                  <span style="background:#E8F5E9;color:#2E7D32;padding:4px 12px;border-radius:6px;font-size:14px;font-weight:700;">
+                    합계: ${eveningTotal}명
+                  </span>
+                </div>
+                
+                <div style="display:grid;gap:12px;">
+                  ${eveningShifts.map(shift => {
+                    const label = formatShift(shift);
+                    const value = sectionReq[shift] || 0;
+                    return `
+                      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#f8fafc;border-radius:8px;">
+                        <label style="flex:1;font-weight:600;color:#333;font-size:14px;">${label}</label>
+                        <input type="number" min="0" max="10"
+                               value="${value}"
+                               onchange="updateDetailedShift('${period}', '${section}', '${shift}', this.value)"
+                               style="width:80px;padding:8px;border:2px solid #ddd;border-radius:6px;font-size:16px;font-weight:700;text-align:center;">
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+              
+              <!-- 합계 -->
+              <div style="padding:16px;background:#FFF9C4;border-radius:8px;border-left:4px solid #F57C00;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-weight:700;">전체 합계:</span>
+                  <span style="font-size:24px;font-weight:700;color:#7f1d1d;">${morningTotal + eveningTotal}명</span>
+                </div>
+              </div>
+              
+            </div>
+            
+            <!-- Footer -->
+            <div style="padding:20px 24px;border-top:2px solid #f0f0f0;background:#f8fafc;border-radius:0 0 16px 16px;">
+              <button onclick="closeSectionDetailModal()" style="
+                width:100%;
+                padding:14px;
+                background:#7f1d1d;
+                color:white;
+                border:none;
+                border-radius:8px;
+                font-size:16px;
+                font-weight:700;
+                cursor:pointer;
+              ">완료</button>
+            </div>
+            
+          </div>
+        </div>
+      `;
+    }
+    
+    function updateDetailedShift(period, section, shift, value) {
+      const num = parseInt(value) || 0;
+      
+      if (!state.requirements[period]) {
+        state.requirements[period] = getDefaultDayRequirements();
+      }
+      if (!state.requirements[period][section]) {
+        state.requirements[period][section] = {};
+      }
+      
+      state.requirements[period][section][shift] = num;
+      
+      // Firebase 저장
+      saveRequirements();
+      render();
+    }
     
     function updateSimpleRequirement(period, section, timeOfDay, value) {
       const num = parseInt(value) || 0;
@@ -812,6 +1033,7 @@
           ${renderContent(t)}
         </div>
         ${state.showModal ? renderModal(t) : ''}
+        ${renderSectionDetailModal()}
       `;
 
       attachEventListeners();
@@ -945,7 +1167,7 @@
         </div>
 
         <div style="margin-bottom:20px;padding:16px;background:#E3F2FD;border-radius:8px;border-left:4px solid #2196F3;">
-          💡 <strong>간단해졌어요!</strong> Weekday(월~금)와 Weekend(토~일)만 설정하세요. Holiday 체크한 날은 Weekend 인원이 적용됩니다.
+          💡 <strong>사용법:</strong> 섹션 이름(Prep, Meat 등)을 클릭하면 상세 시간대별 인원을 설정할 수 있습니다.
         </div>
 
         <!-- Holiday 선택 (오전/오후 분리) -->
@@ -1016,37 +1238,50 @@
 
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
                 ${SECTIONS.map(section => {
-                  const sectionReq = req[section] || { morning: 0, evening: 0 };
-                  const total = (sectionReq.morning || 0) + (sectionReq.evening || 0);
+                  const sectionReq = req[section] || {};
+                  
+                  // 항상 상세 시간대로 계산
+                  // 11:00-Close는 오전+오후 둘 다 카운트! (특별 케이스)
+                  const morningTotal = (sectionReq['8:00-4:00'] || 0) + 
+                                       (sectionReq['8:00-5:00'] || 0) + 
+                                       (sectionReq['11:00-5:00'] || 0) +
+                                       (sectionReq['11:00-Close'] || 0); // ← 오전에도 추가!
+                  const eveningTotal = (sectionReq['11:00-Close'] || 0) + // ← 오후에도 유지!
+                                       (sectionReq['3:30-Close'] || 0) + 
+                                       (sectionReq['4:00-Close'] || 0) + 
+                                       (sectionReq['5:00-Close'] || 0) + 
+                                       (sectionReq['6:00-Close'] || 0);
+                  
+                  const total = morningTotal + eveningTotal;
                   
                   return `
-                    <div style="padding:16px;background:#f8fafc;border-radius:10px;border:2px solid #e2e8f0;">
+                    <div style="
+                      padding:16px;
+                      background:#f8fafc;
+                      border-radius:10px;
+                      border:2px solid #e2e8f0;
+                      cursor:pointer;
+                      transition:all 0.2s;
+                    " 
+                    onclick="openSectionDetailModal('${period}', '${section}')"
+                    onmouseover="this.style.borderColor='#7f1d1d'; this.style.transform='translateY(-2px)'"
+                    onmouseout="this.style.borderColor='#e2e8f0'; this.style.transform='translateY(0)'">
                       <div style="font-weight:700;margin-bottom:12px;color:#7f1d1d;font-size:16px;display:flex;justify-content:space-between;align-items:center;">
-                        <span>${section}</span>
+                        <span>${section} 👆</span>
                         <span style="background:#E8F5E9;color:#2E7D32;padding:4px 10px;border-radius:6px;font-size:14px;">
                           Total: ${total}
                         </span>
                       </div>
                       
                       <div style="display:flex;gap:12px;">
-                        <div style="flex:1;">
-                          <label style="display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:600;">
-                            ☀️ 오전
-                          </label>
-                          <input type="number" min="0" max="20"
-                                 value="${sectionReq.morning || 0}" 
-                                 onchange="updateSimpleRequirement('${period}', '${section}', 'morning', this.value)"
-                                 style="width:100%;padding:10px;border:2px solid #ddd;border-radius:6px;font-size:16px;font-weight:700;text-align:center;">
+                        <div style="flex:1;text-align:center;padding:12px;background:white;border-radius:6px;">
+                          <div style="font-size:11px;color:#666;margin-bottom:4px;">☀️ 오전</div>
+                          <div style="font-size:20px;font-weight:700;color:#333;">${morningTotal}</div>
                         </div>
                         
-                        <div style="flex:1;">
-                          <label style="display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:600;">
-                            🌙 오후
-                          </label>
-                          <input type="number" min="0" max="20"
-                                 value="${sectionReq.evening || 0}" 
-                                 onchange="updateSimpleRequirement('${period}', '${section}', 'evening', this.value)"
-                                 style="width:100%;padding:10px;border:2px solid #ddd;border-radius:6px;font-size:16px;font-weight:700;text-align:center;">
+                        <div style="flex:1;text-align:center;padding:12px;background:white;border-radius:6px;">
+                          <div style="font-size:11px;color:#666;margin-bottom:4px;">🌙 오후</div>
+                          <div style="font-size:20px;font-weight:700;color:#333;">${eveningTotal}</div>
                         </div>
                       </div>
                     </div>
@@ -1059,9 +1294,9 @@
 
         <div style="margin-top:24px;padding:20px;background:#FFF9C4;border-radius:8px;font-size:14px;line-height:1.8;border-left:4px solid #F57C00;">
           <div style="font-weight:700;margin-bottom:8px;font-size:16px;">⚠️ 중요 규칙:</div>
-          • <strong>오전</strong>: 8시~5시 사이 모든 시간 (8-4, 8-5, 11-5 등)<br>
-          • <strong>오후</strong>: 3:30~Close 사이 모든 시간 (3:30-C, 4-C, 5-C 등)<br>
-          • <strong>11-5</strong>도 "오전" 취급 (11시 시작 = 최소 5시까지)<br>
+          • <strong>섹션 클릭</strong>: 상세 시간대별 인원 설정<br>
+          • <strong>오전</strong>: 8-4, 8-5, 11-5, 11-C 합계<br>
+          • <strong>오후</strong>: 3:30-C, 4-C, 5-C, 6-C 합계<br>
           • <strong>Holiday</strong> 체크한 날은 Weekend 인원이 적용됩니다<br>
           • 알고리즘이 자동으로 공평하게 시간 배분합니다
         </div>
@@ -1098,78 +1333,75 @@
           <div style="padding:24px;background:white;border-radius:12px;border:2px solid #7f1d1d;">
             <h3 style="margin:0 0 8px 0;font-size:20px;">${selectedEmp.name}</h3>
             <div style="margin-bottom:20px;padding:12px;background:#E3F2FD;border-radius:6px;border-left:3px solid #2196F3;font-size:13px;">
-              💡 <strong>간단해졌어요!</strong> 오전/오후만 체크하세요. 알고리즘이 자동으로 공평하게 시간을 배분합니다.
+              💡 <strong>간단해졌어요!</strong> 요일별로 오전/오후를 체크하세요. 특정 날짜에만 일하고 싶은 직원도 설정 가능합니다.
             </div>
             
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;">
-              ${['Weekday', 'Weekend'].map(period => {
-                const periodPrefs = empPrefs[period] || { morning: false, evening: false };
-                const icon = period === 'Weekday' ? '📅' : '🎉';
-                const label = period === 'Weekday' ? 'Weekday (월~금)' : 'Weekend (토~일)';
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+              ${DAYS.map(day => {
+                const dayPrefs = empPrefs[day] || { 
+                  morning: false, 
+                  evening: false,
+                  morningFixed: false,
+                  eveningFixed: false
+                };
+                const anyChecked = dayPrefs.morning || dayPrefs.evening;
                 
                 return `
-                  <div style="padding:20px;background:#f8fafc;border-radius:10px;border:2px solid #7f1d1d;">
-                    <h4 style="margin:0 0 16px 0;font-size:18px;font-weight:700;color:#7f1d1d;">
-                      ${icon} ${label}
+                  <div style="
+                    padding:16px;
+                    background:${anyChecked ? '#f0fdf4' : '#f8fafc'};
+                    border-radius:10px;
+                    border:2px solid ${anyChecked ? '#22c55e' : '#e2e8f0'};
+                    transition:all 0.2s;
+                  ">
+                    <!-- 요일 헤더 -->
+                    <h4 style="margin:0 0 12px 0;font-size:16px;font-weight:700;color:#7f1d1d;text-align:center;">
+                      ${day}
                     </h4>
                     
-                    <div style="display:flex;gap:12px;">
-                      <label style="flex:1;cursor:pointer;">
-                        <div style="
-                          padding:20px;
-                          background:${periodPrefs.morning ? '#E8F5E9' : 'white'};
-                          border:3px solid ${periodPrefs.morning ? '#2E7D32' : '#ddd'};
-                          border-radius:8px;
-                          text-align:center;
-                          transition:all 0.2s;
-                        ">
-                          <input type="checkbox" 
-                                 ${periodPrefs.morning ? 'checked' : ''}
-                                 onchange="toggleSimplePreference('${period}', 'morning')"
-                                 style="display:none;">
-                          <div style="font-size:32px;margin-bottom:8px;">☀️</div>
-                          <div style="font-weight:700;font-size:16px;color:${periodPrefs.morning ? '#2E7D32' : '#666'};">
-                            오전
-                          </div>
-                          <div style="font-size:12px;color:#666;margin-top:4px;">
-                            8:00~5:00
-                          </div>
-                          ${periodPrefs.morning ? `
-                            <div style="margin-top:8px;font-size:20px;">✓</div>
-                          ` : ''}
-                        </div>
+                    <!-- 오전 -->
+                    <div style="margin-bottom:10px;padding:12px;background:white;border-radius:8px;border:2px solid ${dayPrefs.morning ? '#22c55e' : '#e5e7eb'};">
+                      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:${dayPrefs.morning ? '8px' : '0'};">
+                        <input type="checkbox" 
+                               ${dayPrefs.morning ? 'checked' : ''}
+                               onchange="toggleTimePreference('${day}', 'morning')"
+                               style="width:18px;height:18px;cursor:pointer;">
+                        <span style="font-size:15px;font-weight:600;">☀️ 오전</span>
                       </label>
-                      
-                      <label style="flex:1;cursor:pointer;">
-                        <div style="
-                          padding:20px;
-                          background:${periodPrefs.evening ? '#E8F5E9' : 'white'};
-                          border:3px solid ${periodPrefs.evening ? '#2E7D32' : '#ddd'};
-                          border-radius:8px;
-                          text-align:center;
-                          transition:all 0.2s;
-                        ">
+                      ${dayPrefs.morning ? `
+                        <label style="display:flex;align-items:center;gap:6px;padding-left:26px;cursor:pointer;">
                           <input type="checkbox" 
-                                 ${periodPrefs.evening ? 'checked' : ''}
-                                 onchange="toggleSimplePreference('${period}', 'evening')"
-                                 style="display:none;">
-                          <div style="font-size:32px;margin-bottom:8px;">🌙</div>
-                          <div style="font-weight:700;font-size:16px;color:${periodPrefs.evening ? '#2E7D32' : '#666'};">
-                            오후
-                          </div>
-                          <div style="font-size:12px;color:#666;margin-top:4px;">
-                            3:30~Close
-                          </div>
-                          ${periodPrefs.evening ? `
-                            <div style="margin-top:8px;font-size:20px;">✓</div>
-                          ` : ''}
-                        </div>
-                      </label>
+                                 ${dayPrefs.morningFixed ? 'checked' : ''}
+                                 onchange="toggleFixedPreference('${day}', 'morning')"
+                                 style="width:16px;height:16px;cursor:pointer;">
+                          <span style="font-size:12px;color:#f97316;font-weight:600;">⭐ Fixed</span>
+                        </label>
+                      ` : ''}
                     </div>
                     
-                    ${periodPrefs.morning && periodPrefs.evening ? `
-                      <div style="margin-top:12px;padding:10px;background:#FFF3E0;border-radius:6px;text-align:center;font-size:13px;font-weight:600;color:#F57C00;">
-                        🎯 올데이 가능!
+                    <!-- 오후 -->
+                    <div style="padding:12px;background:white;border-radius:8px;border:2px solid ${dayPrefs.evening ? '#22c55e' : '#e5e7eb'};">
+                      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:${dayPrefs.evening ? '8px' : '0'};">
+                        <input type="checkbox" 
+                               ${dayPrefs.evening ? 'checked' : ''}
+                               onchange="toggleTimePreference('${day}', 'evening')"
+                               style="width:18px;height:18px;cursor:pointer;">
+                        <span style="font-size:15px;font-weight:600;">🌙 오후</span>
+                      </label>
+                      ${dayPrefs.evening ? `
+                        <label style="display:flex;align-items:center;gap:6px;padding-left:26px;cursor:pointer;">
+                          <input type="checkbox" 
+                                 ${dayPrefs.eveningFixed ? 'checked' : ''}
+                                 onchange="toggleFixedPreference('${day}', 'evening')"
+                                 style="width:16px;height:16px;cursor:pointer;">
+                          <span style="font-size:12px;color:#f97316;font-weight:600;">⭐ Fixed</span>
+                        </label>
+                      ` : ''}
+                    </div>
+                    
+                    ${dayPrefs.morning && dayPrefs.evening ? `
+                      <div style="margin-top:10px;padding:6px;background:#fef3c7;border-radius:6px;text-align:center;font-size:11px;font-weight:600;color:#f59e0b;">
+                        🎯 올데이 가능
                       </div>
                     ` : ''}
                   </div>
@@ -1188,8 +1420,8 @@
 
             <div style="margin-top:20px;padding:16px;background:#FFF9C4;border-radius:8px;font-size:13px;line-height:1.8;border-left:4px solid #F57C00;">
               <div style="font-weight:700;margin-bottom:8px;">⚠️ 규칙:</div>
-              • <strong>오전</strong>: 8-4, 8-5, 11-5 중 자동 배정<br>
-              • <strong>오후</strong>: 3:30-C, 4-C, 5-C 중 자동 배정<br>
+              • <strong>오전</strong>: 8 AM - 5 PM 중 자동 배정<br>
+              • <strong>오후</strong>: 11 AM / 3:30 PM - Close 중 자동 배정<br>
               • <strong>둘 다 체크</strong>: 올데이 가능 (모든 시간)<br>
               • 알고리즘이 최대한 공평하게 시간을 나눕니다
             </div>
