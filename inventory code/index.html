@@ -1559,22 +1559,46 @@
       // 메뉴 선택 화면
       if (screen === 'menu') {
         return h('div', { className: 'screen-container' }, [
-          h('div', { key: 'back-header', className: 'back-btn-container' }, [
-            h('button', { key: 'back', className: 'back-btn', onClick: goBack }, '←'),
+          // 로고 (독립)
+          h('div', { 
+            key: 'logo-container',
+            style: {
+              display: 'flex',
+              justifyContent: 'center',
+              padding: '2rem 0 1rem 0'
+            }
+          }, [
             h('img', { 
               key: 'logo',
               src: LOGO_DATA,
               alt: 'Shabu Zone',
               style: {
-                width: '50px',
-                height: '50px',
-                objectFit: 'contain',
-                position: 'absolute',
-                left: '50%',
-                transform: 'translateX(-50%)'
+                width: '100px',
+                height: '100px',
+                objectFit: 'contain'
               }
-            }),
-            h('h1', { key: 'title', className: 'screen-title', style: { margin: 0 }}, currentLocation === 'houston' ? 'Houston' : 'Seattle')
+            })
+          ]),
+          // 뒤로가기 + 타이틀
+          h('div', { 
+            key: 'header',
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              padding: '0 1.5rem 1.5rem 1.5rem'
+            }
+          }, [
+            h('button', { 
+              key: 'back',
+              className: 'back-btn',
+              onClick: goBack
+            }, '←'),
+            h('h1', { 
+              key: 'title',
+              className: 'screen-title',
+              style: { margin: 0, flex: 1, textAlign: 'center' }
+            }, currentLocation === 'houston' ? 'Houston' : 'Seattle')
           ]),
           h('div', { key: 'grid', className: 'selection-grid' }, [
             h('div', { key: 'inventory', className: 'selection-card', onClick: () => selectModule('inventory') }, [
@@ -1601,10 +1625,31 @@
             flexDirection: 'column'
           }
         }, [
+          // 로고
           h('div', { 
-            key: 'back-header',
+            key: 'logo-container',
             style: {
-              padding: '1.5rem',
+              display: 'flex',
+              justifyContent: 'center',
+              padding: '2rem 0 1rem 0'
+            }
+          }, [
+            h('img', { 
+              key: 'logo',
+              src: LOGO_DATA,
+              alt: 'Shabu Zone',
+              style: {
+                width: '100px',
+                height: '100px',
+                objectFit: 'contain'
+              }
+            })
+          ]),
+          // 헤더
+          h('div', { 
+            key: 'header',
+            style: {
+              padding: '0 1.5rem 1.5rem 1.5rem',
               display: 'flex',
               alignItems: 'center',
               gap: '1rem',
@@ -1625,26 +1670,15 @@
                 color: '#7f1d1d'
               }
             }, '←'),
-            h('img', { 
-              key: 'logo',
-              src: LOGO_DATA,
-              alt: 'Shabu Zone',
-              style: {
-                width: '50px',
-                height: '50px',
-                objectFit: 'contain',
-                position: 'absolute',
-                left: '50%',
-                transform: 'translateX(-50%)'
-              }
-            }),
             h('h1', { 
               key: 'title',
               style: { 
                 margin: 0,
                 fontSize: '1.5rem',
                 fontWeight: '600',
-                color: '#2c3e50'
+                color: '#2c3e50',
+                flex: 1,
+                textAlign: 'center'
               }
             }, 'Management')
           ]),
