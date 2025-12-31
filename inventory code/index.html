@@ -319,6 +319,7 @@
     .screen-header {
       text-align: center;
       margin-bottom: 3rem;
+      position: relative;
     }
     .selection-grid {
       display: grid;
@@ -1558,18 +1559,19 @@
       
       // 메뉴 선택 화면
       if (screen === 'menu') {
-        return h('div', { className: 'screen-container' }, [
-          h('div', { key: 'header', className: 'screen-header', style: { position: 'relative' } }, [
-            h('button', { 
-              key: 'back',
-              className: 'back-btn',
-              onClick: goBack,
-              style: {
-                position: 'absolute',
-                left: '1.5rem',
-                top: '1.5rem'
-              }
-            }, '←'),
+        return h('div', { className: 'screen-container', style: { position: 'relative' } }, [
+          h('button', { 
+            key: 'back',
+            className: 'back-btn',
+            onClick: goBack,
+            style: {
+              position: 'absolute',
+              left: '1.5rem',
+              top: '1.5rem',
+              zIndex: 10
+            }
+          }, '←'),
+          h('div', { key: 'header', className: 'screen-header' }, [
             h('img', { 
               key: 'logo',
               src: LOGO_DATA,
@@ -1600,18 +1602,19 @@
 
       // Management 타입 선택 화면
       if (screen === 'management-select') {
-        return h('div', { className: 'screen-container' }, [
-          h('div', { key: 'header', className: 'screen-header', style: { position: 'relative' } }, [
-            h('button', { 
-              key: 'back',
-              className: 'back-btn',
-              onClick: goBack,
-              style: {
-                position: 'absolute',
-                left: '1.5rem',
-                top: '1.5rem'
-              }
-            }, '←'),
+        return h('div', { className: 'screen-container', style: { position: 'relative' } }, [
+          h('button', { 
+            key: 'back',
+            className: 'back-btn',
+            onClick: goBack,
+            style: {
+              position: 'absolute',
+              left: '1.5rem',
+              top: '1.5rem',
+              zIndex: 10
+            }
+          }, '←'),
+          h('div', { key: 'header', className: 'screen-header' }, [
             h('img', { 
               key: 'logo',
               src: LOGO_DATA,
