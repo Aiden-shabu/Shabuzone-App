@@ -1559,46 +1559,29 @@
       // 메뉴 선택 화면
       if (screen === 'menu') {
         return h('div', { className: 'screen-container' }, [
-          // 로고 (독립)
-          h('div', { 
-            key: 'logo-container',
-            style: {
-              display: 'flex',
-              justifyContent: 'center',
-              padding: '2rem 0 1rem 0'
-            }
-          }, [
+          h('div', { key: 'header', className: 'screen-header', style: { position: 'relative' } }, [
+            h('button', { 
+              key: 'back',
+              className: 'back-btn',
+              onClick: goBack,
+              style: {
+                position: 'absolute',
+                left: '1.5rem',
+                top: '1.5rem'
+              }
+            }, '←'),
             h('img', { 
               key: 'logo',
               src: LOGO_DATA,
               alt: 'Shabu Zone',
               style: {
-                width: '100px',
-                height: '100px',
-                objectFit: 'contain'
+                width: '80px',
+                height: '80px',
+                objectFit: 'contain',
+                marginBottom: '1rem'
               }
-            })
-          ]),
-          // 뒤로가기 + 타이틀
-          h('div', { 
-            key: 'header',
-            style: {
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-              padding: '0 1.5rem 1.5rem 1.5rem'
-            }
-          }, [
-            h('button', { 
-              key: 'back',
-              className: 'back-btn',
-              onClick: goBack
-            }, '←'),
-            h('h1', { 
-              key: 'title',
-              className: 'screen-title',
-              style: { margin: 0, flex: 1, textAlign: 'center' }
-            }, currentLocation === 'houston' ? 'Houston' : 'Seattle')
+            }),
+            h('h1', { key: 'title', className: 'screen-title' }, currentLocation === 'houston' ? 'Houston' : 'Seattle')
           ]),
           h('div', { key: 'grid', className: 'selection-grid' }, [
             h('div', { key: 'inventory', className: 'selection-card', onClick: () => selectModule('inventory') }, [
@@ -1617,125 +1600,41 @@
 
       // Management 타입 선택 화면
       if (screen === 'management-select') {
-        return h('div', { 
-          style: {
-            minHeight: '100vh',
-            background: '#f5f5f0',
-            display: 'flex',
-            flexDirection: 'column'
-          }
-        }, [
-          // 로고
-          h('div', { 
-            key: 'logo-container',
-            style: {
-              display: 'flex',
-              justifyContent: 'center',
-              padding: '2rem 0 1rem 0'
-            }
-          }, [
+        return h('div', { className: 'screen-container' }, [
+          h('div', { key: 'header', className: 'screen-header', style: { position: 'relative' } }, [
+            h('button', { 
+              key: 'back',
+              className: 'back-btn',
+              onClick: goBack,
+              style: {
+                position: 'absolute',
+                left: '1.5rem',
+                top: '1.5rem'
+              }
+            }, '←'),
             h('img', { 
               key: 'logo',
               src: LOGO_DATA,
               alt: 'Shabu Zone',
               style: {
-                width: '100px',
-                height: '100px',
-                objectFit: 'contain'
+                width: '80px',
+                height: '80px',
+                objectFit: 'contain',
+                marginBottom: '1rem'
               }
-            })
+            }),
+            h('h1', { key: 'title', className: 'screen-title' }, 'Management')
           ]),
-          // 헤더 (뒤로가기 + 타이틀)
-          h('div', { 
-            key: 'header',
-            style: {
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-              padding: '0 1.5rem 1.5rem 1.5rem'
-            }
-          }, [
-            h('button', { 
-              key: 'back',
-              onClick: goBack,
-              style: {
-                background: 'white',
-                border: '2px solid #e2e8f0',
-                borderRadius: '12px',
-                width: '48px',
-                height: '48px',
-                fontSize: '20px',
-                cursor: 'pointer',
-                color: '#7f1d1d',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }
-            }, '←'),
-            h('h1', { 
-              key: 'title',
-              style: { 
-                position: 'absolute',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                margin: 0,
-                fontSize: '1.75rem',
-                fontWeight: '700',
-                color: '#7f1d1d'
-              }
-            }, 'Management')
-          ]),
-          // 카드 (흰색 배경)
-          h('div', { 
-            key: 'grid',
-            style: {
-              display: 'grid',
-              gridTemplateColumns: '1fr',
-              gap: '1rem',
-              padding: '1rem',
-              maxWidth: '600px',
-              margin: '0 auto',
-              width: '100%'
-            }
-          }, [
-            // Server 카드
-            h('div', { 
-              key: 'server',
-              className: 'selection-card',
-              onClick: () => selectManagementType('server')
-            }, [
-              h('div', { 
-                key: 'icon',
-                className: 'selection-icon'
-              }, '👔'),
-              h('div', { 
-                key: 'name',
-                className: 'selection-name'
-              }, 'Server'),
-              h('div', { 
-                key: 'desc',
-                className: 'selection-desc'
-              }, '서버 스케줄 관리')
+          h('div', { key: 'grid', className: 'selection-grid' }, [
+            h('div', { key: 'server', className: 'selection-card', onClick: () => selectManagementType('server') }, [
+              h('div', { key: 'icon', className: 'selection-icon' }, '👔'),
+              h('div', { key: 'name', className: 'selection-name' }, 'Server'),
+              h('div', { key: 'desc', className: 'selection-desc' }, '서버 스케줄 관리')
             ]),
-            // Kitchen 카드
-            h('div', { 
-              key: 'kitchen',
-              className: 'selection-card',
-              onClick: () => selectManagementType('kitchen')
-            }, [
-              h('div', { 
-                key: 'icon',
-                className: 'selection-icon'
-              }, '👨‍🍳'),
-              h('div', { 
-                key: 'name',
-                className: 'selection-name'
-              }, 'Kitchen'),
-              h('div', { 
-                key: 'desc',
-                className: 'selection-desc'
-              }, '키친 스케줄 관리')
+            h('div', { key: 'kitchen', className: 'selection-card', onClick: () => selectManagementType('kitchen') }, [
+              h('div', { key: 'icon', className: 'selection-icon' }, '👨‍🍳'),
+              h('div', { key: 'name', className: 'selection-name' }, 'Kitchen'),
+              h('div', { key: 'desc', className: 'selection-desc' }, '키친 스케줄 관리')
             ])
           ])
         ]);
