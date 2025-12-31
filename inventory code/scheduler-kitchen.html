@@ -373,6 +373,17 @@
     // --- Kitchen 섹션 ---
     const SECTIONS = ['Busser', 'Prep', 'Meat', 'Soup', 'Dish', 'Host', 'Manager'];
     
+    // 섹션별 색상
+    const SECTION_COLORS = {
+      'Busser': { bg: '#FFF59D', header: '#F9A825', text: '#F57F17' },
+      'Prep': { bg: '#C8E6C9', header: '#66BB6A', text: '#2E7D32' },
+      'Meat': { bg: '#FFCDD2', header: '#EF5350', text: '#C62828' },
+      'Soup': { bg: '#FFE0B2', header: '#FFA726', text: '#E65100' },
+      'Dish': { bg: '#BBDEFB', header: '#42A5F5', text: '#1565C0' },
+      'Host': { bg: '#E1BEE7', header: '#AB47BC', text: '#6A1B9A' },
+      'Manager': { bg: '#B0BEC5', header: '#607D8B', text: '#37474F' }
+    };
+    
     // --- Kitchen 시프트 종류 ---
     const SHIFTS = {
       '8:00-4:00': '8:00-4:00',        // 오전 풀타임 (8시간) - 최소 3:30
@@ -715,62 +726,157 @@
       state.generating = true;
       render();
       
-      // 간단한 알고리즘 (임시)
       const newSchedule = {};
       
+      // 모든 시프트 목록
+      const allShifts = ['8:00-4:00', '8:00-5:00', '11:00-5:00', '11:00-Close', '3:30-Close', '4:00-Close', '5:00-Close', '6:00-Close'];
+      const morningShifts = ['8:00-4:00', '8:00-5:00', '11:00-5:00'];
+      const eveningShifts = ['11:00-Close', '3:30-Close', '4:00-Close', '5:00-Close', '6:00-Close'];
+      
+      // 직원별 근무 카운트 & 시간 초기화
+      const empWorkCount = {};
+      const empWorkHours = {};
+      state.employees.forEach(emp => {
+        empWorkCount[emp.id] = 0;
+        empWorkHours[emp.id] = 0;
+      });
+      
+      // 요일별로 스케줄 생성
       DAYS.forEach(day => {
         newSchedule[day] = {};
         
-        // 각 섹션별 스케줄
         SECTIONS.forEach(section => {
           newSchedule[day][section] = {};
           
-          // 해당 섹션의 직원들
-          const sectionEmployees = state.employees.filter(emp => 
-            emp.sections && emp.sections.includes(section) && emp.status === 'active'
+          // 요구 인원 가져오기
+          const isWeekend = day === 'Saturday' || day === 'Sunday';
+          const period = isWeekend ? 'Weekend' : 'Weekday';
+          const req = state.requirements[period] || {};
+          const sectionReq = req[section] || {};
+          
+          // 시프트별 필요 인원
+          const shiftNeeds = {};
+          allShifts.forEach(shift => {
+            shiftNeeds[shift] = sectionReq[shift] || 0;
+          });
+          
+          // 해당 섹션 가능 직원들
+          const availableEmps = state.employees.filter(emp => 
+            emp.sections && emp.sections.includes(section) && 
+            emp.status === 'active'
           );
           
-          // 각 직원에게 랜덤 시프트 배정 (임시)
-          sectionEmployees.forEach((emp, idx) => {
+          // 이 날 배정 가능한 직원 (희망 체크)
+          const candidatesForDay = availableEmps.filter(emp => {
             const prefs = state.preferences[emp.id];
-            if (!prefs || !prefs[day]) return;
-            
+            if (!prefs || !prefs[day]) return false;
+            const dayPref = prefs[day];
+            return dayPref.morning || dayPref.evening;
+          });
+          
+          // === 1단계: Fixed 배정 ===
+          candidatesForDay.forEach(emp => {
+            const prefs = state.preferences[emp.id];
             const dayPref = prefs[day];
             
-            // Fixed 우선
-            if (dayPref.morningFixed) {
-              const shift = '8:00-4:00'; // 임시
-              if (!newSchedule[day][section][shift]) {
-                newSchedule[day][section][shift] = [];
+            if (dayPref.morningFixed && dayPref.morning) {
+              for (const shift of morningShifts) {
+                if (shiftNeeds[shift] > 0) {
+                  if (!newSchedule[day][section][shift]) {
+                    newSchedule[day][section][shift] = [];
+                  }
+                  newSchedule[day][section][shift].push({ id: emp.id });
+                  shiftNeeds[shift]--;
+                  emp._assignedToday = true;
+                  empWorkCount[emp.id]++;
+                  empWorkHours[emp.id] += calculateShiftHours(shift);
+                  break;
+                }
               }
-              newSchedule[day][section][shift].push({ id: emp.id });
-            } else if (dayPref.eveningFixed) {
-              const shift = '4:00-Close';
-              if (!newSchedule[day][section][shift]) {
-                newSchedule[day][section][shift] = [];
+            } else if (dayPref.eveningFixed && dayPref.evening) {
+              for (const shift of eveningShifts) {
+                if (shiftNeeds[shift] > 0) {
+                  if (!newSchedule[day][section][shift]) {
+                    newSchedule[day][section][shift] = [];
+                  }
+                  newSchedule[day][section][shift].push({ id: emp.id });
+                  shiftNeeds[shift]--;
+                  emp._assignedToday = true;
+                  empWorkCount[emp.id]++;
+                  empWorkHours[emp.id] += calculateShiftHours(shift);
+                  break;
+                }
               }
-              newSchedule[day][section][shift].push({ id: emp.id });
-            } else if (dayPref.morning && dayPref.evening) {
-              // 올데이 - 랜덤
-              const shift = idx % 2 === 0 ? '8:00-4:00' : '11:00-Close';
-              if (!newSchedule[day][section][shift]) {
-                newSchedule[day][section][shift] = [];
-              }
-              newSchedule[day][section][shift].push({ id: emp.id });
-            } else if (dayPref.morning) {
-              const shift = '8:00-4:00';
-              if (!newSchedule[day][section][shift]) {
-                newSchedule[day][section][shift] = [];
-              }
-              newSchedule[day][section][shift].push({ id: emp.id });
-            } else if (dayPref.evening) {
-              const shift = '4:00-Close';
-              if (!newSchedule[day][section][shift]) {
-                newSchedule[day][section][shift] = [];
-              }
-              newSchedule[day][section][shift].push({ id: emp.id });
             }
           });
+          
+          // === 2단계: 근무 시간 적은 사람 우선, 시프트별 순환 배정 ===
+          // 오전 시프트 채우기
+          for (const shift of morningShifts) {
+            while (shiftNeeds[shift] > 0) {
+              // 오전 가능하고 아직 배정 안 된 사람들
+              const morningCandidates = candidatesForDay.filter(emp => {
+                if (emp._assignedToday) return false;
+                const prefs = state.preferences[emp.id];
+                const dayPref = prefs[day];
+                return dayPref.morning;
+              });
+              
+              if (morningCandidates.length === 0) break;
+              
+              // 근무 시간 적은 사람 우선 (시간 균등)
+              morningCandidates.sort((a, b) => {
+                const hourDiff = empWorkHours[a.id] - empWorkHours[b.id];
+                if (Math.abs(hourDiff) > 0.1) return hourDiff;
+                return empWorkCount[a.id] - empWorkCount[b.id];
+              });
+              
+              const selectedEmp = morningCandidates[0];
+              if (!newSchedule[day][section][shift]) {
+                newSchedule[day][section][shift] = [];
+              }
+              newSchedule[day][section][shift].push({ id: selectedEmp.id });
+              shiftNeeds[shift]--;
+              selectedEmp._assignedToday = true;
+              empWorkCount[selectedEmp.id]++;
+              empWorkHours[selectedEmp.id] += calculateShiftHours(shift);
+            }
+          }
+          
+          // 오후 시프트 채우기
+          for (const shift of eveningShifts) {
+            while (shiftNeeds[shift] > 0) {
+              // 오후 가능하고 아직 배정 안 된 사람들
+              const eveningCandidates = candidatesForDay.filter(emp => {
+                if (emp._assignedToday) return false;
+                const prefs = state.preferences[emp.id];
+                const dayPref = prefs[day];
+                return dayPref.evening;
+              });
+              
+              if (eveningCandidates.length === 0) break;
+              
+              // 근무 시간 적은 사람 우선 (시간 균등)
+              eveningCandidates.sort((a, b) => {
+                const hourDiff = empWorkHours[a.id] - empWorkHours[b.id];
+                if (Math.abs(hourDiff) > 0.1) return hourDiff;
+                return empWorkCount[a.id] - empWorkCount[b.id];
+              });
+              
+              const selectedEmp = eveningCandidates[0];
+              if (!newSchedule[day][section][shift]) {
+                newSchedule[day][section][shift] = [];
+              }
+              newSchedule[day][section][shift].push({ id: selectedEmp.id });
+              shiftNeeds[shift]--;
+              selectedEmp._assignedToday = true;
+              empWorkCount[selectedEmp.id]++;
+              empWorkHours[selectedEmp.id] += calculateShiftHours(shift);
+            }
+          }
+          
+          // 배정 플래그 초기화
+          candidatesForDay.forEach(emp => delete emp._assignedToday);
         });
       });
       
@@ -780,7 +886,7 @@
       state.generating = false;
       render();
       
-      alert('스케줄이 생성되었습니다!');
+      // 조용히 완료 (팝업 없음)
     }
 
     // ============================================
@@ -1396,11 +1502,16 @@
         <div style="margin-bottom:24px;">
           <h2 style="margin:0 0 16px 0;font-size:24px;font-weight:600;">${t.preferences.title}</h2>
           
-          <select id="employee-selector" style="width:300px;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px;" onchange="selectEmployeeForPreferences(this.value)">
+          <select id="employee-selector" style="width:400px;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px;" onchange="selectEmployeeForPreferences(this.value)">
             <option value="">${t.preferences.selectEmployee}</option>
-            ${activeEmployees.map(emp => `
-              <option value="${emp.id}" ${selectedEmp?.id === emp.id ? 'selected' : ''}>${emp.name}</option>
-            `).join('')}
+            ${activeEmployees.map(emp => {
+              const empSections = emp.sections ? emp.sections.join(', ') : 'No sections';
+              return `
+                <option value="${emp.id}" ${selectedEmp?.id === emp.id ? 'selected' : ''}>
+                  ${emp.name} (${empSections})
+                </option>
+              `;
+            }).join('')}
           </select>
         </div>
 
@@ -1552,6 +1663,7 @@
     
     function renderWeeklyScheduleTable() {
       const schedule = state.schedule || {};
+      const colors = SECTION_COLORS;
       
       return `
         <div style="overflow-x:auto;">
@@ -1563,29 +1675,47 @@
             
             if (sectionEmployees.length === 0) return '';
             
+            const sectionColor = colors[section] || colors['Manager'];
+            
             return `
               <div style="margin-bottom:32px;">
-                <h3 style="margin:0 0 12px 0;padding:12px 16px;background:#7f1d1d;color:white;border-radius:8px 8px 0 0;font-size:18px;font-weight:700;">
+                <h3 style="margin:0 0 12px 0;padding:12px 16px;background:${sectionColor.header};color:white;border-radius:8px 8px 0 0;font-size:18px;font-weight:700;">
                   ${section}
                 </h3>
                 
                 <table style="width:100%;border-collapse:collapse;background:white;border-radius:0 0 8px 8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
                   <thead>
                     <tr style="background:#f8fafc;">
-                      <th style="padding:12px;text-align:left;border:1px solid #e5e7eb;font-weight:700;min-width:120px;">Name</th>
-                      ${DAYS.map(day => `
-                        <th style="padding:12px;text-align:center;border:1px solid #e5e7eb;font-weight:700;min-width:100px;">${day.substring(0,3).toUpperCase()}</th>
-                      `).join('')}
+                      <th style="padding:12px;text-align:left;border:1px solid #e5e7eb;font-weight:700;min-width:150px;">Name</th>
+                      ${DAYS.map(day => {
+                        // 해당 섹션의 요구 인원 계산
+                        const dayReq = getDayRequirement(day, section);
+                        const assigned = countAssignedEmployees(schedule[day] || {}, section);
+                        const shortage = dayReq - assigned;
+                        
+                        return `
+                          <th style="padding:8px;text-align:center;border:1px solid #e5e7eb;font-weight:700;min-width:90px;">
+                            <div>${day.substring(0,3).toUpperCase()}</div>
+                            <div style="font-size:11px;font-weight:600;margin-top:4px;color:${shortage > 0 ? '#C62828' : shortage < 0 ? '#F57C00' : '#2E7D32'};">
+                              (${assigned}/${dayReq})${shortage > 0 ? ' ⚠️' : ''}
+                            </div>
+                          </th>
+                        `;
+                      }).join('')}
                       <th style="padding:12px;text-align:center;border:1px solid #e5e7eb;font-weight:700;background:#FFF9C4;min-width:80px;">TOTAL</th>
                     </tr>
                   </thead>
                   <tbody>
                     ${sectionEmployees.map(emp => {
                       let totalHours = 0;
+                      const empSections = emp.sections ? emp.sections.join(', ') : '';
                       
                       return `
                         <tr style="border-bottom:1px solid #e5e7eb;">
-                          <td style="padding:12px;border:1px solid #e5e7eb;font-weight:600;">${emp.name}</td>
+                          <td style="padding:12px;border:1px solid #e5e7eb;font-weight:600;">
+                            ${emp.name}
+                            <span style="font-size:11px;color:#666;font-weight:400;"> (${empSections})</span>
+                          </td>
                           ${DAYS.map(day => {
                             const daySchedule = schedule[day] || {};
                             const empShift = findEmployeeShift(daySchedule, emp.id);
@@ -1622,6 +1752,43 @@
       `;
     }
     
+    function getDayRequirement(day, section) {
+      // Weekday/Weekend 판단
+      const isWeekend = day === 'Saturday' || day === 'Sunday';
+      const period = isWeekend ? 'Weekend' : 'Weekday';
+      
+      // Holiday 체크
+      const holidays = state.requirements.holidays || {};
+      const dayHoliday = holidays[day] || { morning: false, evening: false };
+      
+      const req = state.requirements[period] || {};
+      const sectionReq = req[section] || {};
+      
+      // 상세 시간대 합산
+      let total = 0;
+      total += (sectionReq['8:00-4:00'] || 0);
+      total += (sectionReq['8:00-5:00'] || 0);
+      total += (sectionReq['11:00-5:00'] || 0);
+      total += (sectionReq['11:00-Close'] || 0);
+      total += (sectionReq['3:30-Close'] || 0);
+      total += (sectionReq['4:00-Close'] || 0);
+      total += (sectionReq['5:00-Close'] || 0);
+      total += (sectionReq['6:00-Close'] || 0);
+      
+      return total;
+    }
+    
+    function countAssignedEmployees(daySchedule, section) {
+      const sectionSchedule = daySchedule[section] || {};
+      let count = 0;
+      
+      for (const shift in sectionSchedule) {
+        count += (sectionSchedule[shift] || []).length;
+      }
+      
+      return count;
+    }
+    
     function findEmployeeShift(daySchedule, empId) {
       // 모든 섹션을 순회하며 직원 찾기
       for (const section of SECTIONS) {
@@ -1639,15 +1806,15 @@
     }
     
     function formatShiftShort(shift) {
-      // 짧게 표시
-      if (shift === '8:00-4:00') return '8-4';
-      if (shift === '8:00-5:00') return '8-5';
-      if (shift === '11:00-5:00') return '11-5';
-      if (shift === '11:00-Close') return '11-C';
-      if (shift === '3:30-Close') return '3:30-C';
-      if (shift === '4:00-Close') return '4-C';
-      if (shift === '5:00-Close') return '5-C';
-      if (shift === '6:00-Close') return '6-C';
+      // 명확하게 표시
+      if (shift === '8:00-4:00') return '8:00AM-4:00PM';
+      if (shift === '8:00-5:00') return '8:00AM-5:00PM';
+      if (shift === '11:00-5:00') return '11:00AM-5:00PM';
+      if (shift === '11:00-Close') return '11:00AM-Close';
+      if (shift === '3:30-Close') return '3:30PM-Close';
+      if (shift === '4:00-Close') return '4:00PM-Close';
+      if (shift === '5:00-Close') return '5:00PM-Close';
+      if (shift === '6:00-Close') return '6:00PM-Close';
       return shift;
     }
     
@@ -1664,131 +1831,6 @@
       if (shift === '6:00-Close') return 6; // 6 PM to 12 AM
       
       return 0;
-    }
-              
-              // All Day 직원 찾기
-              const lunchNames = (daySchedule.lunch || []).map(e => e.name);
-              const dinnerNames = (daySchedule.dinner || []).map(e => e.name);
-              const allDayPeople = lunchNames.filter(name => dinnerNames.includes(name));
-              
-              // Short/Over 체크
-              const lunchDiff = lunchAssigned - lunchNeed;
-              const dinnerDiff = dinnerAssigned - dinnerNeed;
-              
-              return `
-                <div class="schedule-day ${isHoliday ? 'holiday' : ''}">
-                  <h3>${t.days?.[day] || day} ${isHoliday ? '🎄' : ''}</h3>
-                  
-                  <!-- LUNCH SECTION -->
-                  <div class="schedule-shift">
-                    <h4 style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                      <span>☀️ ${t.schedule.lunch}</span>
-                      <div style="display:flex;align-items:center;gap:8px;">
-                        <span style="font-size:11px;font-weight:normal;color:#666;">
-                          ${lunchAssigned}/${lunchNeed}
-                        </span>
-                        <button onclick="showAvailable('${day}', 'lunch')" style="background:none;border:none;cursor:pointer;font-size:16px;padding:4px;" title="View available employees">
-                          🔍
-                        </button>
-                      </div>
-                    </h4>
-                    
-                    ${lunchDiff < 0 ? `
-                      <div style="padding:6px 10px;background:#FFEBEE;color:#C62828;border-radius:4px;margin-bottom:8px;font-size:12px;font-weight:600;">
-                        ❌ SHORT: ${Math.abs(lunchDiff)} more needed!
-                      </div>
-                    ` : lunchDiff > 0 ? `
-                      <div style="padding:6px 10px;background:#FFF3E0;color:#F57C00;border-radius:4px;margin-bottom:8px;font-size:12px;font-weight:600;">
-                        ⚠️ OVER: ${lunchDiff} extra assigned!
-                      </div>
-                    ` : lunchAssigned > 0 ? `
-                      <div style="padding:4px 8px;background:#E8F5E9;color:#2E7D32;border-radius:4px;margin-bottom:8px;font-size:11px;font-weight:600;">
-                        ✅ OK
-                      </div>
-                    ` : ''}
-                    
-                    ${(daySchedule.lunch || []).map(emp => {
-                      const isAllDay = allDayPeople.includes(emp.name);
-                      const fixedMark = emp.isFixed ? ' *' : '';
-                      return `
-                        <div class="schedule-person" style="${isAllDay ? 'font-weight:700;border-left:3px solid #D32F2F;' : ''}">
-                          ${isAllDay ? '🔴 ' : ''}${emp.name}${fixedMark} <span style="font-size:11px;color:#666;">(${emp.shift})</span>
-                        </div>
-                      `;
-                    }).join('') || '<div style="color:#999;font-size:12px;padding:8px;">No assignments</div>'}
-                  </div>
-
-                  <!-- DINNER SECTION -->
-                  <div class="schedule-shift">
-                    <h4 style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                      <span>🌙 ${t.schedule.dinner}</span>
-                      <div style="display:flex;align-items:center;gap:8px;">
-                        <span style="font-size:11px;font-weight:normal;color:#666;">
-                          ${dinnerAssigned}/${dinnerNeed}
-                        </span>
-                        <button onclick="showAvailable('${day}', 'dinner')" style="background:none;border:none;cursor:pointer;font-size:16px;padding:4px;" title="View available employees">
-                          🔍
-                        </button>
-                      </div>
-                    </h4>
-                    
-                    ${dinnerDiff < 0 ? `
-                      <div style="padding:6px 10px;background:#FFEBEE;color:#C62828;border-radius:4px;margin-bottom:8px;font-size:12px;font-weight:600;">
-                        ❌ SHORT: ${Math.abs(dinnerDiff)} more needed!
-                      </div>
-                    ` : dinnerDiff > 0 ? `
-                      <div style="padding:6px 10px;background:#FFF3E0;color:#F57C00;border-radius:4px;margin-bottom:8px;font-size:12px;font-weight:600;">
-                        ⚠️ OVER: ${dinnerDiff} extra assigned!
-                      </div>
-                    ` : dinnerAssigned > 0 ? `
-                      <div style="padding:4px 8px;background:#E8F5E9;color:#2E7D32;border-radius:4px;margin-bottom:8px;font-size:11px;font-weight:600;">
-                        ✅ OK
-                      </div>
-                    ` : ''}
-                    
-                    ${(daySchedule.dinner || []).map(emp => {
-                      const isAllDay = allDayPeople.includes(emp.name);
-                      const fixedMark = emp.isFixed ? ' *' : '';
-                      return `
-                        <div class="schedule-person" style="${isAllDay ? 'font-weight:700;border-left:3px solid #D32F2F;' : ''}">
-                          ${isAllDay ? '🔴 ' : ''}${emp.name}${fixedMark} <span style="font-size:11px;color:#666;">(${emp.shift})</span>
-                        </div>
-                      `;
-                    }).join('') || '<div style="color:#999;font-size:12px;padding:8px;">No assignments</div>'}
-                  </div>
-
-                  <!-- ALL DAY SUMMARY -->
-                  ${allDayPeople.length > 0 ? `
-                    <div style="margin-top:12px;padding:8px;background:${
-                      req.allDayMax && allDayPeople.length > req.allDayMax 
-                        ? '#FFEBEE' 
-                        : '#FFF3E0'
-                    };border-radius:6px;border-left:3px solid ${
-                      req.allDayMax && allDayPeople.length > req.allDayMax 
-                        ? '#C62828' 
-                        : '#F57C00'
-                    };">
-                      <div style="font-size:11px;font-weight:600;color:${
-                        req.allDayMax && allDayPeople.length > req.allDayMax 
-                          ? '#C62828' 
-                          : '#E65100'
-                      };margin-bottom:4px;">
-                        📊 All Day: ${allDayPeople.length}${req.allDayMax ? `/${req.allDayMax}` : ''} 
-                        ${req.allDayMax && allDayPeople.length > req.allDayMax 
-                          ? `⚠️ (${allDayPeople.length - req.allDayMax} over - remove some Fixed)` 
-                          : ''}
-                      </div>
-                      <div style="font-size:11px;color:#666;">
-                        ${allDayPeople.join(', ')}
-                      </div>
-                    </div>
-                  ` : ''}
-                </div>
-              `;
-            }).join('')}
-          </div>
-        `}
-      `;
     }
 
     // ============================================
@@ -1809,7 +1851,12 @@
 
       return `
         <div>
-          <h2 style="margin:0 0 20px 0;font-size:24px;font-weight:600;">Excel View - Daily Timeline</h2>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h2 style="margin:0;font-size:24px;font-weight:600;">Excel View - Daily Timeline</h2>
+            <button onclick="downloadDailyExcel()" class="btn-primary" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;">
+              📥 Download Excel
+            </button>
+          </div>
           
           <!-- 요일 탭 -->
           <div style="display:flex;gap:8px;margin-bottom:24px;overflow-x:auto;padding-bottom:8px;">
@@ -1846,6 +1893,7 @@
     
     function renderDailyTimeline(day) {
       const daySchedule = state.schedule[day] || {};
+      const colors = SECTION_COLORS;
       
       // 시간대 (8AM ~ 12AM)
       const hours = [];
@@ -1856,43 +1904,57 @@
       return `
         <div style="overflow-x:auto;">
           ${SECTIONS.map(section => {
+            // 해당 섹션의 모든 직원 (활성화된)
+            const allSectionEmployees = state.employees.filter(emp => 
+              emp.sections && emp.sections.includes(section) && emp.status === 'active'
+            );
+            
+            if (allSectionEmployees.length === 0) return '';
+            
             const sectionSchedule = daySchedule[section] || {};
-            const employees = [];
             
-            // 해당 섹션의 모든 직원 수집
-            for (const shift in sectionSchedule) {
-              const empList = sectionSchedule[shift] || [];
-              empList.forEach(empData => {
-                const empId = empData.id || empData;
-                const emp = state.employees.find(e => e.id === empId);
-                if (emp) {
-                  const actualIn = empData.actualIn || null;
-                  const actualOut = empData.actualOut || null;
-                  employees.push({
-                    ...emp,
-                    shift,
-                    actualIn,
-                    actualOut
-                  });
+            // 각 직원의 스케줄 정보 매핑
+            const employeesWithSchedule = allSectionEmployees.map(emp => {
+              // 이 날 이 직원의 시프트 찾기
+              let empShift = null;
+              let actualIn = null;
+              let actualOut = null;
+              
+              for (const shift in sectionSchedule) {
+                const empList = sectionSchedule[shift] || [];
+                const found = empList.find(e => (e.id || e) === emp.id);
+                if (found) {
+                  empShift = shift;
+                  actualIn = found.actualIn || null;
+                  actualOut = found.actualOut || null;
+                  break;
                 }
-              });
-            }
+              }
+              
+              return {
+                ...emp,
+                shift: empShift,
+                actualIn,
+                actualOut
+              };
+            });
             
-            if (employees.length === 0) return '';
+            const sectionColor = colors[section] || colors['Manager'];
             
             return `
               <div style="margin-bottom:40px;">
-                <h3 style="margin:0 0 12px 0;padding:12px;background:#7f1d1d;color:white;border-radius:8px 8px 0 0;">
+                <h3 style="margin:0 0 12px 0;padding:12px;background:${sectionColor.header};color:white;border-radius:8px 8px 0 0;">
                   ${day} - ${section}
                 </h3>
                 
                 <table style="width:100%;border-collapse:collapse;background:white;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
                   <thead>
                     <tr style="background:#f8fafc;">
-                      <th style="padding:10px;border:1px solid #e5e7eb;min-width:100px;position:sticky;left:0;background:#f8fafc;z-index:10;">Name</th>
+                      <th style="padding:10px;border:1px solid #e5e7eb;min-width:120px;position:sticky;left:0;background:#f8fafc;z-index:10;">Name</th>
                       ${hours.map(h => {
-                        const is3pm = h === 15;
-                        const is4pm = h === 16;
+                        const is3pm = h === 15;  // 3PM (점심 끝)
+                        const is4pm = h === 16;  // 4PM (저녁 시작)
+                        const is5pm = h === 17;  // 5PM
                         const displayHour = h > 12 ? h - 12 : h;
                         const ampm = h < 12 ? 'AM' : (h === 24 ? 'AM' : 'PM');
                         
@@ -1900,7 +1962,9 @@
                           <th style="
                             padding:8px 4px;
                             border:1px solid #e5e7eb;
-                            ${is3pm || is4pm ? 'border-left:3px solid #7f1d1d;' : ''}
+                            ${is3pm ? 'border-left:4px solid #F57C00;' : ''}
+                            ${is4pm ? 'border-left:4px solid #7f1d1d;' : ''}
+                            ${is5pm ? 'border-left:4px solid #D32F2F;' : ''}
                             font-size:11px;
                             min-width:40px;
                             text-align:center;
@@ -1916,40 +1980,74 @@
                     </tr>
                   </thead>
                   <tbody>
-                    ${employees.map(emp => {
-                      const { startHour, endHour } = getShiftHours(emp.shift, emp.actualIn, emp.actualOut);
-                      const totalHours = endHour - startHour;
+                    ${employeesWithSchedule.map(emp => {
+                      const empSections = emp.sections ? emp.sections.join(', ') : '';
+                      
+                      // OFF인 경우
+                      if (!emp.shift) {
+                        return `
+                          <tr style="opacity:0.5;">
+                            <td style="padding:10px;border:1px solid #e5e7eb;font-weight:600;position:sticky;left:0;background:#f9f9f9;z-index:10;">
+                              ${emp.name}
+                              <div style="font-size:10px;color:#666;font-weight:400;">(${empSections})</div>
+                            </td>
+                            ${hours.map(h => `
+                              <td style="padding:4px;border:1px solid #e5e7eb;background:#f9f9f9;text-align:center;">
+                              </td>
+                            `).join('')}
+                            <td colspan="3" style="padding:10px;border:1px solid #e5e7eb;text-align:center;color:#999;background:#f9f9f9;">
+                              OFF
+                            </td>
+                          </tr>
+                        `;
+                      }
+                      
+                      // 근무하는 경우
+                      // 스케줄 기본 시간 (색상 바용)
+                      const scheduleHours = getShiftHours(emp.shift, null, null);
+                      const scheduleStart = scheduleHours.startHour;
+                      const scheduleEnd = scheduleHours.endHour;
+                      
+                      // 실제 근무 시간 (Clock/Pay용)
+                      const actualHours = getShiftHours(emp.shift, emp.actualIn, emp.actualOut);
+                      const actualStart = actualHours.startHour;
+                      const actualEnd = actualHours.endHour;
+                      const totalHours = actualEnd - actualStart;
                       const pay = (totalHours * emp.rate).toFixed(2);
                       
                       return `
                         <tr>
                           <td style="padding:10px;border:1px solid #e5e7eb;font-weight:600;position:sticky;left:0;background:white;z-index:10;">
                             ${emp.name}
+                            <div style="font-size:10px;color:#666;font-weight:400;">(${empSections})</div>
                           </td>
                           ${hours.map(h => {
-                            const isWorking = h >= startHour && h < endHour;
+                            // 색상 바는 스케줄 시간 사용
+                            const isWorking = h >= scheduleStart && h < scheduleEnd;
                             const is3pm = h === 15;
                             const is4pm = h === 16;
+                            const is5pm = h === 17;
                             
                             return `
                               <td style="
                                 padding:4px;
                                 border:1px solid #e5e7eb;
-                                ${is3pm || is4pm ? 'border-left:3px solid #7f1d1d;' : ''}
-                                background:${isWorking ? '#dcfce7' : 'white'};
+                                ${is3pm ? 'border-left:4px solid #F57C00;' : ''}
+                                ${is4pm ? 'border-left:4px solid #7f1d1d;' : ''}
+                                ${is5pm ? 'border-left:4px solid #D32F2F;' : ''}
+                                background:${isWorking ? sectionColor.bg : 'white'};
                                 text-align:center;
                               ">
-                                ${isWorking ? '█' : ''}
                               </td>
                             `;
                           }).join('')}
                           <td style="padding:8px;border:1px solid #e5e7eb;background:#FFF9C4;text-align:center;cursor:pointer;" 
                               onclick="editClockTime('${day}', '${section}', '${emp.id}', '${emp.shift}')">
                             <div style="font-size:11px;font-weight:600;">
-                              ${formatHour(startHour)} - ${formatHour(endHour)}
+                              ${formatHour(actualStart)} - ${formatHour(actualEnd)}
                             </div>
                             <div style="font-size:10px;color:#666;margin-top:2px;">
-                              ${totalHours.toFixed(1)}h
+                              ${totalHours.toFixed(2)}h
                             </div>
                           </td>
                           <td style="padding:8px;border:1px solid #e5e7eb;background:#FFF9C4;text-align:center;font-weight:600;">
@@ -1968,7 +2066,8 @@
                         ${section} Total:
                       </td>
                       <td style="padding:10px;border:1px solid #e5e7eb;text-align:center;color:#16a34a;">
-                        $${employees.reduce((sum, emp) => {
+                        $${employeesWithSchedule.reduce((sum, emp) => {
+                          if (!emp.shift) return sum;
                           const { startHour, endHour } = getShiftHours(emp.shift, emp.actualIn, emp.actualOut);
                           return sum + ((endHour - startHour) * emp.rate);
                         }, 0).toFixed(2)}
@@ -2019,15 +2118,17 @@
     }
     
     function formatHour(hour) {
-      if (hour === 24) return '12:00 AM';
-      if (hour < 12) return `${hour}:00 AM`;
-      if (hour === 12) return '12:00 PM';
-      const h = hour - 12;
-      const min = (hour % 1) * 60;
-      if (min > 0) {
-        return `${Math.floor(h)}:${min.toFixed(0).padStart(2, '0')} PM`;
+      const h = Math.floor(hour);
+      const m = Math.round((hour - h) * 60);
+      
+      if (hour === 24 || (h === 0 && m === 0)) return '12:00 AM';
+      if (h < 12) {
+        return `${h}:${m.toString().padStart(2, '0')} AM`;
       }
-      return `${h}:00 PM`;
+      if (h === 12) {
+        return `12:${m.toString().padStart(2, '0')} PM`;
+      }
+      return `${h - 12}:${m.toString().padStart(2, '0')} PM`;
     }
     
     function calculateDayTotal(day) {
@@ -2051,6 +2152,279 @@
       return total;
     }
     
+    // ============================================
+    // EXCEL DOWNLOAD - 엑셀 다운로드
+    // ============================================
+    async function downloadDailyExcel() {
+      const selectedDay = state.selectedExcelDay || 'Monday';
+      const daySchedule = state.schedule[selectedDay] || {};
+      
+      // 현재 날짜
+      const today = new Date();
+      const dateStr = `${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getDate().toString().padStart(2, '0')}.${today.getFullYear().toString().slice(-2)}`;
+      
+      // ExcelJS Workbook 생성
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet(`${selectedDay} Schedule`);
+      
+      // 타임라인 시간 (8 AM ~ 12 AM = Midnight)
+      const timeColumns = [];
+      for (let h = 8; h <= 24; h++) {
+        timeColumns.push(h);
+      }
+      
+      // 컬럼 정의: Section, Name, Hour, Rate, Total + 시간대 컬럼들
+      worksheet.columns = [
+        { key: 'section', width: 12 },
+        { key: 'name', width: 15 },
+        { key: 'hours', width: 8 },
+        { key: 'rate', width: 10 },
+        { key: 'total', width: 12 },
+        ...timeColumns.map(h => ({ key: `h${h}`, width: 6 }))
+      ];
+      
+      // 첫 번째 행: 날짜 + 헤더
+      const headerRow1 = worksheet.getRow(1);
+      headerRow1.getCell(1).value = 'Section';
+      headerRow1.getCell(2).value = `${selectedDay} - ${dateStr}`;
+      headerRow1.getCell(3).value = 'Hour';
+      headerRow1.getCell(4).value = 'Rate';
+      headerRow1.getCell(5).value = 'Total';
+      
+      // 타임라인 헤더
+      timeColumns.forEach((h, idx) => {
+        const cell = headerRow1.getCell(6 + idx);
+        const displayHour = h === 24 ? 12 : (h > 12 ? h - 12 : h);
+        const ampm = h < 12 ? 'AM' : (h === 24 ? 'AM' : 'PM');
+        cell.value = `${displayHour}:00\n${ampm}`;
+      });
+      
+      // 헤더 스타일
+      headerRow1.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF7f1d1d' }
+        };
+        cell.font = {
+          color: { argb: 'FFFFFFFF' },
+          bold: true,
+          size: 10
+        };
+        cell.alignment = { 
+          vertical: 'middle', 
+          horizontal: 'center',
+          wrapText: true
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+      headerRow1.height = 30;
+      
+      // 데이터 수집 (섹션별로 그룹화)
+      let totalHours = 0;
+      let totalPay = 0;
+      let currentRow = 2;  // 헤더 다음 행부터 시작
+      
+      SECTIONS.forEach(section => {
+        const sectionSchedule = daySchedule[section] || {};
+        const sectionColor = SECTION_COLORS[section] || SECTION_COLORS['Manager'];
+        
+        // 해당 섹션 모든 직원
+        const allSectionEmployees = state.employees.filter(emp => 
+          emp.sections && emp.sections.includes(section) && emp.status === 'active'
+        );
+        
+        const sectionEmployees = [];
+        
+        allSectionEmployees.forEach(emp => {
+          // 시프트 찾기
+          let empShift = null;
+          let actualIn = null;
+          let actualOut = null;
+          
+          for (const shift in sectionSchedule) {
+            const empList = sectionSchedule[shift] || [];
+            const found = empList.find(e => (e.id || e) === emp.id);
+            if (found) {
+              empShift = shift;
+              actualIn = found.actualIn || null;
+              actualOut = found.actualOut || null;
+              break;
+            }
+          }
+          
+          if (empShift) {
+            sectionEmployees.push({ emp, empShift, actualIn, actualOut });
+          }
+        });
+        
+        if (sectionEmployees.length === 0) return;
+        
+        const sectionStartRow = currentRow;
+        
+        // 섹션의 각 직원 행 추가
+        sectionEmployees.forEach(({ emp, empShift, actualIn, actualOut }, idx) => {
+          const actualHours = getShiftHours(empShift, actualIn, actualOut);
+          const startHour = actualHours.startHour;
+          const endHour = actualHours.endHour;
+          const hours = endHour - startHour;
+          const pay = hours * emp.rate;
+          
+          totalHours += hours;
+          totalPay += pay;
+          
+          // 행 추가
+          const rowData = {
+            section: idx === 0 ? section : '',  // 첫 번째 행에만 섹션 이름
+            name: emp.name,
+            hours: hours.toFixed(2),
+            rate: `$${emp.rate.toFixed(2)}`,
+            total: `$${pay.toFixed(2)}`
+          };
+          
+          const row = worksheet.addRow(rowData);
+          
+          // Section 셀 (첫 번째만)
+          const sectionCell = row.getCell(1);
+          if (idx === 0) {
+            sectionCell.value = section;
+          }
+          sectionCell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: sectionColor.bg.replace('#', 'FF') }
+          };
+          sectionCell.font = {
+            bold: true,
+            size: 11
+          };
+          sectionCell.alignment = { vertical: 'middle', horizontal: 'center' };
+          sectionCell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+          
+          // 기본 정보 셀 스타일 (Name, Hour, Rate, Total)
+          for (let i = 2; i <= 5; i++) {
+            const cell = row.getCell(i);
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: sectionColor.bg.replace('#', 'FF') }
+            };
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+            cell.alignment = { vertical: 'middle', horizontal: i === 2 ? 'left' : 'center' };
+          }
+          
+          // 타임라인 셀 처리
+          timeColumns.forEach((h, idx) => {
+            const cell = row.getCell(6 + idx);
+            const cellHour = h;
+            
+            // 시작 지점
+            if (Math.floor(startHour) === cellHour) {
+              cell.value = formatHour(startHour);
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: sectionColor.bg.replace('#', 'FF') }
+              };
+              cell.font = { size: 9, bold: true };
+            }
+            // 끝 지점
+            else if (Math.floor(endHour) === cellHour || (cellHour === 24 && endHour === 24)) {
+              cell.value = formatHour(endHour);
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: sectionColor.bg.replace('#', 'FF') }
+              };
+              cell.font = { size: 9, bold: true };
+            }
+            // 근무 구간 (색칠)
+            else if (cellHour > Math.floor(startHour) && cellHour < Math.floor(endHour)) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: sectionColor.bg.replace('#', 'FF') }
+              };
+            }
+            // 비근무 구간 (흰색)
+            else {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFFFFFF' }
+              };
+            }
+            
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          });
+          
+          row.height = 25;
+          currentRow++;
+        });
+        
+        // 섹션 셀 병합 (여러 행에 걸쳐 있으면)
+        if (sectionEmployees.length > 1) {
+          worksheet.mergeCells(sectionStartRow, 1, currentRow - 1, 1);
+        }
+      });
+      
+      // TOTAL 행 추가
+      const totalRowData = {
+        section: '',
+        name: 'TOTAL',
+        hours: totalHours.toFixed(2),
+        rate: '',
+        total: `$${totalPay.toFixed(2)}`
+      };
+      
+      const totalRow = worksheet.addRow(totalRowData);
+      
+      totalRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFF00' }  // 노란색
+        };
+        cell.font = { bold: true, size: 12 };
+        cell.border = {
+          top: { style: 'thick' },
+          left: { style: 'thin' },
+          bottom: { style: 'thick' },
+          right: { style: 'thin' }
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      totalRow.height = 25;
+      
+      // 파일 생성 및 다운로드
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `${selectedDay}_Schedule_${dateStr}.xlsx`);
+      
+      console.log(`Downloaded: ${selectedDay}_Schedule_${dateStr}.xlsx`);
+    }
+    
     function editClockTime(day, section, empId, shift) {
       // 모달로 시간 수정
       const daySchedule = state.schedule[day] || {};
@@ -2060,181 +2434,177 @@
       
       const { startHour, endHour } = getShiftHours(shift, empData?.actualIn, empData?.actualOut);
       
-      const inTime = prompt(`Clock In (시간, 예: 8 or 15.5):`, startHour);
-      if (inTime === null) return;
+      // 시간을 시/분으로 분리
+      const startH = Math.floor(startHour);
+      const startM = Math.round((startHour - startH) * 60);
+      const endH = Math.floor(endHour);
+      const endM = Math.round((endHour - endH) * 60);
       
-      const outTime = prompt(`Clock Out (시간, 예: 16 or 24):`, endHour);
-      if (outTime === null) return;
-      
-      // 업데이트
-      if (!state.schedule[day]) state.schedule[day] = {};
-      if (!state.schedule[day][section]) state.schedule[day][section] = {};
-      if (!state.schedule[day][section][shift]) state.schedule[day][section][shift] = [];
-      
-      const idx = state.schedule[day][section][shift].findIndex(e => (e.id || e) === empId);
-      if (idx !== -1) {
-        if (typeof state.schedule[day][section][shift][idx] === 'string') {
-          state.schedule[day][section][shift][idx] = {
-            id: empId,
-            actualIn: parseFloat(inTime),
-            actualOut: parseFloat(outTime)
-          };
-        } else {
-          state.schedule[day][section][shift][idx].actualIn = parseFloat(inTime);
-          state.schedule[day][section][shift][idx].actualOut = parseFloat(outTime);
-        }
+      // 시 선택지 (0-24)
+      const hourOptions = [];
+      for (let h = 0; h <= 24; h++) {
+        hourOptions.push(h);
       }
       
-      saveSchedule();
-      render();
-    }
-        }
-      });
-
-      return `
-        <div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h2 style="margin:0;font-size:24px;font-weight:600;">${excelT.title || 'Excel View'}</h2>
-            <button onclick="downloadExcel()" class="btn-primary" style="display:inline-flex;align-items:center;gap:8px;">
-              📥 Download Excel
-            </button>
-          </div>
-          
-          <div style="overflow-x:auto;max-height:calc(100vh - 200px);border:3px solid #333;border-radius:8px;">
-            <table style="width:100%;border-collapse:collapse;background:white;font-size:13px;">
-              <thead style="position:sticky;top:0;z-index:10;">
-                <tr style="background:#7f1d1d;color:white;">
-                  <th style="padding:10px;border:2px solid #333;width:35px;position:sticky;left:0;background:#7f1d1d;z-index:11;">#</th>
-                  <th style="padding:10px;border:2px solid #333;width:90px;position:sticky;left:35px;background:#7f1d1d;z-index:11;">Name</th>
-                  ${DAYS.map(day => {
-                    const dayT = TRANSLATIONS[state.language];
-                    return `
-                      <th style="padding:10px;border:2px solid #333;min-width:110px;">
-                        ${dayT.days?.[day] || day}
-                      </th>
-                    `;
-                  }).join('')}
-                </tr>
-              </thead>
-              <tbody>
-                ${orderedEmployees.map((emp, idx) => {
-                  return `
-                    <!-- Lunch Row -->
-                    <tr>
-                      <td rowspan="2" style="padding:8px;border:2px solid #333;text-align:center;background:#f0f0f0;font-weight:700;position:sticky;left:0;z-index:5;">${idx + 1}</td>
-                      <td style="padding:8px;border:2px solid #333;font-weight:600;background:#FFF9E6;position:sticky;left:35px;z-index:5;">
-                        ${emp.name}
-                        <div style="font-size:10px;color:#666;font-weight:400;">Lunch</div>
-                      </td>
-                      ${DAYS.map(day => {
-                        const daySchedule = state.schedule[day] || {};
-                        const lunchShift = (daySchedule.lunch || []).find(e => e.id === emp.id);
-                        
-                        return `
-                          <td onclick="editShift('${emp.id}', '${day}', 'lunch')" 
-                              style="padding:8px;border:2px solid #333;cursor:pointer;text-align:center;
-                                     background:${getShiftColor(lunchShift?.shift)};
-                                     ${lunchShift ? 'font-weight:600;' : ''}
-                                     transition:background 0.2s;">
-                            ${lunchShift ? lunchShift.shift : ''}
-                          </td>
-                        `;
-                      }).join('')}
-                    </tr>
-                    <!-- Dinner Row -->
-                    <tr>
-                      <td style="padding:8px;border:2px solid #333;font-weight:600;background:#E6F3FF;position:sticky;left:35px;z-index:5;">
-                        ${emp.name}
-                        <div style="font-size:10px;color:#666;font-weight:400;">Dinner</div>
-                      </td>
-                      ${DAYS.map(day => {
-                        const daySchedule = state.schedule[day] || {};
-                        const dinnerShift = (daySchedule.dinner || []).find(e => e.id === emp.id);
-                        
-                        return `
-                          <td onclick="editShift('${emp.id}', '${day}', 'dinner')" 
-                              style="padding:8px;border:2px solid #333;cursor:pointer;text-align:center;
-                                     background:${getShiftColor(dinnerShift?.shift)};
-                                     ${dinnerShift ? 'font-weight:600;' : ''}
-                                     transition:background 0.2s;">
-                            ${dinnerShift ? dinnerShift.shift : ''}
-                          </td>
-                        `;
-                      }).join('')}
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-              <tfoot style="position:sticky;bottom:0;background:white;z-index:8;">
-                <tr style="background:#E8F5E9;font-weight:700;font-size:12px;">
-                  <td colspan="2" style="padding:10px;border:2px solid #333;text-align:right;position:sticky;left:0;background:#E8F5E9;z-index:9;">
-                    Lunch:
-                  </td>
-                  ${DAYS.map(day => {
-                    const daySchedule = state.schedule[day] || {};
-                    const lunchCount = (daySchedule.lunch || []).length;
-                    return `
-                      <td style="padding:10px;border:2px solid #333;text-align:center;color:#2E7D32;">${lunchCount}</td>
-                    `;
-                  }).join('')}
-                </tr>
-                <tr style="background:#E3F2FD;font-weight:700;font-size:12px;">
-                  <td colspan="2" style="padding:10px;border:2px solid #333;text-align:right;position:sticky;left:0;background:#E3F2FD;z-index:9;">
-                    Dinner:
-                  </td>
-                  ${DAYS.map(day => {
-                    const daySchedule = state.schedule[day] || {};
-                    const dinnerCount = (daySchedule.dinner || []).length;
-                    return `
-                      <td style="padding:10px;border:2px solid #333;text-align:center;color:#1565C0;">${dinnerCount}</td>
-                    `;
-                  }).join('')}
-                </tr>
-                <tr style="background:#FFF3E0;font-weight:700;font-size:12px;">
-                  <td colspan="2" style="padding:10px;border:2px solid #333;text-align:right;position:sticky;left:0;background:#FFF3E0;z-index:9;">
-                    All Day:
-                  </td>
-                  ${DAYS.map(day => {
-                    const daySchedule = state.schedule[day] || {};
-                    const lunchNames = (daySchedule.lunch || []).map(e => e.name);
-                    const dinnerNames = (daySchedule.dinner || []).map(e => e.name);
-                    const allDayCount = lunchNames.filter(name => dinnerNames.includes(name)).length;
-                    return `
-                      <td style="padding:10px;border:2px solid #333;text-align:center;color:#F57C00;">${allDayCount}</td>
-                    `;
-                  }).join('')}
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          <div style="margin-top:16px;padding:12px;background:#E3F2FD;border-radius:8px;font-size:13px;">
-            💡 <strong>Tip:</strong> Click any cell to edit shift. Use arrow keys or scroll to navigate.
+      // 분 선택지 (0-59)
+      const minuteOptions = [];
+      for (let m = 0; m < 60; m++) {
+        minuteOptions.push(m);
+      }
+      
+      // HTML 모달 생성
+      const modalHTML = `
+        <div style="
+          position:fixed;
+          top:0;left:0;right:0;bottom:0;
+          background:rgba(0,0,0,0.5);
+          z-index:9999;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+        " id="clock-modal">
+          <div style="
+            background:white;
+            padding:24px;
+            border-radius:12px;
+            box-shadow:0 4px 20px rgba(0,0,0,0.3);
+            max-width:400px;
+            width:90%;
+          " onclick="event.stopPropagation()">
+            <h3 style="margin:0 0 16px 0;">⏰ Clock In/Out</h3>
+            
+            <div style="margin-bottom:16px;">
+              <label style="display:block;margin-bottom:8px;font-weight:600;">🕐 Clock In:</label>
+              <div style="display:flex;gap:8px;">
+                <select id="clock-in-hour" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:15px;">
+                  ${hourOptions.map(h => `
+                    <option value="${h}" ${h === startH ? 'selected' : ''}>${h}시</option>
+                  `).join('')}
+                </select>
+                <select id="clock-in-minute" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:15px;">
+                  ${minuteOptions.map(m => `
+                    <option value="${m}" ${m === startM ? 'selected' : ''}>${m}분</option>
+                  `).join('')}
+                </select>
+              </div>
+            </div>
+            
+            <div style="margin-bottom:20px;">
+              <label style="display:block;margin-bottom:8px;font-weight:600;">🕐 Clock Out:</label>
+              <div style="display:flex;gap:8px;">
+                <select id="clock-out-hour" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:15px;">
+                  ${hourOptions.map(h => `
+                    <option value="${h}" ${h === endH ? 'selected' : ''}>${h}시</option>
+                  `).join('')}
+                </select>
+                <select id="clock-out-minute" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:15px;">
+                  ${minuteOptions.map(m => `
+                    <option value="${m}" ${m === endM ? 'selected' : ''}>${m}분</option>
+                  `).join('')}
+                </select>
+              </div>
+            </div>
+            
+            <div style="display:flex;gap:12px;">
+              <button onclick="saveClock('${day}', '${section}', '${empId}', '${shift}')" 
+                      style="flex:1;padding:12px;background:#7f1d1d;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">
+                ✓ 저장
+              </button>
+              <button onclick="closeClockModal()" 
+                      style="flex:1;padding:12px;background:#666;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">
+                ✕ 취소
+              </button>
+            </div>
           </div>
         </div>
       `;
+      
+      // 모달 추가
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+      document.getElementById('clock-modal').onclick = closeClockModal;
+    }
+    
+    function closeClockModal() {
+      const modal = document.getElementById('clock-modal');
+      if (modal) modal.remove();
+    }
+    
+    function saveClock(day, section, empId, shift) {
+      const inHour = document.getElementById('clock-in-hour');
+      const inMinute = document.getElementById('clock-in-minute');
+      const outHour = document.getElementById('clock-out-hour');
+      const outMinute = document.getElementById('clock-out-minute');
+      
+      if (!inHour || !inMinute || !outHour || !outMinute) {
+        console.error('Missing elements!');
+        return;
+      }
+      
+      const actualIn = parseInt(inHour.value) + parseInt(inMinute.value) / 60;
+      const actualOut = parseInt(outHour.value) + parseInt(outMinute.value) / 60;
+      
+      console.log('Saving actual clock time:', { day, section, empId, shift, actualIn, actualOut });
+      
+      // 스케줄에서 해당 직원 찾기
+      const daySchedule = state.schedule[day] || {};
+      const sectionSchedule = daySchedule[section] || {};
+      const shiftEmployees = sectionSchedule[shift] || [];
+      
+      // 직원 찾아서 actualIn/actualOut 저장
+      const empIndex = shiftEmployees.findIndex(e => {
+        const eId = e.id || e;
+        return String(eId) === String(empId);
+      });
+      
+      if (empIndex !== -1) {
+        // 객체로 변환 (string일 경우)
+        if (typeof shiftEmployees[empIndex] === 'string') {
+          shiftEmployees[empIndex] = { id: empId };
+        }
+        
+        // 실제 시간 저장
+        shiftEmployees[empIndex].actualIn = actualIn;
+        shiftEmployees[empIndex].actualOut = actualOut;
+        
+        console.log('Updated employee:', shiftEmployees[empIndex]);
+        
+        closeClockModal();
+        saveSchedule();
+        render();
+      } else {
+        console.error('Employee not found!', {
+          looking: empId,
+          available: shiftEmployees.map(e => e.id || e)
+        });
+        alert('직원을 찾을 수 없습니다. 다시 시도해주세요.');
+      }
+    }
+    
+    // HH:MM → 소수 (8:30 → 8.5)
+    function parseTimeToHour(timeStr) {
+      if (!timeStr) return null;
+      
+      const parts = timeStr.trim().split(':');
+      if (parts.length !== 2) return null;
+      
+      const hours = parseInt(parts[0]);
+      const minutes = parseInt(parts[1]);
+      
+      if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 24 || minutes < 0 || minutes >= 60) {
+        return null;
+      }
+      
+      return hours + (minutes / 60);
+    }
+    
+    // 소수 → HH:MM (8.5 → 8:30)
+    function hourToHHMM(hour) {
+      const h = Math.floor(hour);
+      const m = Math.round((hour - h) * 60);
+      return `${h}:${m.toString().padStart(2, '0')}`;
     }
 
-    // 시프트 색상 반환
-    function getShiftColor(shift) {
-      if (!shift) return '#ffffff';
-      if (shift.includes('Open')) return '#FFD93D';  // 🟡 노란색
-      if (shift.includes('11:00') || shift.includes('11:30')) return '#6BCB77';  // 🟢 초록색
-      if (shift.includes('3:30')) return '#4D96FF';  // 🔵 파란색
-      if (shift.includes('6:00') || shift.includes('6 PM')) return '#9D4EDD';  // 🟣 보라색
-      return '#ffffff';
-    }
-
-    // 시프트 색상 ARGB 반환 (ExcelJS용)
-    function getShiftColorARGB(shift) {
-      if (!shift) return 'FFFFFFFF';
-      if (shift.includes('Open')) return 'FFFFD93D';  // 🟡 노란색
-      if (shift.includes('11:00') || shift.includes('11:30')) return 'FF6BCB77';  // 🟢 초록색
-      if (shift.includes('3:30')) return 'FF4D96FF';  // 🔵 파란색
-      if (shift.includes('6:00') || shift.includes('6 PM')) return 'FF9D4EDD';  // 🟣 보라색
-      return 'FFFFFFFF';
-    }
-
+    // ============================================
     // SECTIONS TAB - 섹션 탭
     // ============================================
     function renderSectionsTab(t) {
