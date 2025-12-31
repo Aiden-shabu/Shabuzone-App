@@ -375,12 +375,16 @@
     
     // --- Kitchen 시프트 종류 ---
     const SHIFTS = {
-      '8:00-11:00': '8:00-11:00',
-      '11:00-3:30': '11:00-3:30',
-      '11:00-5:00': '11:00-5:00',
-      '3:30-Close': '3:30-Close',
-      '5:00-Close': '5:00-Close',
-      '6:00-Close': '6:00-Close'
+      '8:00-11:00': '8:00-11:00',      // 오전 (3시간)
+      '8:00-4:00': '8:00-4:00',        // 오전 풀타임 (8시간)
+      '8:00-5:00': '8:00-5:00',        // 오전 풀타임+ (9시간)
+      '11:00-5:00': '11:00-5:00',      // 점심 시작 (6시간) - 최소 5시까지!
+      '11:00-Close': '11:00-Close',    // 점심 시작 풀타임
+      '12:00-Close': '12:00-Close',    // 점심 늦은 시작
+      '3:30-Close': '3:30-Close',      // 저녁
+      '4:00-Close': '4:00-Close',      // 저녁
+      '5:00-Close': '5:00-Close',      // 저녁
+      '6:00-Close': '6:00-Close'       // 저녁 늦은
     };
 
     // ============================================
@@ -649,12 +653,16 @@
       const reqs = {};
       DAYS.forEach(day => {
         reqs[day] = {
-          '8:00-11:00': 2,
-          '11:00-3:30': 3,
-          '11:00-5:00': 2,
-          '3:30-Close': 4,
-          '5:00-Close': 3,
-          '6:00-Close': 2,
+          '8:00-11:00': 1,       // 오전 짧은
+          '8:00-4:00': 2,        // 오전 풀타임
+          '8:00-5:00': 1,        // 오전 풀타임+
+          '11:00-5:00': 2,       // 점심 시작 (최소 5시!)
+          '11:00-Close': 1,      // 점심 풀타임
+          '12:00-Close': 1,      // 점심 늦은
+          '3:30-Close': 2,       // 저녁
+          '4:00-Close': 3,       // 저녁
+          '5:00-Close': 2,       // 저녁
+          '6:00-Close': 1,       // 저녁 늦은
           isHoliday: false
         };
       });
@@ -674,10 +682,68 @@
 
     async function savePreferences() {
       await storage.saveData('preferences', state.preferences);
+      alert('✅ Preferences saved!');
     }
 
     async function saveSchedule() {
       await storage.saveData('schedule', state.schedule);
+    }
+
+    // ============================================
+    // PREFERENCES 함수들
+    // ============================================
+    
+    function selectEmployeeForPreferences(empId) {
+      if (!empId) {
+        state.selectedEmployee = null;
+      } else {
+        state.selectedEmployee = state.employees.find(e => e.id === empId);
+        
+        // Preferences 구조 초기화 (없으면)
+        if (!state.preferences[empId]) {
+          state.preferences[empId] = {};
+          DAYS.forEach(day => {
+            state.preferences[empId][day] = {};
+          });
+        }
+      }
+      render();
+    }
+    
+    function toggleShiftPreference(day, shift) {
+      const empId = state.selectedEmployee.id;
+      if (!state.preferences[empId]) {
+        state.preferences[empId] = {};
+      }
+      if (!state.preferences[empId][day]) {
+        state.preferences[empId][day] = {};
+      }
+      
+      // 토글
+      const current = state.preferences[empId][day][shift] || false;
+      state.preferences[empId][day][shift] = !current;
+      
+      // 11시/12시 시작 검증
+      if (shift === '11:00-5:00' || shift === '11:00-Close' || shift === '12:00-Close') {
+        if (state.preferences[empId][day][shift]) {
+          // 체크할 때 경고
+          console.log(`⚠️ ${shift} selected - minimum 5PM or Close required!`);
+        }
+      }
+      
+      render();
+    }
+    
+    function clearAllPreferences() {
+      if (!confirm('정말로 이 직원의 모든 희망 근무를 초기화하시겠습니까?')) return;
+      
+      const empId = state.selectedEmployee.id;
+      state.preferences[empId] = {};
+      DAYS.forEach(day => {
+        state.preferences[empId][day] = {};
+      });
+      
+      render();
     }
 
     // ============================================
@@ -834,36 +900,48 @@
         <table class="requirements-table">
           <thead>
             <tr>
-              <th style="width:120px;">Day</th>
-              <th>8:00-11:00</th>
-              <th>11:00-3:30</th>
-              <th>11:00-5:00</th>
-              <th>3:30-Close</th>
-              <th>5:00-Close</th>
-              <th>6:00-Close</th>
-              <th style="width:100px;">Total</th>
-              <th style="width:100px;">Holiday</th>
+              <th style="width:100px;">Day</th>
+              <th title="오전 짧은">8-11</th>
+              <th title="오전 풀타임">8-4</th>
+              <th title="오전 풀타임+">8-5</th>
+              <th title="점심 시작 (최소 5시!)">11-5</th>
+              <th title="점심 풀타임">11-C</th>
+              <th title="점심 늦은">12-C</th>
+              <th title="저녁">3:30-C</th>
+              <th title="저녁">4-C</th>
+              <th title="저녁">5-C</th>
+              <th title="저녁 늦은">6-C</th>
+              <th style="width:80px;">Total</th>
+              <th style="width:90px;">Holiday</th>
             </tr>
           </thead>
           <tbody>
             ${DAYS.map(day => {
               const req = state.requirements[day];
               const total = (req['8:00-11:00'] || 0) + 
-                           (req['11:00-3:30'] || 0) + 
+                           (req['8:00-4:00'] || 0) + 
+                           (req['8:00-5:00'] || 0) + 
                            (req['11:00-5:00'] || 0) + 
+                           (req['11:00-Close'] || 0) + 
+                           (req['12:00-Close'] || 0) + 
                            (req['3:30-Close'] || 0) + 
+                           (req['4:00-Close'] || 0) + 
                            (req['5:00-Close'] || 0) + 
                            (req['6:00-Close'] || 0);
               
               return `
                 <tr style="${req.isHoliday ? 'background:#FFF3E0;' : ''}">
                   <td style="font-weight:600;">${day}</td>
-                  <td><input type="number" min="0" value="${req['8:00-11:00'] || 0}" onchange="updateKitchenRequirement('${day}', '8:00-11:00', this.value)"></td>
-                  <td><input type="number" min="0" value="${req['11:00-3:30'] || 0}" onchange="updateKitchenRequirement('${day}', '11:00-3:30', this.value)"></td>
-                  <td><input type="number" min="0" value="${req['11:00-5:00'] || 0}" onchange="updateKitchenRequirement('${day}', '11:00-5:00', this.value)"></td>
-                  <td><input type="number" min="0" value="${req['3:30-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '3:30-Close', this.value)"></td>
-                  <td><input type="number" min="0" value="${req['5:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '5:00-Close', this.value)"></td>
-                  <td><input type="number" min="0" value="${req['6:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '6:00-Close', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['8:00-11:00'] || 0}" onchange="updateKitchenRequirement('${day}', '8:00-11:00', this.value)" style="width:50px;"></td>
+                  <td><input type="number" min="0" value="${req['8:00-4:00'] || 0}" onchange="updateKitchenRequirement('${day}', '8:00-4:00', this.value)" style="width:50px;"></td>
+                  <td><input type="number" min="0" value="${req['8:00-5:00'] || 0}" onchange="updateKitchenRequirement('${day}', '8:00-5:00', this.value)" style="width:50px;"></td>
+                  <td style="background:#FFF9C4;"><input type="number" min="0" value="${req['11:00-5:00'] || 0}" onchange="updateKitchenRequirement('${day}', '11:00-5:00', this.value)" style="width:50px;" title="⚠️ 11시 시작 = 최소 5시까지!"></td>
+                  <td><input type="number" min="0" value="${req['11:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '11:00-Close', this.value)" style="width:50px;"></td>
+                  <td><input type="number" min="0" value="${req['12:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '12:00-Close', this.value)" style="width:50px;"></td>
+                  <td><input type="number" min="0" value="${req['3:30-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '3:30-Close', this.value)" style="width:50px;"></td>
+                  <td><input type="number" min="0" value="${req['4:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '4:00-Close', this.value)" style="width:50px;"></td>
+                  <td><input type="number" min="0" value="${req['5:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '5:00-Close', this.value)" style="width:50px;"></td>
+                  <td><input type="number" min="0" value="${req['6:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '6:00-Close', this.value)" style="width:50px;"></td>
                   <td style="font-weight:700;background:#E8F5E9;color:#2E7D32;font-size:16px;">${total}</td>
                   <td>
                     <input type="checkbox" ${req.isHoliday ? 'checked' : ''} onchange="toggleKitchenHoliday('${day}')" style="cursor:pointer;width:20px;height:20px;">
@@ -893,7 +971,7 @@
         <div style="margin-bottom:24px;">
           <h2 style="margin:0 0 16px 0;font-size:24px;font-weight:600;">${t.preferences.title}</h2>
           
-          <select id="employee-selector" style="width:300px;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px;">
+          <select id="employee-selector" style="width:300px;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px;" onchange="selectEmployeeForPreferences(this.value)">
             <option value="">${t.preferences.selectEmployee}</option>
             ${activeEmployees.map(emp => `
               <option value="${emp.id}" ${selectedEmp?.id === emp.id ? 'selected' : ''}>${emp.name}</option>
@@ -904,70 +982,87 @@
         ${!selectedEmp ? `
           <div style="padding:60px;text-align:center;background:#f9f9f9;border-radius:12px;border:2px dashed #ddd;">
             <div style="font-size:48px;margin-bottom:16px;">👤</div>
-            <p style="color:#999;font-size:16px;">Select an employee to set preferences</p>
+            <p style="color:#999;font-size:16px;">직원을 선택해서 희망 근무 시간을 설정하세요</p>
           </div>
         ` : `
           <div style="padding:24px;background:white;border-radius:12px;border:2px solid #7f1d1d;">
-            <h3 style="margin:0 0 16px 0;">${selectedEmp.name}</h3>
+            <h3 style="margin:0 0 8px 0;font-size:20px;">${selectedEmp.name}</h3>
+            <div style="margin-bottom:16px;padding:10px;background:#FFF9C4;border-radius:6px;border-left:3px solid #F57C00;font-size:13px;">
+              ⚠️ <strong>중요:</strong> 11시 또는 12시 시작은 <strong>무조건 5시 또는 Close까지</strong> 근무해야 합니다!
+            </div>
             
-            <table class="preferences-table">
+            <table class="preferences-table" style="width:100%;">
               <thead>
                 <tr style="background:#f5f5f5;">
-                  <th style="text-align:left;width:120px;">Day</th>
-                  <th style="text-align:center;width:120px;">${t.preferences.morning}</th>
-                  <th style="text-align:center;width:80px;">${t.preferences.fixed}</th>
-                  <th style="text-align:center;width:120px;">${t.preferences.evening}</th>
-                  <th style="text-align:center;width:80px;">${t.preferences.fixed}</th>
+                  <th style="text-align:left;padding:12px;">요일</th>
+                  <th style="text-align:center;padding:8px;" title="8:00-11:00 (3시간)">8-11</th>
+                  <th style="text-align:center;padding:8px;" title="8:00-4:00 (8시간)">8-4</th>
+                  <th style="text-align:center;padding:8px;" title="8:00-5:00 (9시간)">8-5</th>
+                  <th style="text-align:center;padding:8px;background:#FFF9C4;" title="11:00-5:00 (6시간) - 최소 5시!">11-5⚠️</th>
+                  <th style="text-align:center;padding:8px;" title="11:00-Close">11-C</th>
+                  <th style="text-align:center;padding:8px;" title="12:00-Close">12-C</th>
+                  <th style="text-align:center;padding:8px;" title="3:30-Close">3:30-C</th>
+                  <th style="text-align:center;padding:8px;" title="4:00-Close">4-C</th>
+                  <th style="text-align:center;padding:8px;" title="5:00-Close">5-C</th>
+                  <th style="text-align:center;padding:8px;" title="6:00-Close">6-C</th>
                 </tr>
               </thead>
               <tbody>
                 ${DAYS.map(day => {
-                  const dayPrefs = empPrefs[day] || { morning: 0, evening: 0, morningFixed: false, eveningFixed: false };
+                  const dayPrefs = empPrefs[day] || {};
                   return `
                     <tr>
-                      <td style="font-weight:500;">${t.days?.[day] || day}</td>
-                      <td style="text-align:center;">
-                        <button class="pref-button" onclick="cyclePreference('${day}', 'morning')" 
-                                style="background:${getPrefColor(dayPrefs.morning, 'morning')};">
-                          ${getPrefEmoji(dayPrefs.morning, 'morning')}
-                        </button>
-                      </td>
-                      <td style="text-align:center;">
-                        <input type="checkbox" 
-                               ${dayPrefs.morningFixed ? 'checked' : ''} 
-                               onchange="toggleFixed('${day}', 'morning')"
-                               style="width:20px;height:20px;cursor:pointer;"
-                               ${dayPrefs.morning === 0 ? 'disabled' : ''}>
-                      </td>
-                      <td style="text-align:center;">
-                        <button class="pref-button" onclick="cyclePreference('${day}', 'evening')" 
-                                style="background:${getPrefColor(dayPrefs.evening, 'evening')};">
-                          ${getPrefEmoji(dayPrefs.evening, 'evening')}
-                        </button>
-                      </td>
-                      <td style="text-align:center;">
-                        <input type="checkbox" 
-                               ${dayPrefs.eveningFixed ? 'checked' : ''} 
-                               onchange="toggleFixed('${day}', 'evening')"
-                               style="width:20px;height:20px;cursor:pointer;"
-                               ${dayPrefs.evening === 0 ? 'disabled' : ''}>
-                      </td>
+                      <td style="font-weight:600;padding:12px;">${day}</td>
+                      ${Object.keys(SHIFTS).map(shift => {
+                        const isAvailable = dayPrefs[shift] || false;
+                        const isWarning = shift === '11:00-5:00';
+                        return `
+                          <td style="text-align:center;padding:4px;${isWarning ? 'background:#FFF9C4;' : ''}">
+                            <button 
+                              onclick="toggleShiftPreference('${day}', '${shift}')"
+                              style="
+                                width:40px;
+                                height:40px;
+                                border-radius:6px;
+                                border:2px solid ${isAvailable ? '#2E7D32' : '#ddd'};
+                                background:${isAvailable ? '#E8F5E9' : 'white'};
+                                cursor:pointer;
+                                font-size:18px;
+                                transition:all 0.2s;
+                              "
+                              title="${shift}"
+                            >
+                              ${isAvailable ? '✓' : ''}
+                            </button>
+                          </td>
+                        `;
+                      }).join('')}
                     </tr>
                   `;
                 }).join('')}
               </tbody>
             </table>
 
-            <div style="margin-top:16px;padding:12px;background:#FFF3E0;border-radius:8px;font-size:13px;border-left:3px solid #F57C00;">
-              <strong>⭐ Fixed:</strong> When checked, this shift will <strong>ALWAYS</strong> be assigned (ignores min guarantee and shortages).<br>
-              <strong>💡 Tip:</strong> Use Fixed for employees who need specific regular shifts (e.g., always Monday morning, always Tuesday evening).
+            <div style="margin-top:20px;display:flex;gap:12px;">
+              <button onclick="savePreferences()" style="padding:12px 24px;background:#7f1d1d;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:15px;">
+                💾 저장
+              </button>
+              <button onclick="clearAllPreferences()" style="padding:12px 24px;background:#666;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:15px;">
+                🗑️ 전체 초기화
+              </button>
             </div>
 
-            <div style="margin-top:16px;padding:12px;background:#E3F2FD;border-radius:8px;font-size:13px;">
-              💡 ${t.preferences.clickToCycle}<br>
-              ${t.preferences.morning}: Empty → 🟡 (Open~Break) → 🟢 (11:00/11:30~Break)<br>
-              ${t.preferences.evening}: Empty → 🔵 (3:30~Close) → 🟣 (6:00~Close)
+            <div style="margin-top:20px;padding:16px;background:#E3F2FD;border-radius:8px;font-size:13px;line-height:1.6;">
+              <div style="font-weight:700;margin-bottom:8px;">💡 사용 방법:</div>
+              • 각 박스를 클릭해서 근무 가능 시간대를 선택하세요 (✓)<br>
+              • <span style="background:#FFF9C4;padding:2px 6px;border-radius:3px;">노란색 (11-5)</span>: 11시 시작은 <strong>무조건 최소 5시까지!</strong><br>
+              • 여러 시간대 선택 가능 (알고리즘이 최적 배치)<br>
+              • 저장 버튼을 눌러야 Firebase에 저장됩니다
             </div>
+          </div>
+        `}
+      `;
+    }
 
             <div style="margin-top:24px;padding:16px;background:#f9f9f9;border-radius:8px;">
               <label style="display:block;margin-bottom:8px;font-weight:600;">
