@@ -23,7 +23,7 @@
     /* --- Body 전체 배경 --- */
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #7f1d1d, #991b1b);
       min-height: 100vh;
       padding: 20px;
     }
@@ -40,7 +40,7 @@
     
     /* --- 헤더 (제목 + 언어 선택) --- */
     .header {
-      background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+      background: linear-gradient(135deg, #7f1d1d, #991b1b);
       padding: 32px;
       color: white;
       display: flex;
@@ -61,8 +61,8 @@
     /* --- 탭 네비게이션 --- */
     .tabs {
       display: flex;
-      border-bottom: 2px solid #f0f0f0;
-      background: #fafafa;
+      border-bottom: 2px solid #e8e8e8;
+      background: white;
     }
     .tab {
       flex: 1;
@@ -71,16 +71,20 @@
       background: transparent;
       border-bottom: 3px solid transparent;
       cursor: pointer;
-      font-weight: 400;
-      color: #666;
+      font-weight: 500;
+      color: #6b7280;
       font-size: 15px;
       transition: all 0.3s ease;
     }
+    .tab:hover {
+      background: #fafafa;
+      color: #374151;
+    }
     .tab.active {
-      background: white;
-      border-bottom: 3px solid #667eea;
+      background: #fef5f5;
+      border-bottom: 3px solid #7f1d1d;
       font-weight: 600;
-      color: #667eea;
+      color: #7f1d1d;
     }
     
     /* --- 콘텐츠 영역 --- */
@@ -89,7 +93,7 @@
     /* --- 버튼 스타일 --- */
     .btn-primary {
       padding: 12px 24px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #7f1d1d, #991b1b);
       color: white;
       border: none;
       border-radius: 12px;
@@ -117,7 +121,7 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      color: white;
+      color: #7f1d1d;
       font-size: 24px;
       font-weight: 600;
     }
@@ -133,25 +137,31 @@
     /* --- 직원 카드 --- */
     .employee-card {
       padding: 20px;
-      background: #f9f9f9;
+      background: white;
       border-radius: 12px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid #e8e8e8;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: box-shadow 0.2s;
     }
-    .employee-card h3 { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; }
+    .employee-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .employee-card h3 { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #2c3e50; }
     
     /* --- 배지 (성별, 상태) --- */
     .badge {
-      padding: 2px 8px;
+      padding: 4px 10px;
       color: white;
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 12px;
       margin-right: 8px;
       display: inline-block;
+      font-weight: 500;
     }
-    .badge-male { background: #4D96FF; }
-    .badge-female { background: #FF6B9D; }
-    .badge-active { background: #4CAF50; }
-    .badge-cant-work { background: #FF9800; }
+    .badge-male { background: #3b82f6; }
+    .badge-female { background: #ec4899; }
+    .badge-active { background: #10b981; }
+    .badge-cant-work { background: #f59e0b; }
     
     /* --- 폼 그룹 --- */
     .form-group { margin-bottom: 16px; }
@@ -215,7 +225,9 @@
     .preferences-table th,
     .preferences-table td {
       padding: 12px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid #e8e8e8;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: box-shadow 0.2s;
     }
     .preferences-table th { background: #f5f5f5; font-weight: 600; }
     
@@ -268,7 +280,7 @@
     }
     
     .schedule-person {
-      background: #f9f9f9;
+      background: white;
       padding: 4px 8px;
       margin: 2px 0;
       border-radius: 4px;
@@ -813,47 +825,45 @@
     function renderRequirementsTab(t) {
       return `
         <div style="display:flex;justify-content:space-between;margin-bottom:24px;">
-          <h2 style="margin:0;font-size:24px;font-weight:600;">${t.requirements.title}</h2>
+          <h2 style="margin:0;font-size:24px;font-weight:600;">Kitchen Requirements</h2>
         </div>
 
         <table class="requirements-table">
           <thead>
             <tr>
-              <th rowspan="2" style="width:100px;">Day</th>
-              <th colspan="3">${t.requirements.lunch}</th>
-              <th rowspan="2" style="width:80px;">Lunch<br>Total</th>
-              <th colspan="2">${t.requirements.dinner}</th>
-              <th rowspan="2" style="width:80px;">Dinner<br>Total</th>
-              <th rowspan="2" style="width:80px;">All Day<br>Max</th>
-              <th rowspan="2" style="width:100px;">${t.requirements.holiday}</th>
-            </tr>
-            <tr>
-              <th>${t.requirements.open}</th>
-              <th>${t.requirements.eleven}</th>
-              <th>${t.requirements.elevenThirty}</th>
-              <th>${t.requirements.threeThirty}</th>
-              <th>${t.requirements.six}</th>
+              <th style="width:120px;">Day</th>
+              <th>8:00-11:00</th>
+              <th>11:00-3:30</th>
+              <th>11:00-5:00</th>
+              <th>3:30-Close</th>
+              <th>5:00-Close</th>
+              <th>6:00-Close</th>
+              <th style="width:100px;">Total</th>
+              <th style="width:100px;">Holiday</th>
             </tr>
           </thead>
           <tbody>
             ${DAYS.map(day => {
               const req = state.requirements[day];
-              const lunchTotal = (req.lunch.open || 0) + (req.lunch.eleven || 0) + (req.lunch.elevenThirty || 0);
-              const dinnerTotal = (req.dinner.threeThirty || 0) + (req.dinner.six || 0);
+              const total = (req['8:00-11:00'] || 0) + 
+                           (req['11:00-3:30'] || 0) + 
+                           (req['11:00-5:00'] || 0) + 
+                           (req['3:30-Close'] || 0) + 
+                           (req['5:00-Close'] || 0) + 
+                           (req['6:00-Close'] || 0);
               
               return `
                 <tr style="${req.isHoliday ? 'background:#FFF3E0;' : ''}">
-                  <td style="font-weight:600;">${t.days?.[day] || day}</td>
-                  <td><input type="number" min="0" value="${req.lunch.open}" onchange="updateRequirement('${day}', 'lunch', 'open', this.value)"></td>
-                  <td><input type="number" min="0" value="${req.lunch.eleven}" onchange="updateRequirement('${day}', 'lunch', 'eleven', this.value)"></td>
-                  <td><input type="number" min="0" value="${req.lunch.elevenThirty}" onchange="updateRequirement('${day}', 'lunch', 'elevenThirty', this.value)"></td>
-                  <td style="font-weight:700;background:#E8F5E9;color:#2E7D32;font-size:16px;">${lunchTotal}</td>
-                  <td><input type="number" min="0" value="${req.dinner.threeThirty}" onchange="updateRequirement('${day}', 'dinner', 'threeThirty', this.value)"></td>
-                  <td><input type="number" min="0" value="${req.dinner.six}" onchange="updateRequirement('${day}', 'dinner', 'six', this.value)"></td>
-                  <td style="font-weight:700;background:#E3F2FD;color:#1565C0;font-size:16px;">${dinnerTotal}</td>
-                  <td><input type="number" min="0" value="${req.allDayMax || 0}" onchange="updateAllDayMax('${day}', this.value)" style="width:60px;"></td>
+                  <td style="font-weight:600;">${day}</td>
+                  <td><input type="number" min="0" value="${req['8:00-11:00'] || 0}" onchange="updateKitchenRequirement('${day}', '8:00-11:00', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['11:00-3:30'] || 0}" onchange="updateKitchenRequirement('${day}', '11:00-3:30', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['11:00-5:00'] || 0}" onchange="updateKitchenRequirement('${day}', '11:00-5:00', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['3:30-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '3:30-Close', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['5:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '5:00-Close', this.value)"></td>
+                  <td><input type="number" min="0" value="${req['6:00-Close'] || 0}" onchange="updateKitchenRequirement('${day}', '6:00-Close', this.value)"></td>
+                  <td style="font-weight:700;background:#E8F5E9;color:#2E7D32;font-size:16px;">${total}</td>
                   <td>
-                    <input type="checkbox" ${req.isHoliday ? 'checked' : ''} onchange="toggleHoliday('${day}')" style="cursor:pointer;width:20px;height:20px;">
+                    <input type="checkbox" ${req.isHoliday ? 'checked' : ''} onchange="toggleKitchenHoliday('${day}')" style="cursor:pointer;width:20px;height:20px;">
                   </td>
                 </tr>
               `;
@@ -862,8 +872,7 @@
         </table>
 
         <div style="margin-top:20px;padding:16px;background:#E3F2FD;border-radius:8px;font-size:14px;">
-          💡 <strong>Holiday Mode:</strong> When checked, all available employees will be scheduled regardless of preferences to prevent shortages.<br>
-          <strong>Main Job employees</strong> will maintain their fixed schedule even on holidays.
+          💡 <strong>Tip:</strong> Set required number of staff for each time slot. Holiday mode schedules all available employees.
         </div>
       `;
     }
@@ -895,7 +904,7 @@
             <p style="color:#999;font-size:16px;">Select an employee to set preferences</p>
           </div>
         ` : `
-          <div style="padding:24px;background:white;border-radius:12px;border:2px solid #667eea;">
+          <div style="padding:24px;background:white;border-radius:12px;border:2px solid #7f1d1d;">
             <h3 style="margin:0 0 16px 0;">${selectedEmp.name}</h3>
             
             <table class="preferences-table">
@@ -1208,9 +1217,9 @@
           <div style="overflow-x:auto;max-height:calc(100vh - 200px);border:3px solid #333;border-radius:8px;">
             <table style="width:100%;border-collapse:collapse;background:white;font-size:13px;">
               <thead style="position:sticky;top:0;z-index:10;">
-                <tr style="background:#667eea;color:white;">
-                  <th style="padding:10px;border:2px solid #333;width:35px;position:sticky;left:0;background:#667eea;z-index:11;">#</th>
-                  <th style="padding:10px;border:2px solid #333;width:90px;position:sticky;left:35px;background:#667eea;z-index:11;">Name</th>
+                <tr style="background:#7f1d1d;color:white;">
+                  <th style="padding:10px;border:2px solid #333;width:35px;position:sticky;left:0;background:#7f1d1d;z-index:11;">#</th>
+                  <th style="padding:10px;border:2px solid #333;width:90px;position:sticky;left:35px;background:#7f1d1d;z-index:11;">Name</th>
                   ${DAYS.map(day => {
                     const dayT = TRANSLATIONS[state.language];
                     return `
@@ -2188,6 +2197,20 @@
 
     // --- Holiday 토글 ---
     window.toggleHoliday = (day) => {
+      state.requirements[day].isHoliday = !state.requirements[day].isHoliday;
+      saveRequirements();
+      render();
+    };
+
+    // --- Kitchen Requirement 업데이트 ---
+    window.updateKitchenRequirement = (day, shift, value) => {
+      state.requirements[day][shift] = parseInt(value) || 0;
+      saveRequirements();
+      render();
+    };
+
+    // --- Kitchen Holiday 토글 ---
+    window.toggleKitchenHoliday = (day) => {
       state.requirements[day].isHoliday = !state.requirements[day].isHoliday;
       saveRequirements();
       render();
