@@ -1064,39 +1064,14 @@
       `;
     }
 
-            <div style="margin-top:24px;padding:16px;background:#f9f9f9;border-radius:8px;">
-              <label style="display:block;margin-bottom:8px;font-weight:600;">
-                ${t.preferences.minGuarantee}:
-              </label>
-              <input type="number" min="0" id="min-guarantee" value="${empPrefs.minGuarantee || 0}" 
-                     style="width:100px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:15px;">
-              <div style="margin-top:8px;font-size:12px;color:#666;">
-                (Applies only to non-fixed shifts. Fixed shifts are always assigned.)
-              </div>
-            </div>
-
-            <button class="btn-primary" onclick="saveCurrentPreferences()" style="margin-top:24px;">
-              💾 ${t.preferences.savePreferences}
-            </button>
-
-            ${empPrefs.savedAt ? `
-              <div style="margin-top:12px;color:#4CAF50;font-size:14px;">
-                ✅ ${t.preferences.lastSaved}: ${new Date(empPrefs.savedAt).toLocaleString()}
-              </div>
-            ` : ''}
-          </div>
-        `}
-      `;
-    }
-
-    // --- Preference 색상 반환 ---
+    // --- Preference 색상 반환 (사용 안 함, 삭제 가능) ---
     function getPrefColor(value, period) {
       if (value === 0) return '#f5f5f5';
       if (period === 'morning') return value === 1 ? '#FFD93D' : '#6BCB77';
       return value === 1 ? '#4D96FF' : '#9D4EDD';
     }
 
-    // --- Preference 이모지 반환 ---
+    // --- Preference 이모지 반환 (사용 안 함, 삭제 가능) ---
     function getPrefEmoji(value, period) {
       if (value === 0) return '—';
       if (period === 'morning') return value === 1 ? '🟡' : '🟢';
