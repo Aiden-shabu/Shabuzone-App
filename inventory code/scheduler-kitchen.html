@@ -358,10 +358,17 @@
     // --- 요일 배열 ---
     const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     
-    // --- 시프트 종류 ---
+    // --- Kitchen 섹션 ---
+    const SECTIONS = ['Busser', 'Prep', 'Soup', 'Dish', 'Host', 'Manager'];
+    
+    // --- Kitchen 시프트 종류 ---
     const SHIFTS = {
-      morning: ['open', 'eleven', 'elevenThirty'],
-      evening: ['threeThirty', 'six']
+      '8:00-11:00': '8:00-11:00',
+      '11:00-3:30': '11:00-3:30',
+      '11:00-5:00': '11:00-5:00',
+      '3:30-Close': '3:30-Close',
+      '5:00-Close': '5:00-Close',
+      '6:00-Close': '6:00-Close'
     };
 
     // ============================================
@@ -630,9 +637,12 @@
       const reqs = {};
       DAYS.forEach(day => {
         reqs[day] = {
-          lunch: { open: 4, eleven: 2, elevenThirty: 3 },
-          dinner: { threeThirty: 8, six: 0 },
-          allDayMax: 0,
+          '8:00-11:00': 2,
+          '11:00-3:30': 3,
+          '11:00-5:00': 2,
+          '3:30-Close': 4,
+          '5:00-Close': 3,
+          '6:00-Close': 2,
           isHoliday: false
         };
       });
@@ -762,6 +772,16 @@
                         ${emp.status === 'cantWork' ? t.employees.cantWork : t.employees.active}
                       </span>
                     </div>
+                    ${emp.sections && emp.sections.length > 0 ? `
+                      <div style="font-size:11px;color:#666;margin-top:6px;">
+                        <strong>Sections:</strong> ${emp.sections.join(', ')}
+                      </div>
+                    ` : ''}
+                    ${emp.rate ? `
+                      <div style="font-size:11px;color:#666;margin-top:4px;">
+                        <strong>Rate:</strong> $${emp.rate}/hr
+                      </div>
+                    ` : ''}
                     ${emp.status === 'cantWork' && emp.cantWorkDetails ? `
                       <div style="font-size:12px;color:#666;margin-top:8px;padding:8px;background:white;border-radius:6px;">
                         <div><strong>${t.employees.reason}:</strong> ${emp.cantWorkDetails.reason || 'N/A'}</div>
@@ -1368,6 +1388,32 @@
                 </div>
               </div>
 
+              <div class="form-group">
+                <label>Sections (Check all that apply)</label>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px;background:#f8fafc;border-radius:8px;">
+                  ${SECTIONS.map(section => `
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px;">
+                      <input type="checkbox" 
+                             class="section-checkbox" 
+                             value="${section}" 
+                             ${state.editingEmployee?.sections?.includes(section) ? 'checked' : ''}
+                             style="width:18px;height:18px;cursor:pointer;">
+                      <span style="font-size:14px;">${section}</span>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Hourly Rate ($)</label>
+                <input type="number" 
+                       id="emp-rate" 
+                       step="0.01" 
+                       min="0" 
+                       value="${state.editingEmployee?.rate || ''}" 
+                       placeholder="15.00">
+              </div>
+
               <div id="cant-work-details" style="display:${currentStatus === 'cantWork' ? 'block' : 'none'};padding:16px;background:#FFF3E0;border-radius:8px;margin-bottom:16px;">
                 <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;">${t.employees.cantWorkDetails}</h4>
                 
@@ -1455,20 +1501,18 @@
           e.preventDefault();
           
           const status = document.getElementById('emp-status').value;
+          
+          // 섹션 체크박스 수집
+          const selectedSections = Array.from(document.querySelectorAll('.section-checkbox:checked'))
+            .map(cb => cb.value);
+          
           const empData = {
             id: state.editingEmployee?.id || Date.now(),
             name: document.getElementById('emp-name').value.trim(),
             gender: document.getElementById('emp-gender').value,
             status: status,
-            availableSections: {
-              'A-F': true,
-              'G+Room': true,
-              'H-L': true,
-              'Helper': false,
-              'MH': false,
-              'FR': false
-            },
-            conflictWith: []
+            sections: selectedSections,
+            rate: parseFloat(document.getElementById('emp-rate').value) || 0
           };
 
           if (status === 'cantWork') {
