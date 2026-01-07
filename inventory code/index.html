@@ -378,6 +378,122 @@
     .back-btn:hover {
       background: #f8fafc;
     }
+
+    /* User Management Styles */
+    .register-btn {
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      background: transparent;
+      border: 2px solid #7f1d1d;
+      border-radius: 12px;
+      color: #7f1d1d;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      width: 100%;
+      max-width: 300px;
+    }
+    .register-btn:hover {
+      background: #7f1d1d;
+      color: white;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    .form-label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #2c3e50;
+      font-size: 0.875rem;
+    }
+    .form-input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      background: white;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: #7f1d1d;
+    }
+    .checkbox-group {
+      margin-top: 1rem;
+      max-height: 300px;
+      overflow-y: auto;
+      background: #f8fafc;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+    }
+    .checkbox-item:hover {
+      background: #f1f5f9;
+    }
+    .checkbox-item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      margin-right: 0.75rem;
+      cursor: pointer;
+    }
+    .checkbox-item label {
+      flex: 1;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin: 0;
+    }
+    .user-list {
+      margin-top: 1.5rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .user-item {
+      background: #f8fafc;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .user-info {
+      flex: 1;
+    }
+    .user-name {
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 0.25rem;
+    }
+    .user-permissions {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .btn-delete {
+      padding: 0.5rem 1rem;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 6px;
+      color: #ef4444;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #7f1d1d;
+      margin-bottom: 1.5rem;
+    }
   </style>
 </head>
 <body>
@@ -707,6 +823,25 @@
       const [currentModule, setCurrentModule] = useState('');
       const [managementType, setManagementType] = useState(''); // 'server' or 'kitchen'
       
+      // 사용자 관리
+      const [currentUser, setCurrentUser] = useState(null);
+      const [isAdmin, setIsAdmin] = useState(false);
+      const [users, setUsers] = useState([]);
+      const [showRegisterModal, setShowRegisterModal] = useState(false);
+      const [showUserManagement, setShowUserManagement] = useState(false);
+      const [registerData, setRegisterData] = useState({
+        name: '',
+        password: '',
+        permissions: {
+          houston_inventory: false,
+          houston_server: false,
+          houston_kitchen: false,
+          seattle_inventory: false,
+          seattle_server: false,
+          seattle_kitchen: false
+        }
+      });
+      
       const [activeTab, setActiveTab] = useState('dashboard');
       const [language, setLanguage] = useState('ko');
       const [loading, setLoading] = useState(true);
@@ -824,6 +959,27 @@
         return () => window.removeEventListener('scroll', handleScroll);
       }, []);
 
+      // 사용자 데이터 로드
+      useEffect(() => {
+        loadUsers();
+      }, []);
+
+      async function loadUsers() {
+        try {
+          const usersSnap = await window.db.ref('users').once('value');
+          if (usersSnap.exists()) {
+            const usersData = usersSnap.val();
+            const usersList = Object.keys(usersData).map(key => ({
+              id: key,
+              ...usersData[key]
+            }));
+            setUsers(usersList);
+          }
+        } catch (error) {
+          console.error('Error loading users:', error);
+        }
+      }
+
       function scrollToTop() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -840,12 +996,84 @@
       }
       
       // 로그인 & 네비게이션 함수
-      function handleLogin(e) {
+      async function handleLogin(e) {
         e.preventDefault();
+        
+        // 관리자 로그인
         if (password === '0214') {
+          setIsAdmin(true);
+          setCurrentUser({ name: 'Admin', isAdmin: true });
           setScreen('location');
           setPassword('');
           setLoginError('');
+          return;
+        }
+        
+        // 일반 사용자 로그인
+        const user = users.find(u => u.password === password);
+        if (user) {
+          setIsAdmin(false);
+          setCurrentUser(user);
+          setPassword('');
+          setLoginError('');
+          
+          // 권한 확인 및 페이지 이동
+          const perms = user.permissions || {};
+          const availablePages = [];
+          
+          if (perms.houston_inventory) availablePages.push({ 
+            location: 'houston', 
+            module: 'inventory',
+            name: 'Houston - Inventory' 
+          });
+          if (perms.houston_server) availablePages.push({ 
+            location: 'houston', 
+            module: 'management', 
+            type: 'server',
+            name: 'Houston - Server' 
+          });
+          if (perms.houston_kitchen) availablePages.push({ 
+            location: 'houston', 
+            module: 'management', 
+            type: 'kitchen',
+            name: 'Houston - Kitchen' 
+          });
+          if (perms.seattle_inventory) availablePages.push({ 
+            location: 'seattle', 
+            module: 'inventory',
+            name: 'Seattle - Inventory' 
+          });
+          if (perms.seattle_server) availablePages.push({ 
+            location: 'seattle', 
+            module: 'management', 
+            type: 'server',
+            name: 'Seattle - Server' 
+          });
+          if (perms.seattle_kitchen) availablePages.push({ 
+            location: 'seattle', 
+            module: 'management', 
+            type: 'kitchen',
+            name: 'Seattle - Kitchen' 
+          });
+          
+          if (availablePages.length === 0) {
+            setLoginError('접근 권한이 없습니다. 관리자에게 문의하세요.');
+            setCurrentUser(null);
+          } else if (availablePages.length === 1) {
+            // 권한이 1개만 있으면 자동 이동
+            const page = availablePages[0];
+            setCurrentLocation(page.location);
+            if (page.module === 'inventory') {
+              setScreen('inventory');
+              setActiveTab('dashboard');
+            } else {
+              setManagementType(page.type);
+              setScreen('management');
+            }
+          } else {
+            // 여러 권한이 있으면 선택 화면
+            setScreen('user-page-select');
+          }
         } else {
           setLoginError('비밀번호가 올바르지 않습니다');
         }
@@ -886,6 +1114,106 @@
           setCurrentLocation('');
         } else if (screen === 'location') {
           setScreen('login');
+        }
+      }
+      
+      // 사용자 등록
+      async function handleRegister() {
+        if (!registerData.name || !registerData.password) {
+          alert('이름과 비밀번호를 입력해주세요');
+          return;
+        }
+        
+        const hasAnyPermission = Object.values(registerData.permissions).some(v => v);
+        if (!hasAnyPermission) {
+          alert('최소 하나 이상의 권한을 선택해주세요');
+          return;
+        }
+        
+        try {
+          const newUserId = Date.now().toString();
+          await window.db.ref(`users/${newUserId}`).set({
+            name: registerData.name,
+            password: registerData.password,
+            permissions: registerData.permissions,
+            createdAt: new Date().toISOString()
+          });
+          
+          alert('사용자가 등록되었습니다');
+          setShowRegisterModal(false);
+          setRegisterData({
+            name: '',
+            password: '',
+            permissions: {
+              houston_inventory: false,
+              houston_server: false,
+              houston_kitchen: false,
+              seattle_inventory: false,
+              seattle_server: false,
+              seattle_kitchen: false
+            }
+          });
+          loadUsers();
+        } catch (error) {
+          console.error('Error registering user:', error);
+          alert('사용자 등록 중 오류가 발생했습니다');
+        }
+      }
+
+      // 사용자 삭제
+      async function handleDeleteUser(userId) {
+        if (!confirm('이 사용자를 삭제하시겠습니까?')) return;
+        
+        try {
+          await window.db.ref(`users/${userId}`).remove();
+          alert('사용자가 삭제되었습니다');
+          loadUsers();
+        } catch (error) {
+          console.error('Error deleting user:', error);
+          alert('사용자 삭제 중 오류가 발생했습니다');
+        }
+      }
+
+      // 권한 업데이트
+      function updatePermission(permKey, value) {
+        setRegisterData({
+          ...registerData,
+          permissions: {
+            ...registerData.permissions,
+            [permKey]: value
+          }
+        });
+      }
+
+      // 권한 라벨 가져오기
+      function getPermissionLabel(permKey) {
+        const labels = {
+          houston_inventory: 'Houston - Inventory',
+          houston_server: 'Houston - Server Management',
+          houston_kitchen: 'Houston - Kitchen Management',
+          seattle_inventory: 'Seattle - Inventory',
+          seattle_server: 'Seattle - Server Management',
+          seattle_kitchen: 'Seattle - Kitchen Management'
+        };
+        return labels[permKey] || permKey;
+      }
+
+      // 사용자 권한 문자열
+      function getUserPermissions(user) {
+        const perms = user.permissions || {};
+        const activePerms = Object.keys(perms).filter(key => perms[key]).map(getPermissionLabel);
+        return activePerms.join(', ') || '권한 없음';
+      }
+
+      // 페이지 선택 화면으로 이동
+      function selectUserPage(page) {
+        setCurrentLocation(page.location);
+        if (page.module === 'inventory') {
+          setScreen('inventory');
+          setActiveTab('dashboard');
+        } else {
+          setManagementType(page.type);
+          setScreen('management');
         }
       }
 
@@ -1521,7 +1849,224 @@
               autoFocus: true
             }),
             loginError && h('div', { key: 'error', className: 'login-error' }, loginError)
-          ])
+          ]),
+          h('button', {
+            key: 'register',
+            type: 'button',
+            className: 'register-btn',
+            onClick: () => setShowRegisterModal(true)
+          }, '사용자 등록 (Register)'),
+          h('button', {
+            key: 'manage',
+            type: 'button',
+            className: 'register-btn',
+            onClick: () => setShowUserManagement(true)
+          }, '사용자 관리 (Manage Users)'),
+          
+          // 등록 모달
+          showRegisterModal && h('div', { 
+            key: 'register-modal',
+            className: 'modal',
+            onClick: () => setShowRegisterModal(false)
+          }, 
+            h('div', { 
+              className: 'modal-content',
+              onClick: (e) => e.stopPropagation()
+            }, [
+              h('h2', { key: 'title', className: 'modal-title' }, '사용자 등록'),
+              
+              h('div', { key: 'name-group', className: 'form-group' }, [
+                h('label', { key: 'label', className: 'form-label' }, '이름'),
+                h('input', {
+                  key: 'input',
+                  type: 'text',
+                  className: 'form-input',
+                  placeholder: '사용자 이름',
+                  value: registerData.name,
+                  onChange: (e) => setRegisterData({ ...registerData, name: e.target.value })
+                })
+              ]),
+              
+              h('div', { key: 'password-group', className: 'form-group' }, [
+                h('label', { key: 'label', className: 'form-label' }, '비밀번호'),
+                h('input', {
+                  key: 'input',
+                  type: 'text',
+                  className: 'form-input',
+                  placeholder: '비밀번호',
+                  value: registerData.password,
+                  onChange: (e) => setRegisterData({ ...registerData, password: e.target.value })
+                })
+              ]),
+              
+              h('div', { key: 'permissions-group', className: 'form-group' }, [
+                h('label', { key: 'label', className: 'form-label' }, '접근 권한'),
+                h('div', { key: 'checkboxes', className: 'checkbox-group' },
+                  Object.keys(registerData.permissions).map(permKey =>
+                    h('div', { key: permKey, className: 'checkbox-item' }, [
+                      h('input', {
+                        key: 'checkbox',
+                        type: 'checkbox',
+                        id: permKey,
+                        checked: registerData.permissions[permKey],
+                        onChange: (e) => updatePermission(permKey, e.target.checked)
+                      }),
+                      h('label', { 
+                        key: 'label',
+                        htmlFor: permKey
+                      }, getPermissionLabel(permKey))
+                    ])
+                  )
+                )
+              ]),
+              
+              h('div', { key: 'buttons', style: { display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}, [
+                h('button', {
+                  key: 'cancel',
+                  className: 'btn btn-secondary',
+                  onClick: () => setShowRegisterModal(false)
+                }, '취소'),
+                h('button', {
+                  key: 'submit',
+                  className: 'btn',
+                  onClick: handleRegister
+                }, '등록')
+              ])
+            ])
+          ),
+          
+          // 사용자 관리 모달
+          showUserManagement && h('div', { 
+            key: 'user-management-modal',
+            className: 'modal',
+            onClick: () => setShowUserManagement(false)
+          }, 
+            h('div', { 
+              className: 'modal-content',
+              onClick: (e) => e.stopPropagation()
+            }, [
+              h('h2', { key: 'title', className: 'modal-title' }, '사용자 관리'),
+              
+              h('div', { key: 'user-list', className: 'user-list' },
+                users.length === 0 
+                  ? h('p', { style: { textAlign: 'center', color: '#64748b', padding: '2rem' } }, '등록된 사용자가 없습니다')
+                  : users.map(user =>
+                      h('div', { key: user.id, className: 'user-item' }, [
+                        h('div', { key: 'info', className: 'user-info' }, [
+                          h('div', { key: 'name', className: 'user-name' }, user.name),
+                          h('div', { key: 'perms', className: 'user-permissions' }, getUserPermissions(user))
+                        ]),
+                        h('button', {
+                          key: 'delete',
+                          className: 'btn-delete',
+                          onClick: () => handleDeleteUser(user.id)
+                        }, '삭제')
+                      ])
+                    )
+              ),
+              
+              h('button', {
+                key: 'close',
+                className: 'btn btn-secondary',
+                style: { marginTop: '1.5rem', width: '100%' },
+                onClick: () => setShowUserManagement(false)
+              }, '닫기')
+            ])
+          )
+        ]);
+      }
+
+      // 사용자 페이지 선택 화면
+      if (screen === 'user-page-select' && currentUser && !isAdmin) {
+        const perms = currentUser.permissions || {};
+        const availablePages = [];
+        
+        if (perms.houston_inventory) availablePages.push({ 
+          location: 'houston', 
+          module: 'inventory',
+          icon: '📦',
+          name: 'Houston - Inventory',
+          desc: '휴스턴 재고 관리'
+        });
+        if (perms.houston_server) availablePages.push({ 
+          location: 'houston', 
+          module: 'management', 
+          type: 'server',
+          icon: '👔',
+          name: 'Houston - Server',
+          desc: '휴스턴 서버 관리'
+        });
+        if (perms.houston_kitchen) availablePages.push({ 
+          location: 'houston', 
+          module: 'management', 
+          type: 'kitchen',
+          icon: '👨‍🍳',
+          name: 'Houston - Kitchen',
+          desc: '휴스턴 주방 관리'
+        });
+        if (perms.seattle_inventory) availablePages.push({ 
+          location: 'seattle', 
+          module: 'inventory',
+          icon: '📦',
+          name: 'Seattle - Inventory',
+          desc: '시애틀 재고 관리'
+        });
+        if (perms.seattle_server) availablePages.push({ 
+          location: 'seattle', 
+          module: 'management', 
+          type: 'server',
+          icon: '👔',
+          name: 'Seattle - Server',
+          desc: '시애틀 서버 관리'
+        });
+        if (perms.seattle_kitchen) availablePages.push({ 
+          location: 'seattle', 
+          module: 'management', 
+          type: 'kitchen',
+          icon: '👨‍🍳',
+          name: 'Seattle - Kitchen',
+          desc: '시애틀 주방 관리'
+        });
+        
+        return h('div', { className: 'screen-container' }, [
+          h('div', { key: 'header', className: 'screen-header' }, [
+            h('img', { 
+              key: 'logo',
+              src: LOGO_DATA,
+              alt: 'Shabu Zone',
+              style: {
+                width: '80px',
+                height: '80px',
+                objectFit: 'contain',
+                marginBottom: '1rem'
+              }
+            }),
+            h('h1', { key: 'title', className: 'screen-title' }, 'Welcome, ' + currentUser.name),
+            h('p', { key: 'subtitle', className: 'screen-subtitle' }, '페이지를 선택하세요')
+          ]),
+          h('div', { key: 'grid', className: 'selection-grid' }, 
+            availablePages.map((page, idx) => 
+              h('div', { 
+                key: idx, 
+                className: 'selection-card', 
+                onClick: () => selectUserPage(page) 
+              }, [
+                h('div', { key: 'icon', className: 'selection-icon' }, page.icon),
+                h('div', { key: 'name', className: 'selection-name' }, page.name),
+                h('div', { key: 'desc', className: 'selection-desc' }, page.desc)
+              ])
+            )
+          ),
+          h('button', {
+            key: 'logout',
+            className: 'btn btn-secondary',
+            onClick: () => {
+              setCurrentUser(null);
+              setIsAdmin(false);
+              setScreen('login');
+            },
+            style: { maxWidth: '300px', margin: '2rem auto 0', width: '100%' }
+          }, '로그아웃')
         ]);
       }
       // 지점 선택 화면
