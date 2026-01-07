@@ -829,9 +829,13 @@
       const [users, setUsers] = useState([]);
       const [showRegisterModal, setShowRegisterModal] = useState(false);
       const [showUserManagement, setShowUserManagement] = useState(false);
+      const [locations, setLocations] = useState(['houston', 'seattle']);
+      const [showAddLocation, setShowAddLocation] = useState(false);
+      const [newLocationName, setNewLocationName] = useState('');
       const [registerData, setRegisterData] = useState({
         name: '',
         password: '',
+        isAdmin: false,
         permissions: {
           houston_inventory: false,
           houston_server: false,
@@ -980,6 +984,25 @@
         }
       }
 
+      // 지점 데이터 로드
+      useEffect(() => {
+        loadLocations();
+      }, []);
+
+      async function loadLocations() {
+        try {
+          const locationsSnap = await window.db.ref('locations').once('value');
+          if (locationsSnap.exists()) {
+            setLocations(locationsSnap.val());
+          } else {
+            // 기본 지점 저장
+            await window.db.ref('locations').set(['houston', 'seattle']);
+          }
+        } catch (error) {
+          console.error('Error loading locations:', error);
+        }
+      }
+
       function scrollToTop() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -1012,6 +1035,16 @@
         // 일반 사용자 로그인
         const user = users.find(u => u.password === password);
         if (user) {
+          // 사용자가 관리자인지 확인
+          if (user.isAdmin) {
+            setIsAdmin(true);
+            setCurrentUser(user);
+            setScreen('location');
+            setPassword('');
+            setLoginError('');
+            return;
+          }
+          
           setIsAdmin(false);
           setCurrentUser(user);
           setPassword('');
@@ -1021,39 +1054,31 @@
           const perms = user.permissions || {};
           const availablePages = [];
           
-          if (perms.houston_inventory) availablePages.push({ 
-            location: 'houston', 
-            module: 'inventory',
-            name: 'Houston - Inventory' 
-          });
-          if (perms.houston_server) availablePages.push({ 
-            location: 'houston', 
-            module: 'management', 
-            type: 'server',
-            name: 'Houston - Server' 
-          });
-          if (perms.houston_kitchen) availablePages.push({ 
-            location: 'houston', 
-            module: 'management', 
-            type: 'kitchen',
-            name: 'Houston - Kitchen' 
-          });
-          if (perms.seattle_inventory) availablePages.push({ 
-            location: 'seattle', 
-            module: 'inventory',
-            name: 'Seattle - Inventory' 
-          });
-          if (perms.seattle_server) availablePages.push({ 
-            location: 'seattle', 
-            module: 'management', 
-            type: 'server',
-            name: 'Seattle - Server' 
-          });
-          if (perms.seattle_kitchen) availablePages.push({ 
-            location: 'seattle', 
-            module: 'management', 
-            type: 'kitchen',
-            name: 'Seattle - Kitchen' 
+          // 동적으로 사용 가능한 페이지 생성
+          locations.forEach(location => {
+            if (perms[`${location}_inventory`]) {
+              availablePages.push({ 
+                location, 
+                module: 'inventory',
+                name: `${formatLocationName(location)} - Inventory` 
+              });
+            }
+            if (perms[`${location}_server`]) {
+              availablePages.push({ 
+                location, 
+                module: 'management', 
+                type: 'server',
+                name: `${formatLocationName(location)} - Server` 
+              });
+            }
+            if (perms[`${location}_kitchen`]) {
+              availablePages.push({ 
+                location, 
+                module: 'management', 
+                type: 'kitchen',
+                name: `${formatLocationName(location)} - Kitchen` 
+              });
+            }
           });
           
           if (availablePages.length === 0) {
@@ -1128,10 +1153,13 @@
           return;
         }
         
-        const hasAnyPermission = Object.values(registerData.permissions).some(v => v);
-        if (!hasAnyPermission) {
-          alert('최소 하나 이상의 권한을 선택해주세요');
-          return;
+        // 관리자가 아니면 권한 필요
+        if (!registerData.isAdmin) {
+          const hasAnyPermission = Object.values(registerData.permissions).some(v => v);
+          if (!hasAnyPermission) {
+            alert('최소 하나 이상의 권한을 선택하거나 관리자 권한을 부여하세요');
+            return;
+          }
         }
         
         try {
@@ -1139,6 +1167,7 @@
           await window.db.ref(`users/${newUserId}`).set({
             name: registerData.name,
             password: registerData.password,
+            isAdmin: registerData.isAdmin || false,
             permissions: registerData.permissions,
             createdAt: new Date().toISOString()
           });
@@ -1148,14 +1177,8 @@
           setRegisterData({
             name: '',
             password: '',
-            permissions: {
-              houston_inventory: false,
-              houston_server: false,
-              houston_kitchen: false,
-              seattle_inventory: false,
-              seattle_server: false,
-              seattle_kitchen: false
-            }
+            isAdmin: false,
+            permissions: {}
           });
           loadUsers();
         } catch (error) {
@@ -1191,19 +1214,26 @@
 
       // 권한 라벨 가져오기
       function getPermissionLabel(permKey) {
-        const labels = {
-          houston_inventory: 'Houston - Inventory',
-          houston_server: 'Houston - Server Management',
-          houston_kitchen: 'Houston - Kitchen Management',
-          seattle_inventory: 'Seattle - Inventory',
-          seattle_server: 'Seattle - Server Management',
-          seattle_kitchen: 'Seattle - Kitchen Management'
+        const parts = permKey.split('_');
+        if (parts.length < 2) return permKey;
+        
+        const location = formatLocationName(parts[0]);
+        const type = parts[1];
+        
+        const typeLabels = {
+          inventory: 'Inventory',
+          server: 'Server Management',
+          kitchen: 'Kitchen Management'
         };
-        return labels[permKey] || permKey;
+        
+        return `${location} - ${typeLabels[type] || type}`;
       }
 
       // 사용자 권한 문자열
       function getUserPermissions(user) {
+        if (user.isAdmin) {
+          return '🔑 관리자 (모든 권한)';
+        }
         const perms = user.permissions || {};
         const activePerms = Object.keys(perms).filter(key => perms[key]).map(getPermissionLabel);
         return activePerms.join(', ') || '권한 없음';
@@ -1219,6 +1249,86 @@
           setManagementType(page.type);
           setScreen('management');
         }
+      }
+
+      // 지점 추가
+      async function addLocation() {
+        const locationName = newLocationName.trim().toLowerCase();
+        if (!locationName) {
+          alert('지점 이름을 입력하세요');
+          return;
+        }
+        if (locations.includes(locationName)) {
+          alert('이미 존재하는 지점입니다');
+          return;
+        }
+        
+        try {
+          const updatedLocations = [...locations, locationName];
+          await window.db.ref('locations').set(updatedLocations);
+          setLocations(updatedLocations);
+          setNewLocationName('');
+          setShowAddLocation(false);
+          alert('지점이 추가되었습니다');
+        } catch (error) {
+          console.error('Error adding location:', error);
+          alert('지점 추가 중 오류가 발생했습니다');
+        }
+      }
+
+      // 지점 삭제
+      async function deleteLocation(locationName) {
+        if (locationName === 'houston' || locationName === 'seattle') {
+          alert('기본 지점은 삭제할 수 없습니다');
+          return;
+        }
+        
+        if (!confirm(`${locationName} 지점을 삭제하시겠습니까?\n\n관련된 모든 데이터가 삭제됩니다.`)) {
+          return;
+        }
+        
+        try {
+          // 지점 데이터 삭제
+          await window.db.ref(locationName).remove();
+          
+          // 지점 목록에서 제거
+          const updatedLocations = locations.filter(loc => loc !== locationName);
+          await window.db.ref('locations').set(updatedLocations);
+          setLocations(updatedLocations);
+          
+          // 사용자 권한에서 해당 지점 제거
+          const usersData = {};
+          users.forEach(user => {
+            const updatedPerms = { ...user.permissions };
+            delete updatedPerms[`${locationName}_inventory`];
+            delete updatedPerms[`${locationName}_server`];
+            delete updatedPerms[`${locationName}_kitchen`];
+            usersData[user.id] = { ...user, permissions: updatedPerms };
+            delete usersData[user.id].id;
+          });
+          await window.db.ref('users').set(usersData);
+          
+          alert('지점이 삭제되었습니다');
+          loadUsers();
+        } catch (error) {
+          console.error('Error deleting location:', error);
+          alert('지점 삭제 중 오류가 발생했습니다');
+        }
+      }
+
+      // 지점명 포맷팅
+      function formatLocationName(location) {
+        return location.charAt(0).toUpperCase() + location.slice(1);
+      }
+
+      // 지점 아이콘
+      function getLocationIcon(location) {
+        const icons = {
+          houston: '🌆',
+          seattle: '🌲',
+          default: '📍'
+        };
+        return icons[location] || icons.default;
       }
 
       async function loadData() {
@@ -1934,24 +2044,85 @@
                 })
               ]),
               
-              h('div', { key: 'permissions-group', className: 'form-group' }, [
-                h('label', { key: 'label', className: 'form-label' }, '접근 권한'),
+              h('div', { key: 'admin-group', className: 'form-group' }, [
+                h('div', { 
+                  key: 'admin-checkbox', 
+                  className: 'checkbox-item',
+                  style: { 
+                    background: 'rgba(127, 29, 29, 0.05)', 
+                    border: '2px solid rgba(127, 29, 29, 0.2)',
+                    padding: '1rem'
+                  }
+                }, [
+                  h('input', {
+                    key: 'checkbox',
+                    type: 'checkbox',
+                    id: 'isAdmin',
+                    checked: registerData.isAdmin,
+                    onChange: (e) => setRegisterData({ ...registerData, isAdmin: e.target.checked })
+                  }),
+                  h('label', { 
+                    key: 'label',
+                    htmlFor: 'isAdmin',
+                    style: { fontWeight: '700', color: '#7f1d1d' }
+                  }, '🔑 관리자 권한 (모든 지점/기능 접근 가능)')
+                ])
+              ]),
+              
+              !registerData.isAdmin && h('div', { key: 'permissions-group', className: 'form-group' }, [
+                h('label', { key: 'label', className: 'form-label' }, '접근 권한 (일반 사용자)'),
                 h('div', { key: 'checkboxes', className: 'checkbox-group' },
-                  Object.keys(registerData.permissions).map(permKey =>
-                    h('div', { key: permKey, className: 'checkbox-item' }, [
+                  locations.flatMap(location => [
+                    h('div', { 
+                      key: `${location}-header`, 
+                      style: { 
+                        fontWeight: '700', 
+                        padding: '0.5rem 0.75rem',
+                        background: 'rgba(127, 29, 29, 0.05)',
+                        marginTop: '0.5rem',
+                        borderRadius: '6px'
+                      }
+                    }, getLocationIcon(location) + ' ' + formatLocationName(location)),
+                    h('div', { key: `${location}_inventory`, className: 'checkbox-item' }, [
                       h('input', {
                         key: 'checkbox',
                         type: 'checkbox',
-                        id: permKey,
-                        checked: registerData.permissions[permKey],
-                        onChange: (e) => updatePermission(permKey, e.target.checked)
+                        id: `${location}_inventory`,
+                        checked: registerData.permissions[`${location}_inventory`] || false,
+                        onChange: (e) => updatePermission(`${location}_inventory`, e.target.checked)
                       }),
                       h('label', { 
                         key: 'label',
-                        htmlFor: permKey
-                      }, getPermissionLabel(permKey))
+                        htmlFor: `${location}_inventory`
+                      }, '📦 Inventory (재고 관리)')
+                    ]),
+                    h('div', { key: `${location}_server`, className: 'checkbox-item' }, [
+                      h('input', {
+                        key: 'checkbox',
+                        type: 'checkbox',
+                        id: `${location}_server`,
+                        checked: registerData.permissions[`${location}_server`] || false,
+                        onChange: (e) => updatePermission(`${location}_server`, e.target.checked)
+                      }),
+                      h('label', { 
+                        key: 'label',
+                        htmlFor: `${location}_server`
+                      }, '👔 Server Management (서버 관리)')
+                    ]),
+                    h('div', { key: `${location}_kitchen`, className: 'checkbox-item' }, [
+                      h('input', {
+                        key: 'checkbox',
+                        type: 'checkbox',
+                        id: `${location}_kitchen`,
+                        checked: registerData.permissions[`${location}_kitchen`] || false,
+                        onChange: (e) => updatePermission(`${location}_kitchen`, e.target.checked)
+                      }),
+                      h('label', { 
+                        key: 'label',
+                        htmlFor: `${location}_kitchen`
+                      }, '👨‍🍳 Kitchen Management (주방 관리)')
                     ])
-                  )
+                  ])
                 )
               ]),
               
@@ -2016,51 +2187,39 @@
         const perms = currentUser.permissions || {};
         const availablePages = [];
         
-        if (perms.houston_inventory) availablePages.push({ 
-          location: 'houston', 
-          module: 'inventory',
-          icon: '📦',
-          name: 'Houston - Inventory',
-          desc: '휴스턴 재고 관리'
-        });
-        if (perms.houston_server) availablePages.push({ 
-          location: 'houston', 
-          module: 'management', 
-          type: 'server',
-          icon: '👔',
-          name: 'Houston - Server',
-          desc: '휴스턴 서버 관리'
-        });
-        if (perms.houston_kitchen) availablePages.push({ 
-          location: 'houston', 
-          module: 'management', 
-          type: 'kitchen',
-          icon: '👨‍🍳',
-          name: 'Houston - Kitchen',
-          desc: '휴스턴 주방 관리'
-        });
-        if (perms.seattle_inventory) availablePages.push({ 
-          location: 'seattle', 
-          module: 'inventory',
-          icon: '📦',
-          name: 'Seattle - Inventory',
-          desc: '시애틀 재고 관리'
-        });
-        if (perms.seattle_server) availablePages.push({ 
-          location: 'seattle', 
-          module: 'management', 
-          type: 'server',
-          icon: '👔',
-          name: 'Seattle - Server',
-          desc: '시애틀 서버 관리'
-        });
-        if (perms.seattle_kitchen) availablePages.push({ 
-          location: 'seattle', 
-          module: 'management', 
-          type: 'kitchen',
-          icon: '👨‍🍳',
-          name: 'Seattle - Kitchen',
-          desc: '시애틀 주방 관리'
+        // 동적으로 사용 가능한 페이지 생성
+        locations.forEach(location => {
+          const locationName = formatLocationName(location);
+          
+          if (perms[`${location}_inventory`]) {
+            availablePages.push({ 
+              location, 
+              module: 'inventory',
+              icon: '📦',
+              name: `${locationName} - Inventory`,
+              desc: `${locationName} 재고 관리`
+            });
+          }
+          if (perms[`${location}_server`]) {
+            availablePages.push({ 
+              location, 
+              module: 'management', 
+              type: 'server',
+              icon: '👔',
+              name: `${locationName} - Server`,
+              desc: `${locationName} 서버 관리`
+            });
+          }
+          if (perms[`${location}_kitchen`]) {
+            availablePages.push({ 
+              location, 
+              module: 'management', 
+              type: 'kitchen',
+              icon: '👨‍🍳',
+              name: `${locationName} - Kitchen`,
+              desc: `${locationName} 주방 관리`
+            });
+          }
         });
         
         return h('div', { className: 'screen-container' }, [
@@ -2123,22 +2282,98 @@
             h('p', { key: 'subtitle', className: 'screen-subtitle' }, '지점을 선택하세요')
           ]),
           h('div', { key: 'grid', className: 'selection-grid' }, [
-            h('div', { key: 'houston', className: 'selection-card', onClick: () => selectLocation('houston') }, [
-              h('div', { key: 'icon', className: 'selection-icon' }, '🌆'),
-              h('div', { key: 'name', className: 'selection-name' }, 'Houston'),
-              h('div', { key: 'desc', className: 'selection-desc' }, 'Texas Location')
+            // 동적 지점 표시
+            ...locations.map(location => 
+              h('div', { 
+                key: location, 
+                className: 'selection-card', 
+                style: { position: 'relative' },
+                onClick: () => selectLocation(location) 
+              }, [
+                h('div', { key: 'icon', className: 'selection-icon' }, getLocationIcon(location)),
+                h('div', { key: 'name', className: 'selection-name' }, formatLocationName(location)),
+                h('div', { key: 'desc', className: 'selection-desc' }, formatLocationName(location) + ' Location'),
+                // 기본 지점이 아니면 삭제 버튼 표시
+                (location !== 'houston' && location !== 'seattle') && h('button', {
+                  key: 'delete',
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    deleteLocation(location);
+                  },
+                  style: {
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '6px',
+                    color: '#ef4444',
+                    padding: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '1rem'
+                  }
+                }, '🗑️')
+              ])
+            ),
+            // 지점 추가 버튼
+            h('div', { 
+              key: 'add-location', 
+              className: 'selection-card', 
+              onClick: () => setShowAddLocation(true),
+              style: { border: '2px dashed #e2e8f0' }
+            }, [
+              h('div', { key: 'icon', className: 'selection-icon' }, '➕'),
+              h('div', { key: 'name', className: 'selection-name' }, '지점 추가'),
+              h('div', { key: 'desc', className: 'selection-desc' }, 'Add New Location')
             ]),
-            h('div', { key: 'seattle', className: 'selection-card', onClick: () => selectLocation('seattle') }, [
-              h('div', { key: 'icon', className: 'selection-icon' }, '🌲'),
-              h('div', { key: 'name', className: 'selection-name' }, 'Seattle'),
-              h('div', { key: 'desc', className: 'selection-desc' }, 'Washington Location')
-            ]),
+            // 사용자 관리
             h('div', { key: 'user-management', className: 'selection-card', onClick: () => setScreen('admin-user-management'), style: { gridColumn: '1 / -1' }}, [
               h('div', { key: 'icon', className: 'selection-icon' }, '⚙️'),
               h('div', { key: 'name', className: 'selection-name' }, '사용자 관리'),
               h('div', { key: 'desc', className: 'selection-desc' }, 'User Management (Admin Only)')
             ])
-          ])
+          ]),
+          
+          // 지점 추가 모달
+          showAddLocation && h('div', { 
+            key: 'add-location-modal',
+            className: 'modal',
+            onClick: () => setShowAddLocation(false)
+          }, 
+            h('div', { 
+              className: 'modal-content',
+              onClick: (e) => e.stopPropagation()
+            }, [
+              h('h2', { key: 'title', className: 'modal-title' }, '새 지점 추가'),
+              h('div', { key: 'form', className: 'form-group' }, [
+                h('label', { key: 'label', className: 'form-label' }, '지점 이름 (영문 소문자)'),
+                h('input', {
+                  key: 'input',
+                  type: 'text',
+                  className: 'form-input',
+                  placeholder: 'ex) dallas, austin, miami',
+                  value: newLocationName,
+                  onChange: (e) => setNewLocationName(e.target.value.toLowerCase()),
+                  onKeyPress: (e) => e.key === 'Enter' && addLocation()
+                })
+              ]),
+              h('div', { key: 'buttons', style: { display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}, [
+                h('button', {
+                  key: 'cancel',
+                  className: 'btn btn-secondary',
+                  onClick: () => {
+                    setShowAddLocation(false);
+                    setNewLocationName('');
+                  }
+                }, '취소'),
+                h('button', {
+                  key: 'add',
+                  className: 'btn',
+                  onClick: addLocation
+                }, '추가')
+              ])
+            ])
+          )
         ]);
       }
       
