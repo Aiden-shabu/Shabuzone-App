@@ -1112,8 +1112,12 @@
         } else if (screen === 'menu') {
           setScreen('location');
           setCurrentLocation('');
+        } else if (screen === 'admin-user-management') {
+          setScreen('location');
         } else if (screen === 'location') {
           setScreen('login');
+          setCurrentUser(null);
+          setIsAdmin(false);
         }
       }
       
@@ -1849,19 +1853,50 @@
               autoFocus: true
             }),
             loginError && h('div', { key: 'error', className: 'login-error' }, loginError)
+          ])
+        ]);
+      }
+      
+      // 관리자 전용 - 사용자 관리 화면
+      if (screen === 'admin-user-management') {
+        return h('div', { className: 'screen-container' }, [
+          h('div', { key: 'header', className: 'screen-header' }, [
+            h('img', { 
+              key: 'logo',
+              src: LOGO_DATA,
+              alt: 'Shabu Zone',
+              style: {
+                width: '80px',
+                height: '80px',
+                objectFit: 'contain',
+                marginBottom: '1rem'
+              }
+            }),
+            h('h1', { key: 'title', className: 'screen-title' }, '사용자 관리'),
+            h('p', { key: 'subtitle', className: 'screen-subtitle' }, 'User Management (Admin Only)')
           ]),
+          
+          h('div', { key: 'buttons', style: { maxWidth: '600px', margin: '0 auto 2rem', display: 'grid', gap: '1rem' }}, [
+            h('button', {
+              key: 'register',
+              className: 'btn',
+              onClick: () => setShowRegisterModal(true),
+              style: { padding: '1.5rem' }
+            }, '➕ 새 사용자 등록'),
+            h('button', {
+              key: 'manage',
+              className: 'btn',
+              onClick: () => setShowUserManagement(true),
+              style: { padding: '1.5rem' }
+            }, '👥 사용자 목록 관리')
+          ]),
+          
           h('button', {
-            key: 'register',
-            type: 'button',
-            className: 'register-btn',
-            onClick: () => setShowRegisterModal(true)
-          }, '사용자 등록 (Register)'),
-          h('button', {
-            key: 'manage',
-            type: 'button',
-            className: 'register-btn',
-            onClick: () => setShowUserManagement(true)
-          }, '사용자 관리 (Manage Users)'),
+            key: 'back',
+            className: 'btn btn-secondary',
+            onClick: () => setScreen('location'),
+            style: { maxWidth: '300px', margin: '0 auto', width: '100%' }
+          }, '← 뒤로가기'),
           
           // 등록 모달
           showRegisterModal && h('div', { 
@@ -2097,6 +2132,11 @@
               h('div', { key: 'icon', className: 'selection-icon' }, '🌲'),
               h('div', { key: 'name', className: 'selection-name' }, 'Seattle'),
               h('div', { key: 'desc', className: 'selection-desc' }, 'Washington Location')
+            ]),
+            h('div', { key: 'user-management', className: 'selection-card', onClick: () => setScreen('admin-user-management'), style: { gridColumn: '1 / -1' }}, [
+              h('div', { key: 'icon', className: 'selection-icon' }, '⚙️'),
+              h('div', { key: 'name', className: 'selection-name' }, '사용자 관리'),
+              h('div', { key: 'desc', className: 'selection-desc' }, 'User Management (Admin Only)')
             ])
           ])
         ]);
