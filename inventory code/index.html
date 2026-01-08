@@ -1455,11 +1455,11 @@
       }
 
       async function generateShoppingList() {
-        const list = items.map(item => ({
+        const list = Array.isArray(items) ? items.map(item => ({
           ...item,
           shortage: Math.max(0, item.par - item.current_inventory),
           selected_vendor: item.vendor
-        })).filter(item => item.shortage > 0);
+        })).filter(item => item.shortage > 0) : [];
         setShoppingList(list);
         setShoppingStep('edit');
         await window.db.ref(getPath('shopping')).set(list);
@@ -1610,7 +1610,7 @@
 
       function handleResetData() {
         if (resetPassword === '0214') {
-          const resetItems = items.map(item => {
+          const resetItems = Array.isArray(items) ? items.map(item => {
             const initial = initialItems.find(i => i.name === item.name);
             return { ...item, current_inventory: initial ? initial.current_inventory : item.current_inventory };
           });
@@ -1694,7 +1694,7 @@
           endOfDay[item.name] = item.current_inventory;
         });
         
-        const excelData = items.map(item => {
+        const excelData = Array.isArray(items) ? items.map(item => {
           const inventory = yesterdayInventory[item.name] || 0;
           const order = yesterdayOrder[item.name] || 0;
           const current = currentInv[item.name] || 0;
@@ -1946,7 +1946,7 @@
       }
 
       const lowStockItems = Array.isArray(items) ? items.filter(item => item.current_inventory < item.par) : [];
-      const totalValue = items.reduce((sum, item) => sum + (item.current_inventory * item.price), 0);
+      const totalValue = Array.isArray(items) ? items.reduce((sum, item) => sum + (item.current_inventory * item.price), 0) : 0;
       const filteredItems = !Array.isArray(items) ? [] : (categoryFilter === 'all' ? items : items.filter(i => i.category === categoryFilter));
       const shoppingByVendor = {};
       shoppingList.forEach(item => {
