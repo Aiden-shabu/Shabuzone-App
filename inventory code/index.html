@@ -3098,12 +3098,12 @@
                       [h('option', { key: 'empty', value: '' }, t.itemCategory || '분류 선택')].concat(categories.map(c => h('option', { key: c, value: c }, c)))
                     ),
                     h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}, [
-                      h('input', { key: 'price', type: 'number', value: item.price, onChange: (e) => { const u = [...items]; u[idx].price = parseFloat(e.target.value) || 0; setItems(u); }}),
-                      h('input', { key: 'par', type: 'number', value: item.par, onChange: (e) => { const u = [...items]; u[idx].par = parseFloat(e.target.value) || 0; setItems(u); }}),
+                      h('input', { key: 'price', type: 'number', value: item.price, onChange: (e) => { const u = [...items]; u[idx].price = parseFloat(e.target.value) || 0; setItems(u); }, placeholder: '$ 0.00', style: { minWidth: '80px' }}),
+                      h('input', { key: 'par', type: 'number', value: item.par, onChange: (e) => { const u = [...items]; u[idx].par = parseFloat(e.target.value) || 0; setItems(u); }, placeholder: 'PAR', style: { minWidth: '60px' }}),
                       h('select', { key: 'category', value: item.category, onChange: (e) => { const u = [...items]; u[idx].category = e.target.value; setItems(u); }}, [
-                        h('option', { key: 'frozen', value: 'frozen' }, t.frozen),
-                        h('option', { key: 'refrigerated', value: 'refrigerated' }, t.refrigerated),
-                        h('option', { key: 'dry', value: 'dry' }, t.dry)
+                        h('option', { key: 'frozen', value: 'frozen' }, '❄️ ' + t.frozen),
+                        h('option', { key: 'refrigerated', value: 'refrigerated' }, '🧊 ' + t.refrigerated),
+                        h('option', { key: 'dry', value: 'dry' }, '📦 ' + t.dry)
                       ]),
                       h('button', { key: 'save', onClick: saveEditItem, style: { background: '#4ade80', border: 'none', borderRadius: '8px', color: '#000', cursor: 'pointer', padding: '0.5rem', fontWeight: '600' }}, '✓')
                     ])
@@ -3152,14 +3152,14 @@
             addSubTab === 'categories' && h('div', { key: 'categories-content' }, [
               h('div', { key: 'add-form', className: 'card', style: { background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.2)', marginBottom: '2rem' }}, [
                 h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.addCategory || '분류 추가'),
-                h('div', { key: 'inputs', className: 'input-group', style: { gap: '0.75rem' }}, [
+                h('div', { key: 'inputs', className: 'input-group', style: { display: 'flex', flexDirection: 'column', gap: '0.75rem' }}, [
                   h('input', { 
                     key: 'name-en', 
                     type: 'text', 
                     placeholder: '영어명 (필수) *', 
                     value: newCategory.name_en, 
                     onChange: (e) => setNewCategory({...newCategory, name_en: e.target.value}),
-                    style: { marginBottom: '0.5rem' }
+                    style: { width: '100%', padding: '0.75rem', fontSize: '1rem', border: '2px solid #e2e8f0', borderRadius: '8px' }
                   }),
                   h('input', { 
                     key: 'name-ko', 
@@ -3167,7 +3167,7 @@
                     placeholder: '한국어명 (선택)', 
                     value: newCategory.name_ko, 
                     onChange: (e) => setNewCategory({...newCategory, name_ko: e.target.value}),
-                    style: { marginBottom: '0.5rem' }
+                    style: { width: '100%', padding: '0.75rem', fontSize: '1rem', border: '2px solid #e2e8f0', borderRadius: '8px' }
                   }),
                   h('input', { 
                     key: 'name-es', 
@@ -3175,27 +3175,35 @@
                     placeholder: '스페인어명 (선택)', 
                     value: newCategory.name_es, 
                     onChange: (e) => setNewCategory({...newCategory, name_es: e.target.value}),
-                    style: { marginBottom: '0.5rem' }
+                    style: { width: '100%', padding: '0.75rem', fontSize: '1rem', border: '2px solid #e2e8f0', borderRadius: '8px' }
                   }),
-                  h('div', { key: 'emoji-row', style: { display: 'flex', gap: '0.5rem', alignItems: 'center' }}, [
-                    h('span', { key: 'label', style: { fontSize: '0.875rem', color: '#64748b' }}, '이모지:'),
-                    ['📦', '🥩', '🦐', '🥬', '🍕', '🍔', '🍟', '🥤', '🍺', '🧤', '🍦', '🧹', '⚙️', '🇰🇷'].map(emoji =>
-                      h('button', {
-                        key: emoji,
-                        onClick: () => setNewCategory({...newCategory, icon: emoji}),
-                        style: {
-                          width: '36px',
-                          height: '36px',
-                          border: newCategory.icon === emoji ? '2px solid #7f1d1d' : '1px solid rgba(255,255,255,0.2)',
-                          borderRadius: '6px',
-                          background: newCategory.icon === emoji ? 'rgba(96,165,250,0.2)' : 'rgba(0,0,0,0.3)',
-                          cursor: 'pointer',
-                          fontSize: '1.25rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }
-                      }, emoji)
+                  h('div', { key: 'emoji-section', style: { marginBottom: '0.5rem' }}, [
+                    h('span', { key: 'label', style: { fontSize: '0.875rem', color: '#64748b', display: 'block', marginBottom: '0.5rem' }}, '이모지 선택:'),
+                    h('div', { key: 'emoji-grid', style: { 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))',
+                      gap: '0.5rem',
+                      maxWidth: '100%'
+                    }}, 
+                      ['📦', '🥩', '🦐', '🥬', '🍕', '🍔', '🍟', '🥤', '🍺', '🧤', '🍦', '🧹', '⚙️', '🇰🇷'].map(emoji =>
+                        h('button', {
+                          key: emoji,
+                          onClick: () => setNewCategory({...newCategory, icon: emoji}),
+                          style: {
+                            width: '100%',
+                            aspectRatio: '1',
+                            border: newCategory.icon === emoji ? '2px solid #7f1d1d' : '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            background: newCategory.icon === emoji ? 'rgba(127,29,29,0.1)' : 'white',
+                            cursor: 'pointer',
+                            fontSize: '1.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0'
+                          }
+                        }, emoji)
+                      )
                     )
                   ]),
                   h('button', { 
