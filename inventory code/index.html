@@ -3131,16 +3131,22 @@
                 type: 'text', 
                 placeholder: '🔍 ' + t.searchItems, 
                 value: itemSearch, 
-                onChange: (e) => { setItemSearch(e.target.value); setSearchTrigger(prev => prev + 1); },
+                onChange: (e) => { 
+                  const newValue = e.target.value;
+                  setItemSearch(newValue);
+                  // 강제 리렌더링
+                  setSearchTrigger(prev => prev + 1);
+                },
                 style: { marginBottom: '1rem' }
               }),
-              (() => {
-                const searchLower = itemSearch.toLowerCase();
-                const filtered = (Array.isArray(items) ? items : []).filter(item => 
-                  item.name.toLowerCase().includes(searchLower)
-                );
-                return filtered;
-              })().map((item, filterIdx) => {
+              h('div', { key: 'items-list-' + searchTrigger }, 
+                (() => {
+                  const searchLower = itemSearch.toLowerCase();
+                  const filtered = (Array.isArray(items) ? items : []).filter(item => 
+                    item.name.toLowerCase().includes(searchLower)
+                  );
+                  return filtered;
+                })().map((item, filterIdx) => {
                 const idx = items.findIndex(i => i.name === item.name);
                 return h('div', { key: 'item-' + idx, className: 'card', style: { color: '#2c3e50' }}, [
                   editingItem === idx ? h('div', { key: 'edit', className: 'input-group' }, [
@@ -3175,7 +3181,7 @@
                     ])
                   ])
                 ]);
-              }),
+              })),
               items.length > 50 && h('div', { key: 'more', style: { textAlign: 'center', padding: '1rem', color: 'rgba(255,255,255,0.5)' }}, 'Showing first 50 items')
             ]),
 
