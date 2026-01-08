@@ -1542,7 +1542,7 @@
       }
 
       async function deleteItem(index) {
-        const updated = items.filter((_, i) => i !== index);
+        const updated = Array.isArray(items) ? items.filter((_, i) => i !== index) : [];
         setItems(updated);
         await window.db.ref(getPath('items')).set(updated);
       }
@@ -1715,7 +1715,7 @@
             'Daily Usage #': dailyUsage,
             'Daily Usage $': dailyUsageDollar
           };
-        });
+        }) : [];
         
         const wb = XLSX.utils.book_new();
         
@@ -1932,7 +1932,7 @@
         let text = '';
         Object.entries(grouped).forEach(([vendor, items]) => {
           text += vendor + '\n';
-          items.forEach(item => text += item.name + ' ' + item.shortage + '\n');
+          if (Array.isArray(items)) items.forEach(item => text += item.name + ' ' + item.shortage + '\n');
           text += '\n';
         });
         return text.trim();
