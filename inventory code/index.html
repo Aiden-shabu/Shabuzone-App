@@ -880,6 +880,7 @@
       const [resetPassword, setResetPassword] = useState('');
       const [addSubTab, setAddSubTab] = useState('items');
       const [itemSearch, setItemSearch] = useState('');
+      const [searchTrigger, setSearchTrigger] = useState(0);
       const [vendors, setVendors] = useState([]);
       const [newVendor, setNewVendor] = useState('');
       const [newItem, setNewItem] = useState({ name: '', vendor: '', price: 0, par: 0, category: 'refrigerated' });
@@ -1353,7 +1354,11 @@
       }
 
       async function loadData() {
+        console.log('🚀 loadData 시작');
+        setLoading(true);
         try {
+          console.log('📡 Firebase 데이터 로드 중...');
+          
           const itemsSnap = await window.db.ref(getPath('items')).once('value');
           const shopSnap = await window.db.ref(getPath('shopping')).once('value');
           const histSnap = await window.db.ref(getPath('history')).once('value');
@@ -1363,37 +1368,56 @@
           const itemCategoriesSnap = await window.db.ref(getPath('itemCategories')).once('value');
           const categoryDataSnap = await window.db.ref(getPath('categoryData')).once('value');
           
-          if (itemsSnap.exists()) {
-            setItems(itemsSnap.val());
-            setTempItems(itemsSnap.val());
-          } else { 
-            setItems(initialItems); 
-            setTempItems(initialItems);
-            await window.db.ref(getPath('items')).set(initialItems); 
-          }
+          console.log('✅ 모든 snapshot 받음');
           
-          if (shopSnap.exists()) setShoppingList(shopSnap.val());
-          if (histSnap.exists()) setPurchaseHistory(Object.values(histSnap.val()).sort((a,b) => b.id - a.id));
-          if (countSnap.exists()) setCountRecords(Object.values(countSnap.val()).sort((a,b) => b.id - a.id));
+          const itemsData = itemsSnap.val() || {};
+          const shopData = shopSnap.val() || [];
+          const histData = histSnap.val() || [];
+          const vendorsData = vendorsSnap.val() || [];
+          const countData = countSnap.val() || [];
+          const categoriesData = categoriesSnap.val() || [];
+          const itemCategoriesData = itemCategoriesSnap.val() || {};
+          const categoryDataData = categoryDataSnap.val() || {};
           
-          if (categoriesSnap.exists()) setCategories(categoriesSnap.val());
-          if (itemCategoriesSnap.exists()) setItemCategories(itemCategoriesSnap.val());
-          if (categoryDataSnap.exists()) setCategoryData(categoryDataSnap.val());
+          console.log('✅ 데이터 로드 완료:', {
+            items: Object.keys(itemsData).length,
+            vendors: vendorsData.length,
+            categories: categoriesData.length
+          });
           
-          if (vendorsSnap.exists()) setVendors(vendorsSnap.val());
-          else {
-            const uniqueVendors = [...new Set(initialItems.map(i => i.vendor).filter(Boolean))].sort();
-            setVendors(uniqueVendors);
-            await window.db.ref(getPath('vendors')).set(uniqueVendors);
-          }
-        } catch (e) {
-          console.error(e);
-          setItems(initialItems);
-          setTempItems(initialItems);
-          const uniqueVendors = [...new Set(initialItems.map(i => i.vendor).filter(Boolean))].sort();
-          setVendors(uniqueVendors);
+          // 객체를 배열로 변환
+          const itemsArray = Object.keys(itemsData).map(key => ({
+            id: key,
+            ...itemsData[key]
+          }));
+          
+          console.log('✅ Items 변환 완료:', itemsArray.length);
+          console.log('📦 First item:', itemsArray[0]);
+          
+          console.log('📊 Setting state...');
+          
+          setItems(itemsArray);
+          setTempItems(itemsArray);
+          setShoppingList(shopData);
+          setPurchaseHistory(histData);
+          setVendors(vendorsData);
+          setCountRecords(countData);
+          setCategories(categoriesData);
+          setItemCategories(itemCategoriesData);
+          console.log('📋 ItemCategories loaded:', Object.keys(itemCategoriesData).length);
+          console.log('📋 Sample mappings:', Object.entries(itemCategoriesData).slice(0, 5));
+          setCategoryData(categoryDataData);
+          console.log('🎨 CategoryData loaded:', Object.keys(categoryDataData).length);
+          
+          console.log('✅ State 업데이트 완료');
+          
+          setLoading(false);
+        } catch (error) {
+          console.error('❌ Error loading data:', error);
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+          setLoading(false);
         }
-        setLoading(false);
       }
 
       async function updateTempInventory(index, value) {
@@ -2805,6 +2829,9 @@
               return (Array.isArray(filtered) ? filtered : []).map((item, i) => {
                 const globalIndex = tempItems.findIndex(it => it.name === item.name);
                 const itemCategory = itemCategories[item.name] || 'Uncategorized';
+                if (i < 3) {
+                  console.log('Item:', item.name, 'Category:', itemCategory, 'From:', itemCategories[item.name]);
+                }
                 return h('div', { key: i, className: 'card', style: { color: '#2c3e50' }}, [
                   h('div', { key: 'info', style: { marginBottom: '0.75rem' }}, [
                     h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2c3e50' }}, [
@@ -3104,12 +3131,18 @@
                 type: 'text', 
                 placeholder: '🔍 ' + t.searchItems, 
                 value: itemSearch, 
-                onChange: (e) => setItemSearch(e.target.value),
+                onChange: (e) => { setItemSearch(e.target.value); setSearchTrigger(prev => prev + 1); },
                 style: { marginBottom: '1rem' }
               }),
-              (Array.isArray(items) ? items : []).filter(item => item.name.toLowerCase().includes(itemSearch.toLowerCase())).map((item) => {
+              (() => {
+                const searchLower = itemSearch.toLowerCase();
+                const filtered = (Array.isArray(items) ? items : []).filter(item => 
+                  item.name.toLowerCase().includes(searchLower)
+                );
+                return filtered;
+              })().map((item, filterIdx) => {
                 const idx = items.findIndex(i => i.name === item.name);
-                return h('div', { key: idx, className: 'card', style: { color: '#2c3e50' }}, [
+                return h('div', { key: 'item-' + idx, className: 'card', style: { color: '#2c3e50' }}, [
                   editingItem === idx ? h('div', { key: 'edit', className: 'input-group' }, [
                     h('input', { key: 'name', type: 'text', value: item.name, onChange: (e) => { const u = [...items]; u[idx].name = e.target.value; setItems(u); }}),
                     h('select', { key: 'vendor', value: item.vendor, onChange: (e) => { const u = [...items]; u[idx].vendor = e.target.value; setItems(u); }},
