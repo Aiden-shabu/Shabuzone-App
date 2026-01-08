@@ -507,16 +507,24 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
   <script>
-    firebase.initializeApp({
-      apiKey: "AIzaSyDmwgN1QiwNMCjjBp1Dlux3ljeVA1Dpxd0",
-      authDomain: "shabu-zone-inventory.firebaseapp.com",
-      databaseURL: "https://shabu-zone-inventory-default-rtdb.firebaseio.com",
-      projectId: "shabu-zone-inventory",
-      storageBucket: "shabu-zone-inventory.firebasestorage.app",
-      messagingSenderId: "50004599942",
-      appId: "1:50004599942:web:71e5571527038c44b1d07"
-    });
-    window.db = firebase.database();
+    // Firebase 초기화
+    try {
+      if (!firebase.apps.length) {
+        firebase.initializeApp({
+          apiKey: "AIzaSyDmwgN1QiwNMCjjBp1Dlux3ljeVA1Dpxd0",
+          authDomain: "shabu-zone-inventory.firebaseapp.com",
+          databaseURL: "https://shabu-zone-inventory-default-rtdb.firebaseio.com",
+          projectId: "shabu-zone-inventory",
+          storageBucket: "shabu-zone-inventory.firebasestorage.app",
+          messagingSenderId: "50004599942",
+          appId: "1:50004599942:web:71e5571527038c44b1d07"
+        });
+      }
+      window.db = firebase.database();
+      console.log('✅ Firebase initialized successfully');
+    } catch (error) {
+      console.error('❌ Firebase initialization error:', error);
+    }
   </script>
 
   <script>
@@ -823,7 +831,7 @@
     const categoryColors = { frozen: '#4ade80', refrigerated: '#7f1d1d', dry: '#fbbf24' };
 
     function App() {
-      const [items, setItems] = useState([]);
+      const [items, setItems] = useState([]); // 빈 배열로 초기화
       // 로그인 & 네비게이션
       const [screen, setScreen] = useState('login');
       const [password, setPassword] = useState('');
@@ -1023,7 +1031,11 @@
 
       // Firebase 경로 헬퍼
       function getPath(path) {
-        if (!currentLocation) return 'inventory/' + path;
+        if (!currentLocation) {
+          console.warn('⚠️ currentLocation이 설정되지 않음');
+          return 'houston/inventory/' + path;
+        }
+        console.log('📍 Path:', currentLocation + '/inventory/' + path);
         return currentLocation + '/inventory/' + path;
       }
       
