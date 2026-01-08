@@ -541,6 +541,7 @@
         addNewItem: '새 품목 추가', itemName: '품목명', selectVendor: '벤더 선택', addItem: '품목 추가',
         manageItems: '품목 관리', save: '저장', edit: '수정', delete: '삭제',
         addItems: '아이템 추가', manageVendors: '벤더 관리', manageCategories: '분류 관리',
+        searchItems: '아이템 검색...', itemCategory: '분류 선택', selectCategory: '분류 선택',
         vendorName: '벤더명', addVendor: '벤더 추가', deleteVendor: '벤더 삭제',
         categoryName: '분류명', addCategory: '분류 추가', deleteCategory: '삭제',
         byStorage: '보관별', byCategory: '분류별', itemCategory: '아이템 분류',
@@ -728,7 +729,11 @@
           }
         },
         manageItems: 'Manage Items', save: 'Save', edit: 'Edit', delete: 'Delete',
-        addItems: 'Add Items', manageVendors: 'Manage Vendors', vendorName: 'Vendor Name', addVendor: 'Add Vendor', deleteVendor: 'Delete Vendor',
+        addItems: 'Add Items', manageVendors: 'Manage Vendors', manageCategories: 'Manage Categories',
+        vendorName: 'Vendor Name', addVendor: 'Add Vendor', deleteVendor: 'Delete Vendor',
+        addNewItem: 'Add New Item', itemName: 'Item Name', selectVendor: 'Select Vendor', 
+        selectCategory: 'Select Category', addItem: 'Add Item', addCategory: 'Add Category',
+        searchItems: 'Search items...', itemCategory: 'Item Category',
         resetData: 'Reset Data', enterPassword: 'Enter Password',
         reset: 'Reset', cancel: 'Cancel', wrongPassword: 'Wrong password!',
         resetWarning: 'This will reset inventory quantities, clear shopping list and purchase history.',
@@ -751,7 +756,11 @@
         noData: 'No hay historial de compras',
         addNewItem: 'Agregar Nuevo Artículo', itemName: 'Nombre', selectVendor: 'Seleccionar Proveedor', addItem: 'Agregar',
         manageItems: 'Gestionar Artículos', save: 'Guardar', edit: 'Editar', delete: 'Eliminar',
-        addItems: 'Agregar Artículos', manageVendors: 'Gestionar Proveedores', vendorName: 'Nombre Proveedor', addVendor: 'Agregar Proveedor', deleteVendor: 'Eliminar',
+        addItems: 'Agregar Artículos', manageVendors: 'Gestionar Proveedores', manageCategories: 'Gestionar Categorías',
+        vendorName: 'Nombre Proveedor', addVendor: 'Agregar Proveedor', deleteVendor: 'Eliminar',
+        addNewItem: 'Agregar Nuevo Artículo', itemName: 'Nombre', selectVendor: 'Seleccionar Proveedor',
+        selectCategory: 'Seleccionar Categoría', addItem: 'Agregar', addCategory: 'Agregar Categoría',
+        searchItems: 'Buscar artículos...', itemCategory: 'Categoría de Artículo',
         resetData: 'Restablecer Datos', enterPassword: 'Ingresar Contraseña',
         reset: 'Restablecer', cancel: 'Cancelar', wrongPassword: '¡Contraseña incorrecta!',
         resetWarning: 'Esto restablecerá las cantidades de inventario, lista de compras e historial.',
@@ -3065,7 +3074,7 @@
                     [h('option', { key: 'empty', value: '' }, t.itemCategory || '분류 선택')].concat(categories.map(c => h('option', { key: c, value: c }, c)))
                   ),
                   h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}, [
-                    h('input', { key: 'price', type: 'number', placeholder: t.price, value: newItem.price || '', onChange: (e) => setNewItem({...newItem, price: parseFloat(e.target.value) || 0}) }),
+                    h('input', { key: 'price', type: 'number', placeholder: '$ ' + t.price, value: newItem.price || '', onChange: (e) => setNewItem({...newItem, price: parseFloat(e.target.value) || 0}) }),
                     h('input', { key: 'par', type: 'number', placeholder: 'PAR', value: newItem.par || '', onChange: (e) => setNewItem({...newItem, par: parseFloat(e.target.value) || 0}) }),
                     h('select', { key: 'category', value: newItem.category, onChange: (e) => setNewItem({...newItem, category: e.target.value}) }, [
                       h('option', { key: 'frozen', value: 'frozen' }, categoryIcons.frozen + ' ' + t.frozen),
@@ -3081,7 +3090,7 @@
               h('input', { 
                 key: 'search', 
                 type: 'text', 
-                placeholder: '🔍 아이템 검색...', 
+                placeholder: '🔍 ' + t.searchItems, 
                 value: itemSearch, 
                 onChange: (e) => setItemSearch(e.target.value),
                 style: { marginBottom: '1rem' }
@@ -3151,12 +3160,12 @@
 
             addSubTab === 'categories' && h('div', { key: 'categories-content' }, [
               h('div', { key: 'add-form', className: 'card', style: { background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.2)', marginBottom: '2rem' }}, [
-                h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.addCategory || '분류 추가'),
+                h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.addCategory),
                 h('div', { key: 'inputs', className: 'input-group', style: { display: 'flex', flexDirection: 'column', gap: '0.75rem' }}, [
                   h('input', { 
                     key: 'name-en', 
                     type: 'text', 
-                    placeholder: '영어명 (필수) *', 
+                    placeholder: (language === 'ko' ? '영어명 (필수) *' : language === 'es' ? 'Nombre en inglés (requerido) *' : 'English name (required) *'), 
                     value: newCategory.name_en, 
                     onChange: (e) => setNewCategory({...newCategory, name_en: e.target.value}),
                     style: { width: '100%', padding: '0.75rem', fontSize: '1rem', border: '2px solid #e2e8f0', borderRadius: '8px' }
@@ -3164,7 +3173,7 @@
                   h('input', { 
                     key: 'name-ko', 
                     type: 'text', 
-                    placeholder: '한국어명 (선택)', 
+                    placeholder: (language === 'ko' ? '한국어명 (선택)' : language === 'es' ? 'Nombre en coreano (opcional)' : 'Korean name (optional)'), 
                     value: newCategory.name_ko, 
                     onChange: (e) => setNewCategory({...newCategory, name_ko: e.target.value}),
                     style: { width: '100%', padding: '0.75rem', fontSize: '1rem', border: '2px solid #e2e8f0', borderRadius: '8px' }
@@ -3172,13 +3181,13 @@
                   h('input', { 
                     key: 'name-es', 
                     type: 'text', 
-                    placeholder: '스페인어명 (선택)', 
+                    placeholder: (language === 'ko' ? '스페인어명 (선택)' : language === 'es' ? 'Nombre en español (opcional)' : 'Spanish name (optional)'), 
                     value: newCategory.name_es, 
                     onChange: (e) => setNewCategory({...newCategory, name_es: e.target.value}),
                     style: { width: '100%', padding: '0.75rem', fontSize: '1rem', border: '2px solid #e2e8f0', borderRadius: '8px' }
                   }),
                   h('div', { key: 'emoji-section', style: { marginBottom: '0.5rem' }}, [
-                    h('span', { key: 'label', style: { fontSize: '0.875rem', color: '#64748b', display: 'block', marginBottom: '0.5rem' }}, '이모지 선택:'),
+                    h('span', { key: 'label', style: { fontSize: '0.875rem', color: '#64748b', display: 'block', marginBottom: '0.5rem' }}, (language === 'ko' ? '이모지 선택:' : language === 'es' ? 'Seleccionar emoji:' : 'Select emoji:')),
                     h('div', { key: 'emoji-grid', style: { 
                       display: 'grid', 
                       gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))',
@@ -3212,11 +3221,11 @@
                     onClick: addCategory, 
                     disabled: !newCategory.name_en.trim(),
                     style: { marginTop: '0.5rem', opacity: newCategory.name_en.trim() ? 1 : 0.5 }
-                  }, '+ ' + (t.addCategory || '분류 추가'))
+                  }, '+ ' + t.addCategory)
                 ])
               ]),
 
-              h('h3', { key: 'manage-title', style: { marginBottom: '1rem' }}, t.manageCategories || '분류 관리'),
+              h('h3', { key: 'manage-title', style: { marginBottom: '1rem' }}, t.manageCategories),
               h('div', { key: 'list', style: { display: 'grid', gap: '0.75rem' }},
                 categories.map((category, idx) =>
                   h('div', { key: idx, className: 'card', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem' }}, [
