@@ -2792,7 +2792,7 @@
             ),
 
             (() => {
-              let filtered = tempItems;
+              let filtered = Array.isArray(tempItems) ? tempItems : [];
               if (filterMode === 'storage' && categoryFilter !== 'all') {
                 filtered = Array.isArray(tempItems) ? tempItems.filter(i => i.category === categoryFilter) : [];
               } else if (filterMode === 'category' && categoryFilter !== 'all') {
@@ -2802,7 +2802,7 @@
                   filtered = Array.isArray(tempItems) ? tempItems.filter(i => itemCategories[i.name] === categoryFilter) : [];
                 }
               }
-              return filtered.map((item, i) => {
+              return (Array.isArray(filtered) ? filtered : []).map((item, i) => {
                 const globalIndex = tempItems.findIndex(it => it.name === item.name);
                 const itemCategory = itemCategories[item.name] || 'Uncategorized';
                 return h('div', { key: i, className: 'card', style: { color: '#2c3e50' }}, [
