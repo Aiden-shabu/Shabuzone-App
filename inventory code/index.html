@@ -3077,9 +3077,9 @@
                     h('input', { key: 'price', type: 'number', placeholder: '$ ' + t.price, value: newItem.price || '', onChange: (e) => setNewItem({...newItem, price: parseFloat(e.target.value) || 0}) }),
                     h('input', { key: 'par', type: 'number', placeholder: 'PAR', value: newItem.par || '', onChange: (e) => setNewItem({...newItem, par: parseFloat(e.target.value) || 0}) }),
                     h('select', { key: 'category', value: newItem.category, onChange: (e) => setNewItem({...newItem, category: e.target.value}) }, [
-                      h('option', { key: 'frozen', value: 'frozen' }, categoryIcons.frozen + ' ' + t.frozen),
-                      h('option', { key: 'refrigerated', value: 'refrigerated' }, categoryIcons.refrigerated + ' ' + t.refrigerated),
-                      h('option', { key: 'dry', value: 'dry' }, categoryIcons.dry + ' ' + t.dry)
+                      h('option', { key: 'frozen', value: 'frozen' }, '❄️ ' + t.frozen),
+                      h('option', { key: 'refrigerated', value: 'refrigerated' }, '🧊 ' + t.refrigerated),
+                      h('option', { key: 'dry', value: 'dry' }, '📦 ' + t.dry)
                     ])
                   ])
                 ]),
