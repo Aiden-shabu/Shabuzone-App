@@ -572,6 +572,9 @@
         inventoryPurchaseItems: '재고 및 구매 아이템 (구매내역만 기록)',
         monthlyUsageDesc: '이번 달 구매 내역을 기반으로 아이템별 사용량과 비용을 분석합니다.',
         purchaseDetail: '구매 내역',
+        confirmDelivery: '입고 확인', pending: '구매 중', selectAll: '전체 선택',
+        confirmSelected: '선택 항목 확인', currentStock: '재고 현황', shortage: '부족',
+        onOrder: '구매 중', delivered: '입고 완료',
         // Management/Schedule translations  
         management: {
           title: '스케줄 관리',
@@ -769,6 +772,9 @@
         inventoryPurchaseItems: 'Stock & Purchase Items (Purchase history only)',
         monthlyUsageDesc: 'Analyze item usage and costs based on this month\'s purchase history.',
         purchaseDetail: 'Purchase Details',
+        confirmDelivery: 'Confirm Delivery', pending: 'Pending', selectAll: 'Select All',
+        confirmSelected: 'Confirm Selected', currentStock: 'Current Stock', shortage: 'Short',
+        onOrder: 'On Order', delivered: 'Delivered',
       },
       es: {
         dashboard: 'Panel', count: 'Inventario', shopping: 'Compras', add: 'Agregar', reports: 'Informes',
@@ -804,6 +810,9 @@
         inventoryPurchaseItems: 'Artículos de Inventario y Compra (Solo historial de compras)',
         monthlyUsageDesc: 'Analiza el uso de artículos y los costos según el historial de compras de este mes.',
         purchaseDetail: 'Detalles de Compra',
+        confirmDelivery: 'Confirmar Entrega', pending: 'Pendiente', selectAll: 'Seleccionar Todo',
+        confirmSelected: 'Confirmar Seleccionados', currentStock: 'Stock Actual', shortage: 'Falta',
+        onOrder: 'En Pedido', delivered: 'Entregado',
       },
       zh: {
         dashboard: '仪表板', count: '库存盘点', shopping: '购物清单', add: '添加', reports: '报告',
@@ -927,6 +936,10 @@
       const [categoryData, setCategoryData] = useState({});
       const [calendarMonth, setCalendarMonth] = useState(new Date());
       const [countSearchQuery, setCountSearchQuery] = useState('');
+      const [shoppingSubTab, setShoppingSubTab] = useState('list'); // 'list' or 'confirm'
+      const [pendingPurchases, setPendingPurchases] = useState([]); // 구매 완료했지만 입고 안된 것들
+      const [selectedItemsPerPurchase, setSelectedItemsPerPurchase] = useState({}); // { purchaseId: [itemIndex1, itemIndex2, ...] }
+
 
 
       const categoryTranslations = {
@@ -1396,6 +1409,7 @@
           const categoriesSnap = await window.db.ref(getPath('categories')).once('value');
           const itemCategoriesSnap = await window.db.ref(getPath('itemCategories')).once('value');
           const categoryDataSnap = await window.db.ref(getPath('categoryData')).once('value');
+          const pendingSnap = await window.db.ref(getPath('pending')).once('value');
           
           console.log('✅ 모든 snapshot 받음');
           
@@ -1407,6 +1421,7 @@
           const categoriesData = categoriesSnap.val() || [];
           const itemCategoriesData = itemCategoriesSnap.val() || {};
           const categoryDataData = categoryDataSnap.val() || {};
+          const pendingData = pendingSnap.val() || [];
           
           console.log('✅ 데이터 로드 완료:', {
             items: Object.keys(itemsData).length,
@@ -1429,6 +1444,7 @@
           setTempItems(itemsArray);
           setShoppingList(shopData);
           setPurchaseHistory(histData);
+          setPendingPurchases(pendingData);
           setVendors(vendorsData);
           setCountRecords(countData);
           setCategories(categoriesData);
@@ -1533,7 +1549,8 @@
             vendor: item.selected_vendor,
             quantity: item.shortage,
             price: item.price,
-            total: item.shortage * item.price
+            total: item.shortage * item.price,
+            confirmed: false // 입고 확인 안됨
           };
         });
         
@@ -1546,38 +1563,76 @@
             vendor: 'Miscellaneous',
             quantity: item.quantity,
             price: item.price,
-            total: item.quantity * item.price
+            total: item.quantity * item.price,
+            confirmed: false
           });
         });
         
-        const updatedItems = [...items];
-        shoppingList.forEach(item => {
-          const idx = updatedItems.findIndex(i => i.name === item.name);
-          if (idx !== -1) {
-            updatedItems[idx].current_inventory += item.shortage;
-            updatedItems[idx].vendor = item.selected_vendor;
-          }
-        });
-        
+        // 재고는 증가시키지 않음! pending으로 보냄
         const purchase = {
           id: Date.now(),
           date, time,
           items: purchaseItems,
           totalItems: purchaseItems.length,
-          totalCost
+          totalCost,
+          status: 'pending', // 구매 완료, 입고 대기 중
+          confirmedItems: [] // 입고 확인된 아이템 ID들
         };
         
+        const newPending = [purchase, ...pendingPurchases];
         const newHistory = [purchase, ...purchaseHistory];
         
-        setItems(updatedItems);
+        setPendingPurchases(newPending);
         setPurchaseHistory(newHistory);
         setShoppingList([]);
+        setMiscItems([]);
         
-        await window.db.ref(getPath('items')).set(updatedItems);
+        await window.db.ref(getPath('pending')).set(newPending);
         await window.db.ref(getPath('history')).set(newHistory);
         await window.db.ref(getPath('shopping')).set([]);
+        await window.db.ref(getPath('misc')).set([]);
+      }
         
         setMiscItems([]);
+      }
+
+      // 입고 확인 함수
+      async function confirmDelivery(purchaseId, selectedItemIndices) {
+        const purchase = pendingPurchases.find(p => p.id === purchaseId);
+        if (!purchase) return;
+
+        const updatedItems = [...items];
+        
+        // 선택된 아이템들만 재고 증가
+        selectedItemIndices.forEach(itemIndex => {
+          const purchaseItem = purchase.items[itemIndex];
+          if (!purchaseItem.confirmed) {
+            const idx = updatedItems.findIndex(i => i.name === purchaseItem.name);
+            if (idx !== -1) {
+              updatedItems[idx].current_inventory += purchaseItem.quantity;
+              updatedItems[idx].vendor = purchaseItem.vendor;
+            }
+            purchaseItem.confirmed = true;
+          }
+        });
+
+        // 모든 아이템이 확인되었는지 체크
+        const allConfirmed = purchase.items.every(item => item.confirmed);
+        if (allConfirmed) {
+          purchase.status = 'completed';
+        }
+
+        // pending과 history 업데이트
+        const updatedPending = pendingPurchases.map(p => p.id === purchaseId ? purchase : p);
+        const updatedHistory = purchaseHistory.map(p => p.id === purchaseId ? purchase : p);
+
+        setItems(updatedItems);
+        setPendingPurchases(updatedPending);
+        setPurchaseHistory(updatedHistory);
+
+        await window.db.ref(getPath('items')).set(updatedItems);
+        await window.db.ref(getPath('pending')).set(updatedPending);
+        await window.db.ref(getPath('history')).set(updatedHistory);
       }
 
       async function addNewItem() {
@@ -2760,7 +2815,7 @@
 
         h('div', { key: 'nav', className: 'nav' },
           h('div', { className: 'nav-inner' }, [
-            ['dashboard', 'count', 'shopping', 'reports', 'add'].map(tab =>
+            ['dashboard', 'count', 'shopping', 'currentStock', 'reports', 'add'].map(tab =>
               h('button', {
                 key: tab,
                 className: 'nav-btn' + (activeTab === tab ? ' active' : ''),
@@ -3074,10 +3129,31 @@
                     ]),
                     h('div', { key: 'meta', style: { fontSize: '0.875rem', color: '#64748b' }}, 'PAR: ' + item.par + ' | ' + item.vendor + ' | $' + item.price)
                   ]),
-                  h('div', { key: 'counter', className: 'counter' }, [
-                    h('button', { key: 'minus', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, Math.max(0, item.current_inventory - 0.5)) }, '-'),
-                    h('input', { key: 'input', className: 'counter-input', type: 'number', step: '0.5', value: item.current_inventory, onChange: (e) => updateTempInventory(globalIndex, e.target.value) }),
-                    h('button', { key: 'plus', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, Math.min(99, item.current_inventory + 0.5)) }, '+')
+                  h('div', { key: 'counter', style: { display: 'flex', flexDirection: 'column', gap: '0.5rem' }}, [
+                    h('div', { key: 'buttons', style: { display: 'flex', gap: '0.25rem', justifyContent: 'center', flexWrap: 'wrap' }}, [
+                      h('button', { key: 'minus1', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, Math.max(0, item.current_inventory - 1)), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '-1'),
+                      h('button', { key: 'minus05', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, Math.max(0, item.current_inventory - 0.5)), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '-0.5'),
+                      h('button', { key: 'minus025', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, Math.max(0, item.current_inventory - 0.25)), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '-0.25'),
+                      h('input', { 
+                        key: 'input', 
+                        type: 'number', 
+                        step: '0.01', 
+                        value: item.current_inventory, 
+                        onChange: (e) => updateTempInventory(globalIndex, parseFloat(e.target.value) || 0),
+                        style: { 
+                          width: '70px', 
+                          padding: '0.5rem', 
+                          border: '2px solid #7f1d1d', 
+                          borderRadius: '8px', 
+                          textAlign: 'center',
+                          fontWeight: '600',
+                          fontSize: '1rem'
+                        }
+                      }),
+                      h('button', { key: 'plus025', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, item.current_inventory + 0.25), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '+0.25'),
+                      h('button', { key: 'plus05', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, item.current_inventory + 0.5), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '+0.5'),
+                      h('button', { key: 'plus1', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, item.current_inventory + 1), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '+1')
+                    ])
                   ])
                 ]);
               });
@@ -3087,80 +3163,299 @@
           ]),
 
           activeTab === 'shopping' && h('div', { key: 'shop' }, [
-            shoppingList.length === 0 ? h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 'No items in shopping list') : [
-              
-              h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.shoppingList),
-                
-                ['frozen', 'refrigerated', 'dry'].map(cat => {
-                  const catItems = Array.isArray(shoppingList) ? shoppingList.filter(item => item.category === cat) : [];
-                  if (catItems.length === 0) return null;
-                  return h('div', { key: cat, className: 'vendor-group', style: { marginBottom: '1.5rem' }}, [
-                    h('div', { key: 'title', style: { fontSize: '1rem', fontWeight: '700', color: categoryColors[cat], marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
-                      storageIcons[cat], ' ', t[cat]
-                    ]),
-                    catItems.sort((a, b) => a.name.localeCompare(b.name)).map((item, i) => {
-                      const globalIndex = shoppingList.findIndex(si => si.name === item.name);
-                      return h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', padding: '1rem' }}, [
-                        h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.75rem', color: '#2c3e50' }}, item.name),
-                        h('div', { key: 'inputs', style: { display: 'grid', gap: '0.75rem' }}, [
-                          h('div', { key: 'row1', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
-                            h('div', { key: 'price-group', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
-                              h('span', { key: 'label', style: { fontSize: '0.875rem', color: '#64748b', minWidth: '30px' }}, t.price),
-                              h('input', {
-                                key: 'price',
-                                type: 'number',
-                                step: '0.01',
-                                value: item.price,
-                                onChange: (e) => updateShoppingPrice(globalIndex, e.target.value),
-                                style: { flex: 1, background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
-                              })
-                            ]),
-                            h('div', { key: 'vendor-group' }, [
-                              h('select', {
-                                key: 'vendor',
-                                value: item.selected_vendor,
-                                onChange: (e) => updateShoppingVendor(globalIndex, e.target.value),
-                                style: { width: '100%', background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
-                              }, vendors.map(v => h('option', { key: v, value: v }, v)))
-                            ])
-                          ]),
-                          h('div', { key: 'row2', className: 'counter' }, [
-                            h('button', { key: 'minus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, Math.max(0, item.shortage - 0.5)) }, '-'),
-                            h('input', { key: 'qty', className: 'counter-input', style: { width: '80px' }, type: 'number', step: '0.5', value: item.shortage, onChange: (e) => updateShoppingQuantity(globalIndex, e.target.value) }),
-                            h('button', { key: 'plus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, item.shortage + 0.5) }, '+')
-                          ])
-                        ])
-                      ]);
-                    })
-                  ]);
-                }),
-                
-                h('div', { key: 'misc-section', style: { marginTop: '2rem', padding: '1.5rem', background: 'rgba(127,29,29,0.05)', borderRadius: '12px', border: '2px dashed #7f1d1d' }}, [
-                  h('h4', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', fontWeight: '700' }}, 'Miscellaneous'),
-                  h('p', { key: 'desc', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}, t.inventoryPurchaseItems),
-                  
-                  miscItems.map((item, i) =>
-                    h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}, [
-                      h('div', { key: 'info' }, [
-                        h('div', { key: 'name', style: { fontWeight: '600', color: '#2c3e50' }}, item.name),
-                        h('div', { key: 'price', style: { fontSize: '0.875rem', color: '#64748b' }}, `${item.quantity} × $${item.price} = $${(item.quantity * item.price).toFixed(2)}`)
+            // Shopping 서브탭
+            h('div', { key: 'sub-tabs', style: { display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}, [
+              h('button', { 
+                key: 'list',
+                className: 'nav-btn' + (shoppingSubTab === 'list' ? ' active' : ''),
+                onClick: () => setShoppingSubTab('list')
+              }, t.shoppingList),
+              h('button', { 
+                key: 'confirm',
+                className: 'nav-btn' + (shoppingSubTab === 'confirm' ? ' active' : ''),
+                onClick: () => setShoppingSubTab('confirm'),
+                style: { position: 'relative' }
+              }, [
+                h('span', { key: 'text' }, t.confirmDelivery),
+                pendingPurchases.filter(p => p.status === 'pending').length > 0 && 
+                  h('span', { 
+                    key: 'badge',
+                    style: { 
+                      position: 'absolute', 
+                      top: '-8px', 
+                      right: '-8px', 
+                      background: '#ef4444', 
+                      color: 'white', 
+                      borderRadius: '50%', 
+                      width: '20px', 
+                      height: '20px', 
+                      fontSize: '0.75rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      fontWeight: '700'
+                    }
+                  }, pendingPurchases.filter(p => p.status === 'pending').length)
+              ])
+            ]),
+
+            // Shopping List 탭 내용
+            shoppingSubTab === 'list' && (
+              shoppingList.length === 0 ? 
+                h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 'No items in shopping list') : 
+                [
+                  h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.shoppingList),
+                    
+                  ['frozen', 'refrigerated', 'dry'].map(cat => {
+                    const catItems = Array.isArray(shoppingList) ? shoppingList.filter(item => item.category === cat) : [];
+                    if (catItems.length === 0) return null;
+                    return h('div', { key: cat, className: 'vendor-group', style: { marginBottom: '1.5rem' }}, [
+                      h('div', { key: 'title', style: { fontSize: '1rem', fontWeight: '700', color: categoryColors[cat], marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+                        storageIcons[cat], ' ', t[cat]
                       ]),
-                      h('button', { key: 'delete', onClick: () => setMiscItems(miscItems.filter((_, idx) => idx !== i)), style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', cursor: 'pointer' }}, '삭제')
-                    ])
-                  ),
+                      catItems.sort((a, b) => a.name.localeCompare(b.name)).map((item, i) => {
+                        const globalIndex = shoppingList.findIndex(si => si.name === item.name);
+                        return h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', padding: '1rem' }}, [
+                          h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.75rem', color: '#2c3e50' }}, item.name),
+                          h('div', { key: 'inputs', style: { display: 'grid', gap: '0.75rem' }}, [
+                            h('div', { key: 'row1', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
+                              h('div', { key: 'price-group', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
+                                h('span', { key: 'label', style: { fontSize: '0.875rem', color: '#64748b', minWidth: '30px' }}, t.price),
+                                h('input', {
+                                  key: 'price',
+                                  type: 'number',
+                                  step: '0.01',
+                                  value: item.price,
+                                  onChange: (e) => updateShoppingPrice(globalIndex, e.target.value),
+                                  style: { flex: 1, background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
+                                })
+                              ]),
+                              h('div', { key: 'vendor-group' }, [
+                                h('select', {
+                                  key: 'vendor',
+                                  value: item.selected_vendor,
+                                  onChange: (e) => updateShoppingVendor(globalIndex, e.target.value),
+                                  style: { width: '100%', background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
+                                }, vendors.map(v => h('option', { key: v, value: v }, v)))
+                              ])
+                            ]),
+                            h('div', { key: 'row2', className: 'counter' }, [
+                              h('button', { key: 'minus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, Math.max(0, item.shortage - 0.5)) }, '-'),
+                              h('input', { key: 'qty', className: 'counter-input', style: { width: '80px' }, type: 'number', step: '0.5', value: item.shortage, onChange: (e) => updateShoppingQuantity(globalIndex, e.target.value) }),
+                              h('button', { key: 'plus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, item.shortage + 0.5) }, '+')
+                            ])
+                          ])
+                        ]);
+                      })
+                    ]);
+                  }),
                   
-                  h('div', { key: 'add-form', style: { display: 'grid', gap: '0.75rem', marginTop: '1rem' }}, [
-                    h('input', { key: 'name', type: 'text', placeholder: '아이템명', value: newMisc.name, onChange: (e) => setNewMisc({...newMisc, name: e.target.value}) }),
-                    h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
-                      h('input', { key: 'price', type: 'number', step: '0.01', placeholder: '가격', value: newMisc.price, onChange: (e) => setNewMisc({...newMisc, price: parseFloat(e.target.value) || 0}) }),
-                      h('input', { key: 'qty', type: 'number', step: '0.5', placeholder: '수량', value: newMisc.quantity, onChange: (e) => setNewMisc({...newMisc, quantity: parseFloat(e.target.value) || 1}) })
+                  h('div', { key: 'misc-section', style: { marginTop: '2rem', padding: '1.5rem', background: 'rgba(127,29,29,0.05)', borderRadius: '12px', border: '2px dashed #7f1d1d' }}, [
+                    h('h4', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', fontWeight: '700' }}, 'Miscellaneous'),
+                    h('p', { key: 'desc', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}, t.inventoryPurchaseItems),
+                    
+                    miscItems.map((item, i) =>
+                      h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}, [
+                        h('div', { key: 'info' }, [
+                          h('div', { key: 'name', style: { fontWeight: '600', color: '#2c3e50' }}, item.name),
+                          h('div', { key: 'price', style: { fontSize: '0.875rem', color: '#64748b' }}, `${item.quantity} × $${item.price} = $${(item.quantity * item.price).toFixed(2)}`)
+                        ]),
+                        h('button', { key: 'delete', onClick: () => setMiscItems(miscItems.filter((_, idx) => idx !== i)), style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', cursor: 'pointer' }}, '삭제')
+                      ])
+                    ),
+                    
+                    h('div', { key: 'add-form', style: { display: 'grid', gap: '0.75rem', marginTop: '1rem' }}, [
+                      h('input', { key: 'name', type: 'text', placeholder: '아이템명', value: newMisc.name, onChange: (e) => setNewMisc({...newMisc, name: e.target.value}) }),
+                      h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
+                        h('input', { key: 'price', type: 'number', step: '0.01', placeholder: '가격', value: newMisc.price, onChange: (e) => setNewMisc({...newMisc, price: parseFloat(e.target.value) || 0}) }),
+                        h('input', { key: 'qty', type: 'number', step: '0.5', placeholder: '수량', value: newMisc.quantity, onChange: (e) => setNewMisc({...newMisc, quantity: parseFloat(e.target.value) || 1}) })
+                      ]),
+                      h('button', { key: 'add', className: 'btn btn-secondary', onClick: () => { if (newMisc.name) { setMiscItems([...miscItems, newMisc]); setNewMisc({ name: '', price: 0, quantity: 1 }); }}, disabled: !newMisc.name }, '+ 추가')
+                    ])
+                  ]),
+                  
+                  h('button', { key: 'complete', className: 'btn', onClick: () => { setPurchaseData([...shoppingList, ...miscItems.map(m => ({...m, selected_vendor: 'Miscellaneous', category: 'miscellaneous', shortage: m.quantity}))]); setShowSimpleView(true); }, style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
+                ]
+            ),
+
+            // Confirm Delivery 탭 내용
+            shoppingSubTab === 'confirm' && h('div', { key: 'confirm-content' }, [
+              pendingPurchases.length === 0 ?
+                h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 
+                  language === 'ko' ? '입고 대기 중인 구매가 없습니다' : 
+                  language === 'es' ? 'No hay compras pendientes' : 
+                  'No pending deliveries') :
+                pendingPurchases.map((purchase, pIdx) => {
+                  const selectedItems = selectedItemsPerPurchase[purchase.id] || [];
+                  const allSelected = selectedItems.length === purchase.items.filter(item => !item.confirmed).length;
+                  const someConfirmed = purchase.items.some(item => item.confirmed);
+                  const allConfirmed = purchase.status === 'completed';
+
+                  const setSelectedItems = (items) => {
+                    setSelectedItemsPerPurchase({
+                      ...selectedItemsPerPurchase,
+                      [purchase.id]: items
+                    });
+                  };
+
+                  return h('div', { 
+                    key: purchase.id, 
+                    className: 'card', 
+                    style: { 
+                      marginBottom: '1.5rem',
+                      background: allConfirmed ? 'rgba(74, 222, 128, 0.1)' : 'white',
+                      border: allConfirmed ? '2px solid #4ade80' : '2px solid #e2e8f0'
+                    }
+                  }, [
+                    h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}, [
+                      h('div', { key: 'info' }, [
+                        h('div', { key: 'date', style: { fontSize: '1.125rem', fontWeight: '700', color: '#7f1d1d' }}, purchase.date + ' ' + purchase.time),
+                        h('div', { key: 'summary', style: { fontSize: '0.875rem', color: '#64748b', marginTop: '0.25rem' }}, 
+                          `${purchase.totalItems} items • $${purchase.totalCost.toFixed(2)}`)
+                      ]),
+                      h('div', { key: 'status', style: { 
+                        padding: '0.5rem 1rem',
+                        borderRadius: '20px',
+                        background: allConfirmed ? '#4ade80' : '#fbbf24',
+                        color: 'white',
+                        fontSize: '0.875rem',
+                        fontWeight: '600'
+                      }}, allConfirmed ? t.delivered : t.pending)
                     ]),
-                    h('button', { key: 'add', className: 'btn btn-secondary', onClick: () => { if (newMisc.name) { setMiscItems([...miscItems, newMisc]); setNewMisc({ name: '', price: 0, quantity: 1 }); }}, disabled: !newMisc.name }, '+ 추가')
+
+                    !allConfirmed && h('div', { key: 'select-all', style: { marginBottom: '1rem' }}, [
+                      h('label', { 
+                        key: 'checkbox',
+                        style: { display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }
+                      }, [
+                        h('input', { 
+                          key: 'input',
+                          type: 'checkbox',
+                          checked: allSelected,
+                          onChange: (e) => {
+                            if (e.target.checked) {
+                              const unconfirmedIndices = purchase.items
+                                .map((item, idx) => item.confirmed ? null : idx)
+                                .filter(idx => idx !== null);
+                              setSelectedItems(unconfirmedIndices);
+                            } else {
+                              setSelectedItems([]);
+                            }
+                          },
+                          style: { width: '20px', height: '20px', cursor: 'pointer' }
+                        }),
+                        h('span', { key: 'label', style: { fontWeight: '600', fontSize: '0.875rem' }}, t.selectAll)
+                      ])
+                    ]),
+
+                    h('div', { key: 'items', style: { display: 'grid', gap: '0.5rem' }}, 
+                      purchase.items.map((item, itemIdx) => 
+                        h('label', {
+                          key: itemIdx,
+                          style: { 
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.75rem',
+                            background: item.confirmed ? 'rgba(74, 222, 128, 0.1)' : 'white',
+                            border: item.confirmed ? '1px solid #4ade80' : '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            cursor: item.confirmed ? 'not-allowed' : 'pointer',
+                            opacity: item.confirmed ? 0.6 : 1
+                          }
+                        }, [
+                          !item.confirmed && h('input', {
+                            key: 'check',
+                            type: 'checkbox',
+                            checked: selectedItems.includes(itemIdx),
+                            onChange: (e) => {
+                              if (e.target.checked) {
+                                setSelectedItems([...selectedItems, itemIdx]);
+                              } else {
+                                setSelectedItems(selectedItems.filter(i => i !== itemIdx));
+                              }
+                            },
+                            style: { width: '20px', height: '20px', cursor: 'pointer' }
+                          }),
+                          item.confirmed && h('span', { key: 'check', style: { fontSize: '1.25rem' }}, '✓'),
+                          h('div', { key: 'info', style: { flex: 1 }}, [
+                            h('div', { key: 'name', style: { fontWeight: '600', color: '#2c3e50' }}, item.name),
+                            h('div', { key: 'details', style: { fontSize: '0.875rem', color: '#64748b' }}, 
+                              `${item.vendor} • ${item.quantity} × $${item.price}`)
+                          ]),
+                          h('div', { key: 'total', style: { fontWeight: '700', color: '#7f1d1d' }}, 
+                            '$' + item.total.toFixed(2))
+                        ])
+                      )
+                    ),
+
+                    !allConfirmed && selectedItems.length > 0 && h('button', {
+                      key: 'confirm-btn',
+                      className: 'btn',
+                      onClick: async () => {
+                        await confirmDelivery(purchase.id, selectedItems);
+                        setSelectedItems([]);
+                      },
+                      style: { marginTop: '1rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }
+                    }, `✓ ${t.confirmSelected} (${selectedItems.length})`)
+                  ]);
+                })
+            ])
+          ]),
+
+          // Current Stock 탭
+          activeTab === 'currentStock' && h('div', { key: 'current-stock' }, [
+            h('h2', { key: 'title', style: { marginBottom: '1.5rem', color: '#7f1d1d', fontSize: '1.5rem', fontWeight: '700' }}, t.currentStock),
+            
+            h('div', { key: 'table', style: { overflowX: 'auto' }}, [
+              h('table', { key: 'stock-table', style: { width: '100%', borderCollapse: 'collapse' }}, [
+                h('thead', { key: 'head' }, [
+                  h('tr', { key: 'row' }, [
+                    h('th', { key: 'item', style: { padding: '1rem', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', fontWeight: '700', fontSize: '0.875rem' }}, language === 'ko' ? '품목' : language === 'es' ? 'Artículo' : 'Item'),
+                    h('th', { key: 'current', style: { padding: '1rem', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'center', fontWeight: '700', fontSize: '0.875rem' }}, language === 'ko' ? '현재고' : language === 'es' ? 'Actual' : 'Current'),
+                    h('th', { key: 'par', style: { padding: '1rem', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'center', fontWeight: '700', fontSize: '0.875rem' }}, 'PAR'),
+                    h('th', { key: 'shortage', style: { padding: '1rem', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'center', fontWeight: '700', fontSize: '0.875rem' }}, t.shortage),
+                    h('th', { key: 'onorder', style: { padding: '1rem', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'center', fontWeight: '700', fontSize: '0.875rem' }}, t.onOrder)
                   ])
                 ]),
-                
-                h('button', { key: 'complete', className: 'btn', onClick: () => { setPurchaseData([...shoppingList, ...miscItems.map(m => ({...m, selected_vendor: 'Miscellaneous', category: 'miscellaneous', shortage: m.quantity}))]); setShowSimpleView(true); }, style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
-              ]
+                h('tbody', { key: 'body' },
+                  items.map((item, idx) => {
+                    const shortage = Math.max(0, item.par - item.current_inventory);
+                    
+                    // 구매 중인 수량 계산
+                    let onOrder = 0;
+                    pendingPurchases.forEach(purchase => {
+                      if (purchase.status === 'pending') {
+                        purchase.items.forEach(pItem => {
+                          if (pItem.name === item.name && !pItem.confirmed) {
+                            onOrder += pItem.quantity;
+                          }
+                        });
+                      }
+                    });
+                    
+                    return h('tr', { key: idx, style: { borderBottom: '1px solid #e2e8f0' }}, [
+                      h('td', { key: 'name', style: { padding: '1rem', fontWeight: '600' }}, [
+                        h('div', { key: 'name-text' }, item.name),
+                        h('div', { key: 'vendor', style: { fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}, item.vendor)
+                      ]),
+                      h('td', { key: 'current', style: { padding: '1rem', textAlign: 'center', fontWeight: '700', fontSize: '1.125rem' }}, item.current_inventory),
+                      h('td', { key: 'par', style: { padding: '1rem', textAlign: 'center', color: '#64748b' }}, item.par),
+                      h('td', { key: 'shortage', style: { padding: '1rem', textAlign: 'center' }}, 
+                        shortage > 0 ? 
+                          h('span', { style: { color: '#ef4444', fontWeight: '700' }}, '-' + shortage) :
+                          h('span', { style: { color: '#4ade80' }}, '✓')
+                      ),
+                      h('td', { key: 'onorder', style: { padding: '1rem', textAlign: 'center' }}, 
+                        onOrder > 0 ?
+                          h('span', { style: { color: '#fbbf24', fontWeight: '700', background: 'rgba(251, 191, 36, 0.1)', padding: '0.25rem 0.75rem', borderRadius: '20px' }}, '+' + onOrder) :
+                          h('span', { style: { color: '#64748b' }}, '-')
+                      )
+                    ]);
+                  })
+                )
+              ])
+            ])
           ]),
 
           activeTab === 'reports' && h('div', { key: 'reports' }, [
