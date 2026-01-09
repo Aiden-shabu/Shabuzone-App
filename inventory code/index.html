@@ -4,12 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Shabu Zone">
-  <meta name="theme-color" content="#7f1d1d">
-  <link rel="manifest" href="./manifest.json">
-  <link rel="apple-touch-icon" href="./shabu_logo_80x80.png">
+  <meta name="theme-color" content="#f5f5f0">
   <title>Shabu Zone Management</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -543,7 +540,6 @@
         dashboard: '대시보드', count: '재고 실사', shopping: '쇼핑 리스트', add: '추가', reports: '리포트',
         totalItems: '전체 품목', lowStock: '부족 재고', totalValue: '총 가치',
         lowStockAlert: '부족 재고 알림', generateShopping: '쇼핑 리스트 생성',
-        shoppingList: '쇼핑 리스트',
         item: '품목', par: 'PAR', current: '현재', qty: '수량', total: '합계',
         completePurchase: '구매 완료', vendor: '벤더', price: '가격',
         category: '카테고리', all: '전체', frozen: '냉동', refrigerated: '냉장', dry: '실온 보관',
@@ -566,15 +562,6 @@
         lastUsed: '전날 사용', weeklyAvg: '주간 평균', showChart: '차트 보기', hideChart: '차트 닫기',
         usageChart: '사용량 그래프 (7일)', noHistory: '구매 내역이 없어 분석할 수 없습니다',
         registerCount: '등록하기', countRecords: '재고 실사 내역', countRegistered: '재고 실사가 등록되었습니다!',
-        purchaseConfirmation: '구매 확인', copyButton: '📋 복사하기', copiedButton: '✓ 복사됨!',
-        downloadExcel: '📥 액셀 다운로드', monthlyUsageReport: '월간 사용량 리포트',
-        downloadMonthlyUsage: '📥 월간 사용량 다운로드', countRecordCalendar: '재고실사 기록',
-        inventoryPurchaseItems: '재고 및 구매 아이템 (구매내역만 기록)',
-        monthlyUsageDesc: '이번 달 구매 내역을 기반으로 아이템별 사용량과 비용을 분석합니다.',
-        purchaseDetail: '구매 내역',
-        confirmDelivery: '입고 확인', pending: '구매 중', selectAll: '전체 선택',
-        confirmSelected: '선택 항목 확인', currentStock: '재고 현황', shortage: '부족',
-        onOrder: '구매 중', delivered: '입고 완료',
         // Management/Schedule translations  
         management: {
           title: '스케줄 관리',
@@ -661,7 +648,6 @@
         dashboard: 'Dashboard', count: 'Count', shopping: 'Shopping', add: 'Add', reports: 'Reports',
         totalItems: 'Total Items', lowStock: 'Low Stock', totalValue: 'Total Value',
         lowStockAlert: 'Low Stock Alert', generateShopping: 'Generate Shopping List',
-        shoppingList: 'Shopping List',
         item: 'Item', par: 'PAR', current: 'Current', qty: 'Qty', total: 'Total',
         completePurchase: 'Complete Purchase', vendor: 'Vendor', price: 'Price',
         category: 'Category', all: 'All', frozen: 'Frozen', refrigerated: 'Refrigerated', dry: 'Dry Storage',
@@ -762,25 +748,14 @@
         dataReset: 'Data reset successfully!',
         saveAndContinue: 'Save & Continue', backToEdit: '← Back to Edit',
         itemAnalysis: 'Item Analysis', exportExcel: 'Export Excel',
-        byStorage: 'By Storage', byCategory: 'By Category',
         lastUsed: 'Last Used', weeklyAvg: 'Weekly Avg', showChart: 'Show Chart', hideChart: 'Hide Chart',
         usageChart: 'Usage Chart (7 Days)', noHistory: 'No purchase history for analysis',
-        registerCount: 'Register', countRecords: 'Count Records', countRegistered: 'Inventory count registered!',
-        purchaseConfirmation: 'Purchase Confirmation', copyButton: '📋 Copy', copiedButton: '✓ Copied!',
-        downloadExcel: '📥 Download Excel', monthlyUsageReport: 'Monthly Usage Report',
-        downloadMonthlyUsage: '📥 Download Monthly Usage', countRecordCalendar: 'Count Records',
-        inventoryPurchaseItems: 'Stock & Purchase Items (Purchase history only)',
-        monthlyUsageDesc: 'Analyze item usage and costs based on this month\'s purchase history.',
-        purchaseDetail: 'Purchase Details',
-        confirmDelivery: 'Confirm Delivery', pending: 'Pending', selectAll: 'Select All',
-        confirmSelected: 'Confirm Selected', currentStock: 'Current Stock', shortage: 'Short',
-        onOrder: 'On Order', delivered: 'Delivered',
+        registerCount: 'Register', countRecords: 'Count Records', countRegistered: 'Inventory count registered!'
       },
       es: {
         dashboard: 'Panel', count: 'Inventario', shopping: 'Compras', add: 'Agregar', reports: 'Informes',
         totalItems: 'Total Artículos', lowStock: 'Stock Bajo', totalValue: 'Valor Total',
         lowStockAlert: 'Alerta de Stock Bajo', generateShopping: 'Generar Lista de Compras',
-        shoppingList: 'Lista de Compras',
         item: 'Artículo', par: 'PAR', current: 'Actual', qty: 'Cant', total: 'Total',
         completePurchase: 'Completar Compra', vendor: 'Proveedor', price: 'Precio',
         category: 'Categoría', all: 'Todos', frozen: 'Congelado', refrigerated: 'Refrigerado', dry: 'Almacén Seco',
@@ -800,19 +775,9 @@
         dataReset: '¡Datos restablecidos!',
         saveAndContinue: 'Guardar', backToEdit: '← Editar',
         itemAnalysis: 'Análisis de Artículos', exportExcel: 'Exportar Excel',
-        byStorage: 'Por Almacenamiento', byCategory: 'Por Categoría',
         lastUsed: 'Último Uso', weeklyAvg: 'Promedio Semanal', showChart: 'Mostrar Gráfico', hideChart: 'Ocultar',
         usageChart: 'Gráfico de Uso (7 Días)', noHistory: 'No hay historial para análisis',
-        registerCount: 'Registrar', countRecords: 'Registros de Inventario', countRegistered: '¡Inventario registrado!',
-        purchaseConfirmation: 'Confirmación de Compra', copyButton: '📋 Copiar', copiedButton: '✓ ¡Copiado!',
-        downloadExcel: '📥 Descargar Excel', monthlyUsageReport: 'Informe de Uso Mensual',
-        downloadMonthlyUsage: '📥 Descargar Uso Mensual', countRecordCalendar: 'Registros de Inventario',
-        inventoryPurchaseItems: 'Artículos de Inventario y Compra (Solo historial de compras)',
-        monthlyUsageDesc: 'Analiza el uso de artículos y los costos según el historial de compras de este mes.',
-        purchaseDetail: 'Detalles de Compra',
-        confirmDelivery: 'Confirmar Entrega', pending: 'Pendiente', selectAll: 'Seleccionar Todo',
-        confirmSelected: 'Confirmar Seleccionados', currentStock: 'Stock Actual', shortage: 'Falta',
-        onOrder: 'En Pedido', delivered: 'Entregado',
+        registerCount: 'Registrar', countRecords: 'Registros de Inventario', countRegistered: '¡Inventario registrado!'
       },
       zh: {
         dashboard: '仪表板', count: '库存盘点', shopping: '购物清单', add: '添加', reports: '报告',
@@ -934,13 +899,6 @@
       const [itemCategories, setItemCategories] = useState({});
       const [newCategory, setNewCategory] = useState({ name_en: '', name_ko: '', name_es: '', icon: '📦' });
       const [categoryData, setCategoryData] = useState({});
-      const [calendarMonth, setCalendarMonth] = useState(new Date());
-      const [countSearchQuery, setCountSearchQuery] = useState('');
-      const [shoppingSubTab, setShoppingSubTab] = useState('list'); // 'list' or 'confirm'
-      const [pendingPurchases, setPendingPurchases] = useState([]); // 구매 완료했지만 입고 안된 것들
-      const [selectedItemsPerPurchase, setSelectedItemsPerPurchase] = useState({}); // { purchaseId: [itemIndex1, itemIndex2, ...] }
-
-
 
       const categoryTranslations = {
         ko: {
@@ -1409,7 +1367,6 @@
           const categoriesSnap = await window.db.ref(getPath('categories')).once('value');
           const itemCategoriesSnap = await window.db.ref(getPath('itemCategories')).once('value');
           const categoryDataSnap = await window.db.ref(getPath('categoryData')).once('value');
-          const pendingSnap = await window.db.ref(getPath('pending')).once('value');
           
           console.log('✅ 모든 snapshot 받음');
           
@@ -1421,7 +1378,6 @@
           const categoriesData = categoriesSnap.val() || [];
           const itemCategoriesData = itemCategoriesSnap.val() || {};
           const categoryDataData = categoryDataSnap.val() || {};
-          const pendingData = pendingSnap.val() || [];
           
           console.log('✅ 데이터 로드 완료:', {
             items: Object.keys(itemsData).length,
@@ -1444,7 +1400,6 @@
           setTempItems(itemsArray);
           setShoppingList(shopData);
           setPurchaseHistory(histData);
-          setPendingPurchases(pendingData);
           setVendors(vendorsData);
           setCountRecords(countData);
           setCategories(categoriesData);
@@ -1549,8 +1504,7 @@
             vendor: item.selected_vendor,
             quantity: item.shortage,
             price: item.price,
-            total: item.shortage * item.price,
-            confirmed: false // 입고 확인 안됨
+            total: item.shortage * item.price
           };
         });
         
@@ -1563,76 +1517,38 @@
             vendor: 'Miscellaneous',
             quantity: item.quantity,
             price: item.price,
-            total: item.quantity * item.price,
-            confirmed: false
+            total: item.quantity * item.price
           });
         });
         
-        // 재고는 증가시키지 않음! pending으로 보냄
+        const updatedItems = [...items];
+        shoppingList.forEach(item => {
+          const idx = updatedItems.findIndex(i => i.name === item.name);
+          if (idx !== -1) {
+            updatedItems[idx].current_inventory += item.shortage;
+            updatedItems[idx].vendor = item.selected_vendor;
+          }
+        });
+        
         const purchase = {
           id: Date.now(),
           date, time,
           items: purchaseItems,
           totalItems: purchaseItems.length,
-          totalCost,
-          status: 'pending', // 구매 완료, 입고 대기 중
-          confirmedItems: [] // 입고 확인된 아이템 ID들
+          totalCost
         };
         
-        const newPending = [purchase, ...pendingPurchases];
         const newHistory = [purchase, ...purchaseHistory];
         
-        setPendingPurchases(newPending);
+        setItems(updatedItems);
         setPurchaseHistory(newHistory);
         setShoppingList([]);
-        setMiscItems([]);
         
-        await window.db.ref(getPath('pending')).set(newPending);
+        await window.db.ref(getPath('items')).set(updatedItems);
         await window.db.ref(getPath('history')).set(newHistory);
         await window.db.ref(getPath('shopping')).set([]);
-        await window.db.ref(getPath('misc')).set([]);
-      }
         
         setMiscItems([]);
-      }
-
-      // 입고 확인 함수
-      async function confirmDelivery(purchaseId, selectedItemIndices) {
-        const purchase = pendingPurchases.find(p => p.id === purchaseId);
-        if (!purchase) return;
-
-        const updatedItems = [...items];
-        
-        // 선택된 아이템들만 재고 증가
-        selectedItemIndices.forEach(itemIndex => {
-          const purchaseItem = purchase.items[itemIndex];
-          if (!purchaseItem.confirmed) {
-            const idx = updatedItems.findIndex(i => i.name === purchaseItem.name);
-            if (idx !== -1) {
-              updatedItems[idx].current_inventory += purchaseItem.quantity;
-              updatedItems[idx].vendor = purchaseItem.vendor;
-            }
-            purchaseItem.confirmed = true;
-          }
-        });
-
-        // 모든 아이템이 확인되었는지 체크
-        const allConfirmed = purchase.items.every(item => item.confirmed);
-        if (allConfirmed) {
-          purchase.status = 'completed';
-        }
-
-        // pending과 history 업데이트
-        const updatedPending = pendingPurchases.map(p => p.id === purchaseId ? purchase : p);
-        const updatedHistory = purchaseHistory.map(p => p.id === purchaseId ? purchase : p);
-
-        setItems(updatedItems);
-        setPendingPurchases(updatedPending);
-        setPurchaseHistory(updatedHistory);
-
-        await window.db.ref(getPath('items')).set(updatedItems);
-        await window.db.ref(getPath('pending')).set(updatedPending);
-        await window.db.ref(getPath('history')).set(updatedHistory);
       }
 
       async function addNewItem() {
@@ -1873,47 +1789,11 @@
         const wb = XLSX.utils.book_new();
         const dateStr = record.date.replace(/-/g, '.');
         
-        // 언어별 텍스트
-        const excelText = {
-          ko: {
-            title: `${dateStr} 재고실사 기록`,
-            headers: ['아이템명', '카테고리', '벤더', '가격', '재고수량', '재고가치'],
-            totalItems: '총 아이템',
-            totalValue: '총 재고가치',
-            shoppingTitle: '구매 필요 아이템',
-            shoppingHeaders: ['아이템명', '현재 재고', 'PAR', '부족 수량', '가격', '구매 금액'],
-            sheetName: '재고실사',
-            fileName: `${dateStr} 재고실사.xlsx`
-          },
-          en: {
-            title: `${dateStr} Inventory Count Record`,
-            headers: ['Item Name', 'Category', 'Vendor', 'Price', 'Quantity', 'Value'],
-            totalItems: 'Total Items',
-            totalValue: 'Total Value',
-            shoppingTitle: 'Items to Purchase',
-            shoppingHeaders: ['Item Name', 'Current', 'PAR', 'Shortage', 'Price', 'Total'],
-            sheetName: 'Count Record',
-            fileName: `${dateStr} Inventory Count.xlsx`
-          },
-          es: {
-            title: `${dateStr} Registro de Inventario`,
-            headers: ['Artículo', 'Categoría', 'Proveedor', 'Precio', 'Cantidad', 'Valor'],
-            totalItems: 'Total Artículos',
-            totalValue: 'Valor Total',
-            shoppingTitle: 'Artículos a Comprar',
-            shoppingHeaders: ['Artículo', 'Actual', 'PAR', 'Faltante', 'Precio', 'Total'],
-            sheetName: 'Inventario',
-            fileName: `${dateStr} Inventario.xlsx`
-          }
-        };
-        
-        const txt = excelText[language] || excelText.en;
-        
         // 재고실사 데이터
         const countData = [
-          [txt.title],
+          [`${dateStr} 재고실사 기록`],
           [],
-          txt.headers
+          ['아이템명', '카테고리', '벤더', '가격', '재고수량', '재고가치']
         ];
         
         record.items.forEach(item => {
@@ -1928,16 +1808,16 @@
         });
         
         countData.push([]);
-        countData.push([txt.totalItems, record.totalItems]);
-        countData.push([txt.totalValue, '$' + record.totalValue.toFixed(2)]);
+        countData.push(['총 아이템', record.totalItems]);
+        countData.push(['총 재고가치', '$' + record.totalValue.toFixed(2)]);
         
         // 쇼핑 리스트 (부족 재고)
         const shoppingData = [
           [],
           [],
-          [txt.shoppingTitle],
+          ['구매 필요 아이템'],
           [],
-          txt.shoppingHeaders
+          ['아이템명', '현재 재고', 'PAR', '부족 수량', '가격', '구매 금액']
         ];
         
         record.items.filter(item => item.par > item.current_inventory).forEach(item => {
@@ -1964,51 +1844,15 @@
           { wch: 15 }
         ];
         
-        XLSX.utils.book_append_sheet(wb, ws, txt.sheetName);
-        XLSX.writeFile(wb, txt.fileName);
+        XLSX.utils.book_append_sheet(wb, ws, '재고실사');
+        XLSX.writeFile(wb, `${dateStr} 재고실사.xlsx`);
       }
 
       function downloadMonthlyUsageExcel() {
         const now = new Date();
         const year = now.getFullYear();
         const month = now.getMonth(); // 0-11
-        
-        // 언어별 월 이름
-        const monthNames = {
-          ko: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
-          en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-          es: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-        };
-        
-        // 언어별 텍스트
-        const excelText = {
-          ko: {
-            title: `${year}년 ${monthNames.ko[month]} 사용량 리포트`,
-            period: '기간',
-            headers: ['아이템명', '카테고리', '벤더', '총 사용량', '평균 가격', '총 비용'],
-            totalCost: '총 비용',
-            sheetName: '월간 사용량',
-            fileName: `${year}년 ${monthNames.ko[month]} 사용량.xlsx`
-          },
-          en: {
-            title: `${monthNames.en[month]} ${year} Usage Report`,
-            period: 'Period',
-            headers: ['Item Name', 'Category', 'Vendor', 'Total Quantity', 'Avg Price', 'Total Cost'],
-            totalCost: 'Total Cost',
-            sheetName: 'Monthly Usage',
-            fileName: `${monthNames.en[month]} ${year} Usage.xlsx`
-          },
-          es: {
-            title: `Informe de Uso ${monthNames.es[month]} ${year}`,
-            period: 'Período',
-            headers: ['Artículo', 'Categoría', 'Proveedor', 'Cantidad Total', 'Precio Prom', 'Costo Total'],
-            totalCost: 'Costo Total',
-            sheetName: 'Uso Mensual',
-            fileName: `Uso ${monthNames.es[month]} ${year}.xlsx`
-          }
-        };
-        
-        const txt = excelText[language] || excelText.en;
+        const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
         
         // 이번 달 시작/끝
         const startDate = new Date(year, month, 1);
@@ -2043,10 +1887,10 @@
         
         // 월간 사용량 데이터
         const usageData = [
-          [txt.title],
-          [`${txt.period}: ${startDate.toISOString().split('T')[0]} ~ ${endDate.toISOString().split('T')[0]}`],
+          [`${year}년 ${monthNames[month]} 사용량 리포트`],
+          [`기간: ${startDate.toISOString().split('T')[0]} ~ ${endDate.toISOString().split('T')[0]}`],
           [],
-          txt.headers
+          ['아이템명', '카테고리', '벤더', '총 사용량', '평균 가격', '총 비용']
         ];
         
         Object.values(itemUsage).sort((a, b) => b.totalCost - a.totalCost).forEach(item => {
@@ -2062,7 +1906,7 @@
         
         const totalCost = Object.values(itemUsage).reduce((sum, item) => sum + item.totalCost, 0);
         usageData.push([]);
-        usageData.push([txt.totalCost, '', '', '', '', '$' + totalCost.toFixed(2)]);
+        usageData.push(['총 비용', '', '', '', '', '$' + totalCost.toFixed(2)]);
         
         const ws = XLSX.utils.aoa_to_sheet(usageData);
         ws['!cols'] = [
@@ -2074,8 +1918,8 @@
           { wch: 15 }
         ];
         
-        XLSX.utils.book_append_sheet(wb, ws, txt.sheetName);
-        XLSX.writeFile(wb, txt.fileName);
+        XLSX.utils.book_append_sheet(wb, ws, '월간 사용량');
+        XLSX.writeFile(wb, `${year}년 ${monthNames[month]} 사용량.xlsx`);
       }
 
       function getItemUsageData(itemName) {
@@ -2135,7 +1979,7 @@
       });
 
 
-      // 렌더링
+      
       // 로그인 화면
       if (screen === 'login') {
         return h('div', { className: 'login-screen' }, [
@@ -2377,7 +2221,7 @@
                 className: 'btn btn-secondary',
                 style: { marginTop: '1.5rem', width: '100%' },
                 onClick: () => setShowUserManagement(false)
-              }, t.close)
+              }, '닫기')
             ])
           )
         ]);
@@ -2795,17 +2639,7 @@
             key: 'lang',
             value: language,
             onChange: (e) => setLanguage(e.target.value),
-            style: { 
-              background: 'white', 
-              border: '2px solid #e2e8f0', 
-              borderRadius: '8px', 
-              padding: '0.5rem 0.75rem', 
-              color: '#2c3e50', 
-              fontSize: '0.875rem', 
-              fontWeight: '500',
-              width: '70px',
-              cursor: 'pointer'
-            }
+            style: { background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem', minWidth: '60px' }
           }, [
             h('option', { key: 'ko', value: 'ko' }, 'KR'),
             h('option', { key: 'en', value: 'en' }, 'EN'),
@@ -2815,7 +2649,7 @@
 
         h('div', { key: 'nav', className: 'nav' },
           h('div', { className: 'nav-inner' }, [
-            ['dashboard', 'count', 'shopping', 'currentStock', 'reports', 'add'].map(tab =>
+            ['dashboard', 'count', 'shopping', 'reports', 'add'].map(tab =>
               h('button', {
                 key: tab,
                 className: 'nav-btn' + (activeTab === tab ? ' active' : ''),
@@ -2867,148 +2701,53 @@
             
             // 재고실사 달력
             h('div', { key: 'calendar', className: 'card', style: { marginTop: '1.5rem' }}, [
-              h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}, [
-                h('h3', { key: 'title', style: { color: '#7f1d1d', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}, [
-                  h('span', { key: 'icon' }, '📅'),
-                  h('span', { key: 'text' }, t.countRecordCalendar)
-                ]),
-                h('div', { key: 'nav', style: { display: 'flex', gap: '0.5rem', alignItems: 'center' }}, [
-                  h('button', { 
-                    key: 'prev',
-                    onClick: () => {
-                      const newMonth = new Date(calendarMonth);
-                      newMonth.setMonth(newMonth.getMonth() - 1);
-                      setCalendarMonth(newMonth);
-                    },
-                    style: { 
-                      padding: '0.5rem 0.75rem',
-                      background: 'white',
-                      border: '2px solid #e2e8f0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                      fontWeight: '700'
-                    }
-                  }, '←'),
-                  h('span', { key: 'month', style: { fontWeight: '600', fontSize: '1rem', minWidth: '120px', textAlign: 'center' }}, 
-                    (() => {
-                      const monthNames = {
-                        ko: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
-                        en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                        es: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-                      };
-                      const names = monthNames[language] || monthNames.en;
-                      return `${calendarMonth.getFullYear()}.${names[calendarMonth.getMonth()]}`;
-                    })()
-                  ),
-                  h('button', { 
-                    key: 'next',
-                    onClick: () => {
-                      const newMonth = new Date(calendarMonth);
-                      newMonth.setMonth(newMonth.getMonth() + 1);
-                      setCalendarMonth(newMonth);
-                    },
-                    style: { 
-                      padding: '0.5rem 0.75rem',
-                      background: 'white',
-                      border: '2px solid #e2e8f0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                      fontWeight: '700'
-                    }
-                  }, '→')
-                ])
+              h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+                h('span', { key: 'icon' }, '📅'),
+                h('span', { key: 'text' }, '재고실사 기록')
               ]),
-              h('div', { key: 'calendar-grid' }, [
-                // 요일 헤더
-                h('div', { key: 'weekdays', style: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem', marginBottom: '0.5rem' }},
-                  (() => {
-                    const dayNames = {
-                      ko: ['일', '월', '화', '수', '목', '금', '토'],
-                      en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-                      es: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-                    };
-                    const names = dayNames[language] || dayNames.en;
-                    return names.map(day => 
+              h('div', { key: 'dates', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: '0.5rem' }},
+                (() => {
+                  const dates = [];
+                  const countDates = new Set(countRecords.map(r => r.date));
+                  const today = new Date();
+                  
+                  // 최근 30일
+                  for (let i = 29; i >= 0; i--) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const hasCount = countDates.has(dateStr);
+                    const isToday = i === 0;
+                    
+                    dates.push(
                       h('div', { 
-                        key: day, 
+                        key: dateStr, 
                         style: { 
-                          textAlign: 'center', 
-                          fontSize: '0.75rem', 
-                          fontWeight: '600', 
-                          color: '#64748b',
-                          padding: '0.25rem'
+                          padding: '0.5rem',
+                          borderRadius: '8px',
+                          textAlign: 'center',
+                          background: hasCount ? 'linear-gradient(135deg, #4ade80, #22c55e)' : (isToday ? '#f8fafc' : 'white'),
+                          border: isToday ? '2px solid #7f1d1d' : '1px solid #e2e8f0',
+                          fontSize: '0.75rem'
                         }
-                      }, day)
+                      }, [
+                        h('div', { key: 'date', style: { fontWeight: '600', color: hasCount ? 'white' : '#2c3e50' }}, date.getDate()),
+                        h('div', { key: 'day', style: { fontSize: '0.625rem', color: hasCount ? 'rgba(255,255,255,0.8)' : '#64748b' }}, 
+                          ['일', '월', '화', '수', '목', '금', '토'][date.getDay()])
+                      ])
                     );
-                  })()
-                ),
-                // 날짜 그리드
-                h('div', { key: 'dates', style: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem' }},
-                  (() => {
-                    const dates = [];
-                    const countDates = new Set(countRecords.map(r => r.date));
-                    const today = new Date();
-                    
-                    const year = calendarMonth.getFullYear();
-                    const month = calendarMonth.getMonth();
-                    
-                    // 월의 첫날
-                    const firstDay = new Date(year, month, 1);
-                    const startingDayOfWeek = firstDay.getDay();
-                    
-                    // 월의 마지막 날
-                    const lastDay = new Date(year, month + 1, 0);
-                    const totalDays = lastDay.getDate();
-                    
-                    // 빈 칸 추가 (월 시작 전)
-                    for (let i = 0; i < startingDayOfWeek; i++) {
-                      dates.push(h('div', { key: 'empty-' + i, style: { padding: '0.5rem' }}));
-                    }
-                    
-                    // 날짜 추가
-                    for (let day = 1; day <= totalDays; day++) {
-                      const date = new Date(year, month, day);
-                      const dateStr = date.toISOString().split('T')[0];
-                      const hasCount = countDates.has(dateStr);
-                      const isToday = dateStr === today.toISOString().split('T')[0];
-                      
-                      dates.push(
-                        h('div', { 
-                          key: dateStr, 
-                          style: { 
-                            padding: '0.5rem',
-                            borderRadius: '8px',
-                            textAlign: 'center',
-                            background: hasCount ? 'linear-gradient(135deg, #4ade80, #22c55e)' : (isToday ? '#fef5f5' : 'white'),
-                            border: isToday ? '2px solid #7f1d1d' : '1px solid #e2e8f0',
-                            fontSize: '0.875rem',
-                            fontWeight: hasCount || isToday ? '600' : '400',
-                            color: hasCount ? 'white' : (isToday ? '#7f1d1d' : '#2c3e50'),
-                            cursor: 'default',
-                            minHeight: '36px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }
-                        }, day)
-                      );
-                    }
-                    return dates;
-                  })()
-                )
-              ]),
+                  }
+                  return dates;
+                })()
+              ),
               h('div', { key: 'legend', style: { display: 'flex', gap: '1rem', marginTop: '1rem', fontSize: '0.75rem', justifyContent: 'center' }}, [
                 h('div', { key: 'done', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
                   h('div', { key: 'box', style: { width: '16px', height: '16px', borderRadius: '4px', background: 'linear-gradient(135deg, #4ade80, #22c55e)' }}),
-                  h('span', { key: 'text', style: { color: '#64748b' }}, 
-                    language === 'ko' ? '실사 완료' : language === 'es' ? 'Completado' : 'Completed')
+                  h('span', { key: 'text', style: { color: '#64748b' }}, '실사 완료')
                 ]),
                 h('div', { key: 'today', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
-                  h('div', { key: 'box', style: { width: '16px', height: '16px', borderRadius: '4px', border: '2px solid #7f1d1d', background: '#fef5f5' }}),
-                  h('span', { key: 'text', style: { color: '#64748b' }}, 
-                    language === 'ko' ? '오늘' : language === 'es' ? 'Hoy' : 'Today')
+                  h('div', { key: 'box', style: { width: '16px', height: '16px', borderRadius: '4px', border: '2px solid #7f1d1d', background: '#f8fafc' }}),
+                  h('span', { key: 'text', style: { color: '#64748b' }}, '오늘')
                 ])
               ])
             ]),
@@ -3031,7 +2770,7 @@
                   cursor: 'pointer',
                   fontWeight: '600'
                 }
-              }, t.byStorage),
+              }, t.byStorage || '보관별'),
               h('button', { 
                 key: 'category',
                 onClick: () => { setFilterMode('category'); setCategoryFilter('all'); },
@@ -3045,25 +2784,8 @@
                   cursor: 'pointer',
                   fontWeight: '600'
                 }
-              }, t.byCategory)
+              }, t.byCategory || '분류별')
             ]),
-
-            // 검색창 추가
-            h('input', { 
-              key: 'count-search', 
-              type: 'text', 
-              placeholder: language === 'ko' ? '🔍 아이템 검색...' : language === 'es' ? '🔍 Buscar artículo...' : '🔍 Search item...', 
-              value: countSearchQuery, 
-              onChange: (e) => setCountSearchQuery(e.target.value),
-              style: { 
-                width: '100%',
-                padding: '0.75rem',
-                border: '2px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                marginBottom: '1rem'
-              }
-            }),
 
             h('div', { key: 'filter', style: { display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }},
               (filterMode === 'storage' 
@@ -3095,26 +2817,15 @@
 
             (() => {
               let filtered = Array.isArray(tempItems) ? tempItems : [];
-              
-              // 검색어 필터링
-              if (countSearchQuery.trim()) {
-                const searchLower = countSearchQuery.toLowerCase();
-                filtered = filtered.filter(item => 
-                  item.name.toLowerCase().includes(searchLower)
-                );
-              }
-              
-              // 카테고리/보관별 필터링
               if (filterMode === 'storage' && categoryFilter !== 'all') {
-                filtered = filtered.filter(i => i.category === categoryFilter);
+                filtered = Array.isArray(tempItems) ? tempItems.filter(i => i.category === categoryFilter) : [];
               } else if (filterMode === 'category' && categoryFilter !== 'all') {
                 if (categoryFilter === 'Uncategorized') {
-                  filtered = filtered.filter(i => !itemCategories[i.name]);
+                  filtered = Array.isArray(tempItems) ? tempItems.filter(i => !itemCategories[i.name]) : [];
                 } else {
-                  filtered = filtered.filter(i => itemCategories[i.name] === categoryFilter);
+                  filtered = Array.isArray(tempItems) ? tempItems.filter(i => itemCategories[i.name] === categoryFilter) : [];
                 }
               }
-              
               return (Array.isArray(filtered) ? filtered : []).map((item, i) => {
                 const globalIndex = tempItems.findIndex(it => it.name === item.name);
                 const itemCategory = itemCategories[item.name] || 'Uncategorized';
@@ -3129,31 +2840,10 @@
                     ]),
                     h('div', { key: 'meta', style: { fontSize: '0.875rem', color: '#64748b' }}, 'PAR: ' + item.par + ' | ' + item.vendor + ' | $' + item.price)
                   ]),
-                  h('div', { key: 'counter', style: { display: 'flex', flexDirection: 'column', gap: '0.5rem' }}, [
-                    h('div', { key: 'buttons', style: { display: 'flex', gap: '0.25rem', justifyContent: 'center', flexWrap: 'wrap' }}, [
-                      h('button', { key: 'minus1', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, Math.max(0, item.current_inventory - 1)), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '-1'),
-                      h('button', { key: 'minus05', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, Math.max(0, item.current_inventory - 0.5)), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '-0.5'),
-                      h('button', { key: 'minus025', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, Math.max(0, item.current_inventory - 0.25)), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '-0.25'),
-                      h('input', { 
-                        key: 'input', 
-                        type: 'number', 
-                        step: '0.01', 
-                        value: item.current_inventory, 
-                        onChange: (e) => updateTempInventory(globalIndex, parseFloat(e.target.value) || 0),
-                        style: { 
-                          width: '70px', 
-                          padding: '0.5rem', 
-                          border: '2px solid #7f1d1d', 
-                          borderRadius: '8px', 
-                          textAlign: 'center',
-                          fontWeight: '600',
-                          fontSize: '1rem'
-                        }
-                      }),
-                      h('button', { key: 'plus025', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, item.current_inventory + 0.25), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '+0.25'),
-                      h('button', { key: 'plus05', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, item.current_inventory + 0.5), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '+0.5'),
-                      h('button', { key: 'plus1', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, item.current_inventory + 1), style: { fontSize: '0.75rem', padding: '0.5rem' }}, '+1')
-                    ])
+                  h('div', { key: 'counter', className: 'counter' }, [
+                    h('button', { key: 'minus', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, Math.max(0, item.current_inventory - 0.5)) }, '-'),
+                    h('input', { key: 'input', className: 'counter-input', type: 'number', step: '0.5', value: item.current_inventory, onChange: (e) => updateTempInventory(globalIndex, e.target.value) }),
+                    h('button', { key: 'plus', className: 'counter-btn', onClick: () => updateTempInventory(globalIndex, Math.min(99, item.current_inventory + 0.5)) }, '+')
                   ])
                 ]);
               });
@@ -3163,299 +2853,80 @@
           ]),
 
           activeTab === 'shopping' && h('div', { key: 'shop' }, [
-            // Shopping 서브탭
-            h('div', { key: 'sub-tabs', style: { display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}, [
-              h('button', { 
-                key: 'list',
-                className: 'nav-btn' + (shoppingSubTab === 'list' ? ' active' : ''),
-                onClick: () => setShoppingSubTab('list')
-              }, t.shoppingList),
-              h('button', { 
-                key: 'confirm',
-                className: 'nav-btn' + (shoppingSubTab === 'confirm' ? ' active' : ''),
-                onClick: () => setShoppingSubTab('confirm'),
-                style: { position: 'relative' }
-              }, [
-                h('span', { key: 'text' }, t.confirmDelivery),
-                pendingPurchases.filter(p => p.status === 'pending').length > 0 && 
-                  h('span', { 
-                    key: 'badge',
-                    style: { 
-                      position: 'absolute', 
-                      top: '-8px', 
-                      right: '-8px', 
-                      background: '#ef4444', 
-                      color: 'white', 
-                      borderRadius: '50%', 
-                      width: '20px', 
-                      height: '20px', 
-                      fontSize: '0.75rem', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      fontWeight: '700'
-                    }
-                  }, pendingPurchases.filter(p => p.status === 'pending').length)
-              ])
-            ]),
-
-            // Shopping List 탭 내용
-            shoppingSubTab === 'list' && (
-              shoppingList.length === 0 ? 
-                h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 'No items in shopping list') : 
-                [
-                  h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.shoppingList),
-                    
-                  ['frozen', 'refrigerated', 'dry'].map(cat => {
-                    const catItems = Array.isArray(shoppingList) ? shoppingList.filter(item => item.category === cat) : [];
-                    if (catItems.length === 0) return null;
-                    return h('div', { key: cat, className: 'vendor-group', style: { marginBottom: '1.5rem' }}, [
-                      h('div', { key: 'title', style: { fontSize: '1rem', fontWeight: '700', color: categoryColors[cat], marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
-                        storageIcons[cat], ' ', t[cat]
-                      ]),
-                      catItems.sort((a, b) => a.name.localeCompare(b.name)).map((item, i) => {
-                        const globalIndex = shoppingList.findIndex(si => si.name === item.name);
-                        return h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', padding: '1rem' }}, [
-                          h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.75rem', color: '#2c3e50' }}, item.name),
-                          h('div', { key: 'inputs', style: { display: 'grid', gap: '0.75rem' }}, [
-                            h('div', { key: 'row1', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
-                              h('div', { key: 'price-group', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
-                                h('span', { key: 'label', style: { fontSize: '0.875rem', color: '#64748b', minWidth: '30px' }}, t.price),
-                                h('input', {
-                                  key: 'price',
-                                  type: 'number',
-                                  step: '0.01',
-                                  value: item.price,
-                                  onChange: (e) => updateShoppingPrice(globalIndex, e.target.value),
-                                  style: { flex: 1, background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
-                                })
-                              ]),
-                              h('div', { key: 'vendor-group' }, [
-                                h('select', {
-                                  key: 'vendor',
-                                  value: item.selected_vendor,
-                                  onChange: (e) => updateShoppingVendor(globalIndex, e.target.value),
-                                  style: { width: '100%', background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
-                                }, vendors.map(v => h('option', { key: v, value: v }, v)))
-                              ])
+            shoppingList.length === 0 ? h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 'No items in shopping list') : [
+              
+              h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.shoppingList || '쇼핑 리스트'),
+                
+                ['frozen', 'refrigerated', 'dry'].map(cat => {
+                  const catItems = Array.isArray(shoppingList) ? shoppingList.filter(item => item.category === cat) : [];
+                  if (catItems.length === 0) return null;
+                  return h('div', { key: cat, className: 'vendor-group', style: { marginBottom: '1.5rem' }}, [
+                    h('div', { key: 'title', style: { fontSize: '1rem', fontWeight: '700', color: categoryColors[cat], marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+                      storageIcons[cat], ' ', t[cat]
+                    ]),
+                    catItems.sort((a, b) => a.name.localeCompare(b.name)).map((item, i) => {
+                      const globalIndex = shoppingList.findIndex(si => si.name === item.name);
+                      return h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', padding: '1rem' }}, [
+                        h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.75rem', color: '#2c3e50' }}, item.name),
+                        h('div', { key: 'inputs', style: { display: 'grid', gap: '0.75rem' }}, [
+                          h('div', { key: 'row1', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
+                            h('div', { key: 'price-group', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
+                              h('span', { key: 'label', style: { fontSize: '0.875rem', color: '#64748b', minWidth: '30px' }}, t.price),
+                              h('input', {
+                                key: 'price',
+                                type: 'number',
+                                step: '0.01',
+                                value: item.price,
+                                onChange: (e) => updateShoppingPrice(globalIndex, e.target.value),
+                                style: { flex: 1, background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
+                              })
                             ]),
-                            h('div', { key: 'row2', className: 'counter' }, [
-                              h('button', { key: 'minus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, Math.max(0, item.shortage - 0.5)) }, '-'),
-                              h('input', { key: 'qty', className: 'counter-input', style: { width: '80px' }, type: 'number', step: '0.5', value: item.shortage, onChange: (e) => updateShoppingQuantity(globalIndex, e.target.value) }),
-                              h('button', { key: 'plus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, item.shortage + 0.5) }, '+')
+                            h('div', { key: 'vendor-group' }, [
+                              h('select', {
+                                key: 'vendor',
+                                value: item.selected_vendor,
+                                onChange: (e) => updateShoppingVendor(globalIndex, e.target.value),
+                                style: { width: '100%', background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
+                              }, vendors.map(v => h('option', { key: v, value: v }, v)))
                             ])
-                          ])
-                        ]);
-                      })
-                    ]);
-                  }),
-                  
-                  h('div', { key: 'misc-section', style: { marginTop: '2rem', padding: '1.5rem', background: 'rgba(127,29,29,0.05)', borderRadius: '12px', border: '2px dashed #7f1d1d' }}, [
-                    h('h4', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', fontWeight: '700' }}, 'Miscellaneous'),
-                    h('p', { key: 'desc', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}, t.inventoryPurchaseItems),
-                    
-                    miscItems.map((item, i) =>
-                      h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}, [
-                        h('div', { key: 'info' }, [
-                          h('div', { key: 'name', style: { fontWeight: '600', color: '#2c3e50' }}, item.name),
-                          h('div', { key: 'price', style: { fontSize: '0.875rem', color: '#64748b' }}, `${item.quantity} × $${item.price} = $${(item.quantity * item.price).toFixed(2)}`)
-                        ]),
-                        h('button', { key: 'delete', onClick: () => setMiscItems(miscItems.filter((_, idx) => idx !== i)), style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', cursor: 'pointer' }}, '삭제')
-                      ])
-                    ),
-                    
-                    h('div', { key: 'add-form', style: { display: 'grid', gap: '0.75rem', marginTop: '1rem' }}, [
-                      h('input', { key: 'name', type: 'text', placeholder: '아이템명', value: newMisc.name, onChange: (e) => setNewMisc({...newMisc, name: e.target.value}) }),
-                      h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
-                        h('input', { key: 'price', type: 'number', step: '0.01', placeholder: '가격', value: newMisc.price, onChange: (e) => setNewMisc({...newMisc, price: parseFloat(e.target.value) || 0}) }),
-                        h('input', { key: 'qty', type: 'number', step: '0.5', placeholder: '수량', value: newMisc.quantity, onChange: (e) => setNewMisc({...newMisc, quantity: parseFloat(e.target.value) || 1}) })
-                      ]),
-                      h('button', { key: 'add', className: 'btn btn-secondary', onClick: () => { if (newMisc.name) { setMiscItems([...miscItems, newMisc]); setNewMisc({ name: '', price: 0, quantity: 1 }); }}, disabled: !newMisc.name }, '+ 추가')
-                    ])
-                  ]),
-                  
-                  h('button', { key: 'complete', className: 'btn', onClick: () => { setPurchaseData([...shoppingList, ...miscItems.map(m => ({...m, selected_vendor: 'Miscellaneous', category: 'miscellaneous', shortage: m.quantity}))]); setShowSimpleView(true); }, style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
-                ]
-            ),
-
-            // Confirm Delivery 탭 내용
-            shoppingSubTab === 'confirm' && h('div', { key: 'confirm-content' }, [
-              pendingPurchases.length === 0 ?
-                h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 
-                  language === 'ko' ? '입고 대기 중인 구매가 없습니다' : 
-                  language === 'es' ? 'No hay compras pendientes' : 
-                  'No pending deliveries') :
-                pendingPurchases.map((purchase, pIdx) => {
-                  const selectedItems = selectedItemsPerPurchase[purchase.id] || [];
-                  const allSelected = selectedItems.length === purchase.items.filter(item => !item.confirmed).length;
-                  const someConfirmed = purchase.items.some(item => item.confirmed);
-                  const allConfirmed = purchase.status === 'completed';
-
-                  const setSelectedItems = (items) => {
-                    setSelectedItemsPerPurchase({
-                      ...selectedItemsPerPurchase,
-                      [purchase.id]: items
-                    });
-                  };
-
-                  return h('div', { 
-                    key: purchase.id, 
-                    className: 'card', 
-                    style: { 
-                      marginBottom: '1.5rem',
-                      background: allConfirmed ? 'rgba(74, 222, 128, 0.1)' : 'white',
-                      border: allConfirmed ? '2px solid #4ade80' : '2px solid #e2e8f0'
-                    }
-                  }, [
-                    h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}, [
-                      h('div', { key: 'info' }, [
-                        h('div', { key: 'date', style: { fontSize: '1.125rem', fontWeight: '700', color: '#7f1d1d' }}, purchase.date + ' ' + purchase.time),
-                        h('div', { key: 'summary', style: { fontSize: '0.875rem', color: '#64748b', marginTop: '0.25rem' }}, 
-                          `${purchase.totalItems} items • $${purchase.totalCost.toFixed(2)}`)
-                      ]),
-                      h('div', { key: 'status', style: { 
-                        padding: '0.5rem 1rem',
-                        borderRadius: '20px',
-                        background: allConfirmed ? '#4ade80' : '#fbbf24',
-                        color: 'white',
-                        fontSize: '0.875rem',
-                        fontWeight: '600'
-                      }}, allConfirmed ? t.delivered : t.pending)
-                    ]),
-
-                    !allConfirmed && h('div', { key: 'select-all', style: { marginBottom: '1rem' }}, [
-                      h('label', { 
-                        key: 'checkbox',
-                        style: { display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }
-                      }, [
-                        h('input', { 
-                          key: 'input',
-                          type: 'checkbox',
-                          checked: allSelected,
-                          onChange: (e) => {
-                            if (e.target.checked) {
-                              const unconfirmedIndices = purchase.items
-                                .map((item, idx) => item.confirmed ? null : idx)
-                                .filter(idx => idx !== null);
-                              setSelectedItems(unconfirmedIndices);
-                            } else {
-                              setSelectedItems([]);
-                            }
-                          },
-                          style: { width: '20px', height: '20px', cursor: 'pointer' }
-                        }),
-                        h('span', { key: 'label', style: { fontWeight: '600', fontSize: '0.875rem' }}, t.selectAll)
-                      ])
-                    ]),
-
-                    h('div', { key: 'items', style: { display: 'grid', gap: '0.5rem' }}, 
-                      purchase.items.map((item, itemIdx) => 
-                        h('label', {
-                          key: itemIdx,
-                          style: { 
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '0.75rem',
-                            background: item.confirmed ? 'rgba(74, 222, 128, 0.1)' : 'white',
-                            border: item.confirmed ? '1px solid #4ade80' : '1px solid #e2e8f0',
-                            borderRadius: '8px',
-                            cursor: item.confirmed ? 'not-allowed' : 'pointer',
-                            opacity: item.confirmed ? 0.6 : 1
-                          }
-                        }, [
-                          !item.confirmed && h('input', {
-                            key: 'check',
-                            type: 'checkbox',
-                            checked: selectedItems.includes(itemIdx),
-                            onChange: (e) => {
-                              if (e.target.checked) {
-                                setSelectedItems([...selectedItems, itemIdx]);
-                              } else {
-                                setSelectedItems(selectedItems.filter(i => i !== itemIdx));
-                              }
-                            },
-                            style: { width: '20px', height: '20px', cursor: 'pointer' }
-                          }),
-                          item.confirmed && h('span', { key: 'check', style: { fontSize: '1.25rem' }}, '✓'),
-                          h('div', { key: 'info', style: { flex: 1 }}, [
-                            h('div', { key: 'name', style: { fontWeight: '600', color: '#2c3e50' }}, item.name),
-                            h('div', { key: 'details', style: { fontSize: '0.875rem', color: '#64748b' }}, 
-                              `${item.vendor} • ${item.quantity} × $${item.price}`)
                           ]),
-                          h('div', { key: 'total', style: { fontWeight: '700', color: '#7f1d1d' }}, 
-                            '$' + item.total.toFixed(2))
+                          h('div', { key: 'row2', className: 'counter' }, [
+                            h('button', { key: 'minus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, Math.max(0, item.shortage - 0.5)) }, '-'),
+                            h('input', { key: 'qty', className: 'counter-input', style: { width: '80px' }, type: 'number', step: '0.5', value: item.shortage, onChange: (e) => updateShoppingQuantity(globalIndex, e.target.value) }),
+                            h('button', { key: 'plus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, item.shortage + 0.5) }, '+')
+                          ])
                         ])
-                      )
-                    ),
-
-                    !allConfirmed && selectedItems.length > 0 && h('button', {
-                      key: 'confirm-btn',
-                      className: 'btn',
-                      onClick: async () => {
-                        await confirmDelivery(purchase.id, selectedItems);
-                        setSelectedItems([]);
-                      },
-                      style: { marginTop: '1rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }
-                    }, `✓ ${t.confirmSelected} (${selectedItems.length})`)
+                      ]);
+                    })
                   ]);
-                })
-            ])
-          ]),
-
-          // Current Stock 탭
-          activeTab === 'currentStock' && h('div', { key: 'current-stock' }, [
-            h('h2', { key: 'title', style: { marginBottom: '1.5rem', color: '#7f1d1d', fontSize: '1.5rem', fontWeight: '700' }}, t.currentStock),
-            
-            h('div', { key: 'table', style: { overflowX: 'auto' }}, [
-              h('table', { key: 'stock-table', style: { width: '100%', borderCollapse: 'collapse' }}, [
-                h('thead', { key: 'head' }, [
-                  h('tr', { key: 'row' }, [
-                    h('th', { key: 'item', style: { padding: '1rem', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', fontWeight: '700', fontSize: '0.875rem' }}, language === 'ko' ? '품목' : language === 'es' ? 'Artículo' : 'Item'),
-                    h('th', { key: 'current', style: { padding: '1rem', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'center', fontWeight: '700', fontSize: '0.875rem' }}, language === 'ko' ? '현재고' : language === 'es' ? 'Actual' : 'Current'),
-                    h('th', { key: 'par', style: { padding: '1rem', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'center', fontWeight: '700', fontSize: '0.875rem' }}, 'PAR'),
-                    h('th', { key: 'shortage', style: { padding: '1rem', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'center', fontWeight: '700', fontSize: '0.875rem' }}, t.shortage),
-                    h('th', { key: 'onorder', style: { padding: '1rem', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'center', fontWeight: '700', fontSize: '0.875rem' }}, t.onOrder)
+                }),
+                
+                h('div', { key: 'misc-section', style: { marginTop: '2rem', padding: '1.5rem', background: 'rgba(127,29,29,0.05)', borderRadius: '12px', border: '2px dashed #7f1d1d' }}, [
+                  h('h4', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', fontWeight: '700' }}, 'Miscellaneous'),
+                  h('p', { key: 'desc', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}, '재고 외 구매 아이템 (구매내역에만 기록)'),
+                  
+                  miscItems.map((item, i) =>
+                    h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}, [
+                      h('div', { key: 'info' }, [
+                        h('div', { key: 'name', style: { fontWeight: '600', color: '#2c3e50' }}, item.name),
+                        h('div', { key: 'price', style: { fontSize: '0.875rem', color: '#64748b' }}, `${item.quantity} × $${item.price} = $${(item.quantity * item.price).toFixed(2)}`)
+                      ]),
+                      h('button', { key: 'delete', onClick: () => setMiscItems(miscItems.filter((_, idx) => idx !== i)), style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', cursor: 'pointer' }}, '삭제')
+                    ])
+                  ),
+                  
+                  h('div', { key: 'add-form', style: { display: 'grid', gap: '0.75rem', marginTop: '1rem' }}, [
+                    h('input', { key: 'name', type: 'text', placeholder: '아이템명', value: newMisc.name, onChange: (e) => setNewMisc({...newMisc, name: e.target.value}) }),
+                    h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
+                      h('input', { key: 'price', type: 'number', step: '0.01', placeholder: '가격', value: newMisc.price, onChange: (e) => setNewMisc({...newMisc, price: parseFloat(e.target.value) || 0}) }),
+                      h('input', { key: 'qty', type: 'number', step: '0.5', placeholder: '수량', value: newMisc.quantity, onChange: (e) => setNewMisc({...newMisc, quantity: parseFloat(e.target.value) || 1}) })
+                    ]),
+                    h('button', { key: 'add', className: 'btn btn-secondary', onClick: () => { if (newMisc.name) { setMiscItems([...miscItems, newMisc]); setNewMisc({ name: '', price: 0, quantity: 1 }); }}, disabled: !newMisc.name }, '+ 추가')
                   ])
                 ]),
-                h('tbody', { key: 'body' },
-                  items.map((item, idx) => {
-                    const shortage = Math.max(0, item.par - item.current_inventory);
-                    
-                    // 구매 중인 수량 계산
-                    let onOrder = 0;
-                    pendingPurchases.forEach(purchase => {
-                      if (purchase.status === 'pending') {
-                        purchase.items.forEach(pItem => {
-                          if (pItem.name === item.name && !pItem.confirmed) {
-                            onOrder += pItem.quantity;
-                          }
-                        });
-                      }
-                    });
-                    
-                    return h('tr', { key: idx, style: { borderBottom: '1px solid #e2e8f0' }}, [
-                      h('td', { key: 'name', style: { padding: '1rem', fontWeight: '600' }}, [
-                        h('div', { key: 'name-text' }, item.name),
-                        h('div', { key: 'vendor', style: { fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}, item.vendor)
-                      ]),
-                      h('td', { key: 'current', style: { padding: '1rem', textAlign: 'center', fontWeight: '700', fontSize: '1.125rem' }}, item.current_inventory),
-                      h('td', { key: 'par', style: { padding: '1rem', textAlign: 'center', color: '#64748b' }}, item.par),
-                      h('td', { key: 'shortage', style: { padding: '1rem', textAlign: 'center' }}, 
-                        shortage > 0 ? 
-                          h('span', { style: { color: '#ef4444', fontWeight: '700' }}, '-' + shortage) :
-                          h('span', { style: { color: '#4ade80' }}, '✓')
-                      ),
-                      h('td', { key: 'onorder', style: { padding: '1rem', textAlign: 'center' }}, 
-                        onOrder > 0 ?
-                          h('span', { style: { color: '#fbbf24', fontWeight: '700', background: 'rgba(251, 191, 36, 0.1)', padding: '0.25rem 0.75rem', borderRadius: '20px' }}, '+' + onOrder) :
-                          h('span', { style: { color: '#64748b' }}, '-')
-                      )
-                    ]);
-                  })
-                )
-              ])
-            ])
+                
+                h('button', { key: 'complete', className: 'btn', onClick: () => { setPurchaseData([...shoppingList, ...miscItems.map(m => ({...m, selected_vendor: 'Miscellaneous', category: 'miscellaneous', shortage: m.quantity}))]); setShowSimpleView(true); }, style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
+              ]
           ]),
 
           activeTab === 'reports' && h('div', { key: 'reports' }, [
@@ -3572,7 +3043,7 @@
                     className: 'btn', 
                     onClick: () => downloadCountRecordExcel(record),
                     style: { background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)', fontSize: '0.875rem', padding: '0.5rem 1rem' }
-                  }, t.downloadExcel)
+                  }, '📥 엑셀 다운로드')
                 ])
               ))
             ),
@@ -3606,9 +3077,9 @@
               
               h('div', { key: 'monthly-section' }, [
                 h('div', { key: 'icon', style: { fontSize: '2.5rem', marginBottom: '1rem' }}, '📊'),
-                h('h3', { key: 'title', style: { marginBottom: '0.5rem', color: '#7f1d1d' }}, t.monthlyUsageReport),
+                h('h3', { key: 'title', style: { marginBottom: '0.5rem', color: '#7f1d1d' }}, '월간 사용량 리포트'),
                 h('p', { key: 'desc', style: { color: '#64748b', marginBottom: '1.5rem', fontSize: '0.875rem' }}, 
-                  t.monthlyUsageDesc),
+                  '이번 달 구매 내역을 기반으로 아이템별 사용량과 비용을 분석합니다.'),
                 h('button', { 
                   key: 'monthly-btn', 
                   className: 'btn', 
@@ -3618,7 +3089,7 @@
                     margin: '0 auto',
                     background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)'
                   }
-                }, t.downloadMonthlyUsage)
+                }, '📥 월간 사용량 다운로드')
               ])
             ])
           ]),
@@ -3660,22 +3131,16 @@
                 type: 'text', 
                 placeholder: '🔍 ' + t.searchItems, 
                 value: itemSearch, 
-                onChange: (e) => { 
-                  const newValue = e.target.value;
-                  setItemSearch(newValue);
-                  // 강제 리렌더링
-                  setSearchTrigger(prev => prev + 1);
-                },
+                onChange: (e) => { setItemSearch(e.target.value); setSearchTrigger(prev => prev + 1); },
                 style: { marginBottom: '1rem' }
               }),
-              h('div', { key: 'items-list-' + searchTrigger }, 
-                (() => {
-                  const searchLower = itemSearch.toLowerCase();
-                  const filtered = (Array.isArray(items) ? items : []).filter(item => 
-                    item.name.toLowerCase().includes(searchLower)
-                  );
-                  return filtered;
-                })().map((item, filterIdx) => {
+              (() => {
+                const searchLower = itemSearch.toLowerCase();
+                const filtered = (Array.isArray(items) ? items : []).filter(item => 
+                  item.name.toLowerCase().includes(searchLower)
+                );
+                return filtered;
+              })().map((item, filterIdx) => {
                 const idx = items.findIndex(i => i.name === item.name);
                 return h('div', { key: 'item-' + idx, className: 'card', style: { color: '#2c3e50' }}, [
                   editingItem === idx ? h('div', { key: 'edit', className: 'input-group' }, [
@@ -3710,7 +3175,7 @@
                     ])
                   ])
                 ]);
-              })),
+              }),
               items.length > 50 && h('div', { key: 'more', style: { textAlign: 'center', padding: '1rem', color: 'rgba(255,255,255,0.5)' }}, 'Showing first 50 items')
             ]),
 
@@ -3823,41 +3288,18 @@
 
         showSimpleView && h('div', { key: 'simple-modal', className: 'modal', onClick: () => { if (!purchaseData) setShowSimpleView(false); } },
           h('div', { className: 'modal-content', onClick: (e) => e.stopPropagation() }, [
-            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, purchaseData ? t.purchaseConfirmation : t.simpleView),
+            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, purchaseData ? '구매 확인' : t.simpleView),
             h('pre', { key: 'text', style: { background: '#f3f4f6', padding: '1rem', borderRadius: '8px', fontSize: '0.875rem', whiteSpace: 'pre-wrap', marginBottom: '1rem', maxHeight: '50vh', overflow: 'auto' }}, generateSimpleText()),
-            purchaseData ? h('div', { key: 'buttons', style: { display: 'flex', flexDirection: 'column', gap: '0.75rem' }}, [
-              h('button', { 
-                key: 'copy', 
-                className: 'btn', 
-                onClick: () => {
-                  const text = generateSimpleText();
-                  navigator.clipboard.writeText(text).then(() => {
-                    setCopySuccess(true);
-                    setTimeout(() => setCopySuccess(false), 2000);
-                  }).catch(() => {
-                    const textarea = document.createElement('textarea');
-                    textarea.value = text;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textarea);
-                    setCopySuccess(true);
-                    setTimeout(() => setCopySuccess(false), 2000);
-                  });
-                }, 
-                style: { background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)' }
-              }, copySuccess ? t.copiedButton : t.copyButton),
-              h('div', { key: 'action-buttons', style: { display: 'flex', gap: '0.75rem' }}, [
-                h('button', { key: 'cancel', className: 'btn btn-secondary', onClick: () => { setShowSimpleView(false); setPurchaseData(null); }}, t.cancel),
-                h('button', { key: 'confirm', className: 'btn', onClick: () => { completePurchase(); setShowSimpleView(false); setPurchaseData(null); setActiveTab('reports'); }, style: { background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
-              ])
+            purchaseData ? h('div', { key: 'buttons', style: { display: 'flex', gap: '0.75rem' }}, [
+              h('button', { key: 'cancel', className: 'btn btn-secondary', onClick: () => { setShowSimpleView(false); setPurchaseData(null); }}, '취소'),
+              h('button', { key: 'confirm', className: 'btn', onClick: () => { completePurchase(); setShowSimpleView(false); setPurchaseData(null); setActiveTab('reports'); }, style: { background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ 구매 완료')
             ]) : h('button', { key: 'copy', className: 'btn', onClick: copyToClipboard }, copySuccess ? t.copied : t.copyAll)
           ])
         ),
 
         selectedPurchase && h('div', { key: 'purchase-modal', className: 'modal', onClick: () => setSelectedPurchase(null) },
           h('div', { className: 'modal-content', onClick: (e) => e.stopPropagation() }, [
-            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.purchaseDetail + ' - ' + selectedPurchase.date),
+            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, '구매 내역 - ' + selectedPurchase.date),
             h('div', { key: 'summary', style: { marginBottom: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}, [
               h('div', { key: 'total', style: { fontSize: '1.5rem', fontWeight: '700', color: '#4ade80' }}, '$' + selectedPurchase.totalCost.toFixed(2)),
               h('div', { key: 'items', style: { fontSize: '0.875rem', color: '#64748b' }}, selectedPurchase.totalItems + ' items')
@@ -3872,7 +3314,7 @@
                 vendor + ':\n' + items.map(item => '  ' + item.name + ' - ' + item.quantity + ' × $' + item.price + ' = $' + item.total.toFixed(2)).join('\n')
               ).join('\n\n')
             ),
-            h('button', { key: 'close', className: 'btn', onClick: () => setSelectedPurchase(null) }, t.close)
+            h('button', { key: 'close', className: 'btn', onClick: () => setSelectedPurchase(null) }, '닫기')
           ])
         ),
 
