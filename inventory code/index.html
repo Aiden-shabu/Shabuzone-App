@@ -2135,10 +2135,11 @@
       });
 
 
-      
-      // 로그인 화면
-      if (screen === 'login') {
-        return h('div', { className: 'login-screen' }, [
+      // 렌더링
+      return (() => {
+        // 로그인 화면
+        if (screen === 'login') {
+          return h('div', { className: 'login-screen' }, [
           h('img', { 
             key: 'logo', 
             src: LOGO_DATA,
@@ -3902,6 +3903,7 @@
           style: { opacity: showScrollButtons ? 1 : 0, pointerEvents: showScrollButtons ? 'auto' : 'none' }
         }, '↓')
       ]);
+      })(); // 즉시 실행 함수 종료
     }
 
     const root = createRoot(document.getElementById('root'));
