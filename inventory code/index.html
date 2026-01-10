@@ -1692,46 +1692,56 @@
       }
 
       async function completeOrder() {
+        // Simple View용 데이터 준비
+        const purchaseItems = shoppingList.map(item => ({
+          ...item,
+          total: item.shortage * item.price
+        }));
+        
+        miscItems.forEach(item => {
+          purchaseItems.push({
+            name: item.name + ' (Misc)',
+            category: 'miscellaneous',
+            selected_vendor: 'Miscellaneous',
+            shortage: item.quantity,
+            price: item.price,
+            total: item.quantity * item.price
+          });
+        });
+        
+        // Simple View 표시
+        setPurchaseData(purchaseItems);
+        setShowSimpleView(true);
+      }
+      
+      // Simple View에서 확인 버튼 눌렀을 때 실제 주문 생성
+      async function confirmOrderFromSimpleView() {
         const now = new Date();
         const date = now.toISOString().split('T')[0];
         const time = now.toTimeString().split(' ')[0].slice(0, 5);
         let totalCost = 0;
         
-        const purchaseItems = shoppingList.map(item => {
-          totalCost += item.shortage * item.price;
+        const orderItems = purchaseData.map(item => {
+          totalCost += item.total;
           return {
             name: item.name,
             category: item.category,
             vendor: item.selected_vendor,
             quantity: item.shortage,
             price: item.price,
-            total: item.shortage * item.price,
-            received: false // 아직 입고 안 됨
-          };
-        });
-        
-        // Miscellaneous 아이템 추가
-        miscItems.forEach(item => {
-          totalCost += item.quantity * item.price;
-          purchaseItems.push({
-            name: item.name + ' (Misc)',
-            category: 'miscellaneous',
-            vendor: 'Miscellaneous',
-            quantity: item.quantity,
-            price: item.price,
-            total: item.quantity * item.price,
+            total: item.total,
             received: false
-          });
+          };
         });
         
         const order = {
           id: Date.now(),
           date, 
           time,
-          items: purchaseItems,
-          totalItems: purchaseItems.length,
+          items: orderItems,
+          totalItems: orderItems.length,
           totalCost,
-          completed: false // 전체 입고 완료 여부
+          completed: false
         };
         
         const newOrderedLists = [order, ...orderedLists];
@@ -1742,7 +1752,9 @@
         await window.db.ref(getPath('orderedLists')).set(newOrderedLists);
         await window.db.ref(getPath('shopping')).set([]);
         
-        setShoppingSubTab('confirm'); // 자동으로 Confirm 탭으로 이동
+        setShowSimpleView(false);
+        setPurchaseData(null);
+        setShoppingSubTab('confirm'); // Confirm 탭으로 이동
       }
       
       // 입고 확인
@@ -3570,22 +3582,28 @@
                     // 헤더 - 항상 보임 (클릭 가능)
                     h('div', { 
                       key: 'header', 
-                      onClick: () => {
-                        const newExpanded = {...expandedOrders};
-                        newExpanded[order.id] = !isExpanded;
-                        setExpandedOrders(newExpanded);
-                      },
                       style: { 
                         display: 'flex', 
                         justifyContent: 'space-between', 
                         alignItems: 'center', 
                         padding: '1rem',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s',
-                        ':hover': { background: 'rgba(0,0,0,0.02)' }
                       }
                     }, [
-                      h('div', { key: 'left', style: { display: 'flex', alignItems: 'center', gap: '1rem' }}, [
+                      h('div', { 
+                        key: 'left', 
+                        onClick: () => {
+                          const newExpanded = {...expandedOrders};
+                          newExpanded[order.id] = !isExpanded;
+                          setExpandedOrders(newExpanded);
+                        },
+                        style: { 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '1rem',
+                          flex: 1,
+                          cursor: 'pointer'
+                        }
+                      }, [
                         h('div', { 
                           key: 'icon', 
                           style: { 
@@ -3605,6 +3623,29 @@
                         ])
                       ]),
                       h('div', { key: 'right', style: { display: 'flex', alignItems: 'center', gap: '1rem' }}, [
+                        h('button', {
+                          key: 'view',
+                          className: 'btn',
+                          onClick: (e) => {
+                            e.stopPropagation();
+                            // Simple View용 데이터 준비
+                            const viewData = order.items.map(item => ({
+                              name: item.name,
+                              category: item.category,
+                              selected_vendor: item.vendor,
+                              shortage: item.quantity,
+                              price: item.price,
+                              total: item.total
+                            }));
+                            setPurchaseData(viewData);
+                            setShowSimpleView(true);
+                          },
+                          style: { 
+                            padding: '0.5rem 1rem',
+                            background: '#3b82f6',
+                            fontSize: '0.875rem'
+                          }
+                        }, '📋 View'),
                         !order.completed && pendingItems.length > 0 && h('div', {
                           key: 'badge',
                           style: {
@@ -4183,11 +4224,11 @@
 
         showSimpleView && h('div', { key: 'simple-modal', className: 'modal', onClick: () => { if (!purchaseData) setShowSimpleView(false); } },
           h('div', { className: 'modal-content', onClick: (e) => e.stopPropagation() }, [
-            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, purchaseData ? t.purchaseConfirmation : t.simpleView),
+            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, purchaseData ? '📋 Order Confirmation' : t.simpleView),
             h('pre', { key: 'text', style: { background: '#f3f4f6', padding: '1rem', borderRadius: '8px', fontSize: '0.875rem', whiteSpace: 'pre-wrap', marginBottom: '1rem', maxHeight: '50vh', overflow: 'auto' }}, generateSimpleText()),
             purchaseData ? h('div', { key: 'buttons', style: { display: 'flex', gap: '0.75rem' }}, [
               h('button', { key: 'cancel', className: 'btn btn-secondary', onClick: () => { setShowSimpleView(false); setPurchaseData(null); }}, t.cancel),
-              h('button', { key: 'confirm', className: 'btn', onClick: () => { completePurchase(); setShowSimpleView(false); setPurchaseData(null); setActiveTab('reports'); }, style: { background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
+              h('button', { key: 'confirm', className: 'btn', onClick: confirmOrderFromSimpleView, style: { background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ Complete Order')
             ]) : h('button', { key: 'copy', className: 'btn', onClick: copyToClipboard }, copySuccess ? t.copied : t.copyAll)
           ])
         ),
