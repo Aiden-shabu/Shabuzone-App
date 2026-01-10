@@ -3583,17 +3583,25 @@
                 type: 'text', 
                 placeholder: '🔍 ' + t.searchItems, 
                 value: itemSearch, 
-                onChange: (e) => { setItemSearch(e.target.value); setSearchTrigger(prev => prev + 1); },
+                onChange: (e) => {
+                  setItemSearch(e.target.value);
+                  setSearchTrigger(prev => prev + 1);
+                },
                 style: { marginBottom: '1rem' }
               }),
-              (() => {
-                const searchLower = itemSearch.toLowerCase();
-                const filtered = (Array.isArray(items) ? items : []).filter(item => 
-                  item.name.toLowerCase().includes(searchLower)
-                );
-                return filtered;
-              })().map((item, filterIdx) => {
-                const idx = items.findIndex(i => i.name === item.name);
+              h('div', { key: 'items-list-' + itemSearch + '-' + searchTrigger }, [
+                (() => {
+                  let filtered = Array.isArray(items) ? items : [];
+                  
+                  // 검색어 필터링
+                  if (itemSearch) {
+                    filtered = filtered.filter(item => 
+                      item.name.toLowerCase().includes(itemSearch.toLowerCase())
+                    );
+                  }
+                  
+                  return (Array.isArray(filtered) ? filtered : []).map((item, filterIdx) => {
+                    const idx = items.findIndex(i => i.name === item.name);
                 return h('div', { key: 'item-' + idx, className: 'card', style: { color: '#2c3e50' }}, [
                   editingItem === idx ? h('div', { key: 'edit', className: 'input-group' }, [
                     h('input', { key: 'name', type: 'text', value: item.name, onChange: (e) => { const u = [...items]; u[idx].name = e.target.value; setItems(u); }}),
@@ -3633,7 +3641,9 @@
                     ])
                   ])
                 ]);
-              }),
+              });
+            })()
+              ]),
               items.length > 50 && h('div', { key: 'more', style: { textAlign: 'center', padding: '1rem', color: 'rgba(255,255,255,0.5)' }}, 'Showing first 50 items')
             ]),
 
