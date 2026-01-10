@@ -538,6 +538,7 @@
     const translations = {
       ko: {
         dashboard: '대시보드', count: '재고 실사', shopping: '쇼핑 리스트', add: '추가', reports: '리포트',
+        shoppingList: '쇼핑 리스트',
         totalItems: '전체 품목', lowStock: '부족 재고', totalValue: '총 가치',
         lowStockAlert: '부족 재고 알림', generateShopping: '쇼핑 리스트 생성',
         item: '품목', par: 'PAR', current: '현재', qty: '수량', total: '합계',
@@ -552,7 +553,7 @@
         searchItems: '아이템 검색...', itemCategory: '분류 선택', selectCategory: '분류 선택',
         vendorName: '벤더명', addVendor: '벤더 추가', deleteVendor: '벤더 삭제',
         categoryName: '분류명', addCategory: '분류 추가', deleteCategory: '삭제',
-        byStorage: '보관별', byCategory: '분류별', itemCategory: '아이템 분류',
+        byStorage: '보관별', byCategory: '분류별',
         resetData: '데이터 초기화', enterPassword: '비밀번호 입력',
         reset: '초기화', cancel: '취소', wrongPassword: '비밀번호가 틀렸습니다!',
         resetWarning: '재고 수량, 쇼핑 리스트, 구매 내역이 초기화됩니다. 품목과 벤더는 유지됩니다.',
@@ -562,6 +563,18 @@
         lastUsed: '전날 사용', weeklyAvg: '주간 평균', showChart: '차트 보기', hideChart: '차트 닫기',
         usageChart: '사용량 그래프 (7일)', noHistory: '구매 내역이 없어 분석할 수 없습니다',
         registerCount: '등록하기', countRecords: '재고 실사 내역', countRegistered: '재고 실사가 등록되었습니다!',
+        purchaseConfirmation: '구매 확인', miscellaneous: 'Miscellaneous',
+        miscellaneousDesc: '재고 외 구매 아이템 (구매내역에만 기록)',
+        calendarTitle: '📅 재고실사 기록',
+        countCompleted: '실사 완료',
+        today: '오늘',
+        monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+        dayNames: ['일', '월', '화', '수', '목', '금', '토'],
+        itemNamePlaceholder: '아이템명',
+        pricePlaceholder: '가격',
+        quantityPlaceholder: '수량',
+        addButton: '+ 추가',
+        deleteButton: '삭제',
         // Management/Schedule translations  
         management: {
           title: '스케줄 관리',
@@ -646,6 +659,7 @@
       },
       en: {
         dashboard: 'Dashboard', count: 'Count', shopping: 'Shopping', add: 'Add', reports: 'Reports',
+        shoppingList: 'Shopping List',
         totalItems: 'Total Items', lowStock: 'Low Stock', totalValue: 'Total Value',
         lowStockAlert: 'Low Stock Alert', generateShopping: 'Generate Shopping List',
         item: 'Item', par: 'PAR', current: 'Current', qty: 'Qty', total: 'Total',
@@ -655,6 +669,33 @@
         purchaseHistory: 'Purchase History', date: 'Date', items: 'Items', amount: 'Amount',
         noData: 'No purchase history yet',
         addNewItem: 'Add New Item', itemName: 'Item Name', selectVendor: 'Select Vendor', addItem: 'Add Item',
+        byStorage: 'By Storage', byCategory: 'By Category',
+        manageItems: 'Manage Items', save: 'Save', edit: 'Edit', delete: 'Delete',
+        addItems: 'Add Items', manageVendors: 'Manage Vendors', manageCategories: 'Manage Categories',
+        vendorName: 'Vendor Name', addVendor: 'Add Vendor', deleteVendor: 'Delete Vendor',
+        selectCategory: 'Select Category', addCategory: 'Add Category',
+        searchItems: 'Search items...', itemCategory: 'Item Category',
+        resetData: 'Reset Data', enterPassword: 'Enter Password',
+        reset: 'Reset', cancel: 'Cancel', wrongPassword: 'Wrong password!',
+        resetWarning: 'This will reset inventory quantities, clear shopping list and purchase history.',
+        dataReset: 'Data reset successfully!',
+        saveAndContinue: 'Save & Continue', backToEdit: '← Back to Edit',
+        itemAnalysis: 'Item Analysis', exportExcel: 'Export Excel',
+        lastUsed: 'Last Used', weeklyAvg: 'Weekly Avg', showChart: 'Show Chart', hideChart: 'Hide Chart',
+        usageChart: 'Usage Chart (7 Days)', noHistory: 'No purchase history for analysis',
+        registerCount: 'Register', countRecords: 'Count Records', countRegistered: 'Inventory count registered!',
+        purchaseConfirmation: 'Purchase Confirmation', miscellaneous: 'Miscellaneous',
+        miscellaneousDesc: 'Non-inventory purchase items (recorded in history only)',
+        calendarTitle: '📅 Count Records',
+        countCompleted: 'Completed',
+        today: 'Today',
+        monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+        dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        itemNamePlaceholder: 'Item Name',
+        pricePlaceholder: 'Price',
+        quantityPlaceholder: 'Quantity',
+        addButton: '+ Add',
+        deleteButton: 'Delete',
         // Management/Schedule translations
         management: {
           title: 'Schedule Manager',
@@ -754,6 +795,7 @@
       },
       es: {
         dashboard: 'Panel', count: 'Inventario', shopping: 'Compras', add: 'Agregar', reports: 'Informes',
+        shoppingList: 'Lista de Compras',
         totalItems: 'Total Artículos', lowStock: 'Stock Bajo', totalValue: 'Valor Total',
         lowStockAlert: 'Alerta de Stock Bajo', generateShopping: 'Generar Lista de Compras',
         item: 'Artículo', par: 'PAR', current: 'Actual', qty: 'Cant', total: 'Total',
@@ -766,9 +808,9 @@
         manageItems: 'Gestionar Artículos', save: 'Guardar', edit: 'Editar', delete: 'Eliminar',
         addItems: 'Agregar Artículos', manageVendors: 'Gestionar Proveedores', manageCategories: 'Gestionar Categorías',
         vendorName: 'Nombre Proveedor', addVendor: 'Agregar Proveedor', deleteVendor: 'Eliminar',
-        addNewItem: 'Agregar Nuevo Artículo', itemName: 'Nombre', selectVendor: 'Seleccionar Proveedor',
-        selectCategory: 'Seleccionar Categoría', addItem: 'Agregar', addCategory: 'Agregar Categoría',
+        selectCategory: 'Seleccionar Categoría', addCategory: 'Agregar Categoría',
         searchItems: 'Buscar artículos...', itemCategory: 'Categoría de Artículo',
+        byStorage: 'Por Almacenamiento', byCategory: 'Por Categoría',
         resetData: 'Restablecer Datos', enterPassword: 'Ingresar Contraseña',
         reset: 'Restablecer', cancel: 'Cancelar', wrongPassword: '¡Contraseña incorrecta!',
         resetWarning: 'Esto restablecerá las cantidades de inventario, lista de compras e historial.',
@@ -777,7 +819,19 @@
         itemAnalysis: 'Análisis de Artículos', exportExcel: 'Exportar Excel',
         lastUsed: 'Último Uso', weeklyAvg: 'Promedio Semanal', showChart: 'Mostrar Gráfico', hideChart: 'Ocultar',
         usageChart: 'Gráfico de Uso (7 Días)', noHistory: 'No hay historial para análisis',
-        registerCount: 'Registrar', countRecords: 'Registros de Inventario', countRegistered: '¡Inventario registrado!'
+        registerCount: 'Registrar', countRecords: 'Registros de Inventario', countRegistered: '¡Inventario registrado!',
+        purchaseConfirmation: 'Confirmación de Compra', miscellaneous: 'Misceláneos',
+        miscellaneousDesc: 'Artículos de compra fuera del inventario (solo se registra en el historial)',
+        calendarTitle: '📅 Registros de Inventario',
+        countCompleted: 'Completado',
+        today: 'Hoy',
+        monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+        dayNames: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+        itemNamePlaceholder: 'Nombre del Artículo',
+        pricePlaceholder: 'Precio',
+        quantityPlaceholder: 'Cantidad',
+        addButton: '+ Agregar',
+        deleteButton: 'Eliminar',
       },
       zh: {
         dashboard: '仪表板', count: '库存盘点', shopping: '购物清单', add: '添加', reports: '报告',
@@ -833,15 +887,46 @@
     function App() {
       const [items, setItems] = useState([]); // 빈 배열로 초기화
       // 로그인 & 네비게이션
-      const [screen, setScreen] = useState('login');
+      const [screen, setScreen] = useState(() => {
+        const savedUser = localStorage.getItem('currentUser');
+        const lastActive = localStorage.getItem('lastActiveTime');
+        if (savedUser && lastActive) {
+          const elapsed = Date.now() - parseInt(lastActive);
+          if (elapsed <= 7200000) {
+            const savedScreen = localStorage.getItem('currentScreen');
+            return savedScreen || 'location';
+          }
+        }
+        return 'login';
+      });
       const [password, setPassword] = useState('');
       const [loginError, setLoginError] = useState('');
-      const [currentLocation, setCurrentLocation] = useState('');
-      const [currentModule, setCurrentModule] = useState('');
+      const [currentLocation, setCurrentLocation] = useState(() => {
+        return localStorage.getItem('currentLocation') || '';
+      });
+      const [currentModule, setCurrentModule] = useState(() => {
+        return localStorage.getItem('currentModule') || '';
+      });
       const [managementType, setManagementType] = useState(''); // 'server' or 'kitchen'
       
       // 사용자 관리
-      const [currentUser, setCurrentUser] = useState(null);
+      const [currentUser, setCurrentUser] = useState(() => {
+        const saved = localStorage.getItem('currentUser');
+        const lastActive = localStorage.getItem('lastActiveTime');
+        if (saved && lastActive) {
+          const elapsed = Date.now() - parseInt(lastActive);
+          // 2시간 (7200000ms) 이상 비활성 시 자동 로그아웃
+          if (elapsed > 7200000) {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('lastActiveTime');
+            localStorage.removeItem('currentLocation');
+            localStorage.removeItem('currentModule');
+            return null;
+          }
+          return saved;
+        }
+        return null;
+      });
       const [isAdmin, setIsAdmin] = useState(false);
       const [users, setUsers] = useState([]);
       const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -864,7 +949,9 @@
       });
       
       const [activeTab, setActiveTab] = useState('dashboard');
-      const [language, setLanguage] = useState('ko');
+      const [language, setLanguage] = useState(() => {
+        return localStorage.getItem('appLanguage') || 'ko';
+      });
       const [loading, setLoading] = useState(true);
       const [shoppingList, setShoppingList] = useState([]);
       const [miscItems, setMiscItems] = useState([]);
@@ -890,6 +977,10 @@
       const [showScrollButtons, setShowScrollButtons] = useState(false);
       const [tempItems, setTempItems] = useState([]);
       const [countRecords, setCountRecords] = useState([]);
+      const [calendarMonth, setCalendarMonth] = useState(new Date());
+      const [selectedDateRecords, setSelectedDateRecords] = useState(null);
+      const [searchTerm, setSearchTerm] = useState('');
+      const [countSearchTerm, setCountSearchTerm] = useState('');
       const [categories, setCategories] = useState([
         'Meat', 'Seafood', 'Vegetable', 'Dry Food', 'Korean Market',
         'Sysco - Beverages/Food', 'Sysco - Gloves', 'Sysco - Ice Cream',
@@ -981,6 +1072,60 @@
         return () => window.removeEventListener('scroll', handleScroll);
       }, []);
 
+      // 활동 시간 업데이트
+      useEffect(() => {
+        if (currentUser) {
+          const updateActivity = () => {
+            localStorage.setItem('lastActiveTime', Date.now().toString());
+          };
+          
+          // 초기 설정
+          updateActivity();
+          
+          // 사용자 활동 감지 (클릭, 키보드, 스크롤)
+          window.addEventListener('click', updateActivity);
+          window.addEventListener('keydown', updateActivity);
+          window.addEventListener('scroll', updateActivity);
+          
+          // 1분마다 세션 체크
+          const checkSession = setInterval(() => {
+            const lastActive = localStorage.getItem('lastActiveTime');
+            if (lastActive) {
+              const elapsed = Date.now() - parseInt(lastActive);
+              if (elapsed > 7200000) {
+                handleLogout();
+              }
+            }
+          }, 60000);
+          
+          return () => {
+            window.removeEventListener('click', updateActivity);
+            window.removeEventListener('keydown', updateActivity);
+            window.removeEventListener('scroll', updateActivity);
+            clearInterval(checkSession);
+          };
+        }
+      }, [currentUser]);
+
+      // 로그아웃 함수
+      const handleLogout = () => {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('lastActiveTime');
+        localStorage.removeItem('currentLocation');
+        localStorage.removeItem('currentModule');
+        localStorage.removeItem('currentScreen');
+        setCurrentUser(null);
+        setCurrentLocation('');
+        setCurrentModule('');
+        setScreen('login');
+        setPassword('');
+      };
+
+      // 언어 변경 시 저장
+      useEffect(() => {
+        localStorage.setItem('appLanguage', language);
+      }, [language]);
+
       // 사용자 데이터 로드
       useEffect(() => {
         loadUsers();
@@ -1047,8 +1192,12 @@
         // 관리자 로그인
         if (password === '0214') {
           setIsAdmin(true);
-          setCurrentUser({ name: 'Admin', isAdmin: true });
+          const adminUser = { name: 'Admin', isAdmin: true };
+          setCurrentUser(adminUser);
+          localStorage.setItem('currentUser', JSON.stringify(adminUser));
+          localStorage.setItem('lastActiveTime', Date.now().toString());
           setScreen('location');
+          localStorage.setItem('currentScreen', 'location');
           setPassword('');
           setLoginError('');
           return;
@@ -1061,7 +1210,10 @@
           if (user.isAdmin) {
             setIsAdmin(true);
             setCurrentUser(user);
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            localStorage.setItem('lastActiveTime', Date.now().toString());
             setScreen('location');
+            localStorage.setItem('currentScreen', 'location');
             setPassword('');
             setLoginError('');
             return;
@@ -1069,6 +1221,8 @@
           
           setIsAdmin(false);
           setCurrentUser(user);
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          localStorage.setItem('lastActiveTime', Date.now().toString());
           setPassword('');
           setLoginError('');
           
@@ -1128,37 +1282,52 @@
       
       function selectLocation(loc) {
         setCurrentLocation(loc);
+        localStorage.setItem('currentLocation', loc);
         setScreen('menu');
+        localStorage.setItem('currentScreen', 'menu');
       }
       
       function selectModule(mod) {
         setCurrentModule(mod);
+        localStorage.setItem('currentModule', mod);
         if (mod === 'inventory') {
           setScreen('inventory');
+          localStorage.setItem('currentScreen', 'inventory');
           setActiveTab('dashboard');
         } else if (mod === 'management') {
           setScreen('management-select');
+          localStorage.setItem('currentScreen', 'management-select');
         }
       }
       
       function selectManagementType(type) {
         setManagementType(type);
+        localStorage.setItem('managementType', type);
         setScreen('management');
+        localStorage.setItem('currentScreen', 'management');
       }
       
       function goBack() {
         if (screen === 'inventory') {
           setScreen('menu');
+          localStorage.setItem('currentScreen', 'menu');
           setCurrentModule('');
+          localStorage.removeItem('currentModule');
         } else if (screen === 'management') {
           setScreen('management-select');
+          localStorage.setItem('currentScreen', 'management-select');
           setManagementType('');
+          localStorage.removeItem('managementType');
         } else if (screen === 'management-select') {
           setScreen('menu');
+          localStorage.setItem('currentScreen', 'menu');
           setCurrentModule('');
+          localStorage.removeItem('currentModule');
         } else if (screen === 'menu') {
           setScreen('location');
+          localStorage.setItem('currentScreen', 'location');
           setCurrentLocation('');
+          localStorage.removeItem('currentLocation');
         } else if (screen === 'admin-user-management') {
           setScreen('location');
         } else if (screen === 'location') {
@@ -1385,11 +1554,17 @@
             categories: categoriesData.length
           });
           
-          // 객체를 배열로 변환
-          const itemsArray = Object.keys(itemsData).map(key => ({
-            id: key,
-            ...itemsData[key]
-          }));
+          // 객체를 배열로 변환 및 숫자 필드 정규화
+          const itemsArray = Object.keys(itemsData).map(key => {
+            const item = itemsData[key];
+            return {
+              id: key,
+              ...item,
+              current_inventory: parseFloat(item.current_inventory) || 0,
+              par: parseFloat(item.par) || 0,
+              price: parseFloat(item.price) || 0
+            };
+          });
           
           console.log('✅ Items 변환 완료:', itemsArray.length);
           console.log('📦 First item:', itemsArray[0]);
@@ -1436,6 +1611,8 @@
           id: Date.now(),
           date,
           time,
+          timestamp: Date.now(),
+          userName: typeof currentUser === 'string' ? JSON.parse(currentUser).name : (currentUser ? currentUser.name : 'Unknown'),
           totalValue,
           totalItems: tempItems.length,
           items: tempItems.map(item => ({
@@ -1479,11 +1656,15 @@
       }
 
       async function generateShoppingList() {
-        const list = Array.isArray(items) ? items.map(item => ({
-          ...item,
-          shortage: Math.max(0, item.par - item.current_inventory),
-          selected_vendor: item.vendor
-        })).filter(item => item.shortage > 0) : [];
+        const list = Array.isArray(items) ? items.map(item => {
+          const currentInv = parseFloat(item.current_inventory) || 0;
+          const parValue = parseFloat(item.par) || 0;
+          return {
+            ...item,
+            shortage: Math.max(0, parValue - currentInv),
+            selected_vendor: item.vendor
+          };
+        }).filter(item => item.shortage > 0) : [];
         setShoppingList(list);
         setShoppingStep('edit');
         await window.db.ref(getPath('shopping')).set(list);
@@ -1524,9 +1705,14 @@
         const updatedItems = [...items];
         shoppingList.forEach(item => {
           const idx = updatedItems.findIndex(i => i.name === item.name);
+          console.log('🛒 Processing:', item.name, 'Shortage:', item.shortage, 'Found at index:', idx);
           if (idx !== -1) {
-            updatedItems[idx].current_inventory += item.shortage;
+            const oldValue = updatedItems[idx].current_inventory;
+            updatedItems[idx].current_inventory = parseFloat(updatedItems[idx].current_inventory || 0) + parseFloat(item.shortage || 0);
+            console.log('✅ Updated:', item.name, 'from', oldValue, 'to', updatedItems[idx].current_inventory);
             updatedItems[idx].vendor = item.selected_vendor;
+          } else {
+            console.error('❌ Item not found:', item.name);
           }
         });
         
@@ -1969,7 +2155,11 @@
         });
       }
 
-      const lowStockItems = Array.isArray(items) ? items.filter(item => item.current_inventory < item.par) : [];
+      const lowStockItems = Array.isArray(items) ? items.filter(item => {
+        const currentInv = parseFloat(item.current_inventory) || 0;
+        const parValue = parseFloat(item.par) || 0;
+        return currentInv < parValue;
+      }) : [];
       const totalValue = Array.isArray(items) ? items.reduce((sum, item) => sum + (item.current_inventory * item.price), 0) : 0;
       const filteredItems = !Array.isArray(items) ? [] : (categoryFilter === 'all' ? items : items.filter(i => i.category === categoryFilter));
       const shoppingByVendor = {};
@@ -2569,6 +2759,33 @@
               (managementType === 'kitchen' ? '키친 관리' : '서버 관리') : 
               (managementType === 'kitchen' ? 'Kitchen' : 'Server')
             ),
+            currentUser && h('div', { 
+              key: 'user-info', 
+              style: { 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem',
+                fontSize: '0.875rem',
+                color: '#2c3e50',
+                flexShrink: 0
+              }
+            }, [
+              h('span', { key: 'name', style: { fontWeight: '600' }}, typeof currentUser === 'string' ? JSON.parse(currentUser).name : currentUser.name),
+              h('span', { key: 'separator', style: { color: '#cbd5e1' }}, '|'),
+              h('button', { 
+                key: 'logout',
+                onClick: handleLogout,
+                style: {
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  padding: '0'
+                }
+              }, 'Logout')
+            ]),
             h('select', { 
               key: 'lang',
               value: language,
@@ -2577,10 +2794,9 @@
                 background: 'white', 
                 border: '2px solid #e2e8f0', 
                 borderRadius: '6px', 
-                padding: '0.4rem', 
+                padding: '0.25rem 0.5rem', 
                 color: '#2c3e50', 
-                fontSize: '0.8rem',
-                width: '50px',
+                fontSize: '0.75rem',
                 flexShrink: 0,
                 cursor: 'pointer'
               }
@@ -2635,15 +2851,51 @@
               h('div', { key: 'sub', style: { fontSize: '0.75rem', color: '#64748b', marginTop: '-2px' }}, 'Inventory')
             ])
           ]),
-          h('select', { 
-            key: 'lang',
-            value: language,
-            onChange: (e) => setLanguage(e.target.value),
-            style: { background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem', minWidth: '60px' }
-          }, [
-            h('option', { key: 'ko', value: 'ko' }, 'KR'),
-            h('option', { key: 'en', value: 'en' }, 'EN'),
-            h('option', { key: 'es', value: 'es' }, 'ES')
+          h('div', { key: 'right', style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+            currentUser && h('div', { 
+              key: 'user-info', 
+              style: { 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem',
+                fontSize: '0.875rem',
+                color: '#2c3e50'
+              }
+            }, [
+              h('span', { key: 'name', style: { fontWeight: '600' }}, typeof currentUser === 'string' ? JSON.parse(currentUser).name : currentUser.name),
+              h('span', { key: 'separator', style: { color: '#cbd5e1' }}, '|'),
+              h('button', { 
+                key: 'logout',
+                onClick: handleLogout,
+                style: {
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  padding: '0'
+                }
+              }, 'Logout')
+            ]),
+            h('select', { 
+              key: 'lang',
+              value: language,
+              onChange: (e) => setLanguage(e.target.value),
+              style: { 
+                background: 'white', 
+                border: '2px solid #e2e8f0', 
+                borderRadius: '6px', 
+                padding: '0.25rem 0.5rem', 
+                color: '#2c3e50', 
+                fontSize: '0.75rem',
+                cursor: 'pointer'
+              }
+            }, [
+              h('option', { key: 'ko', value: 'ko' }, 'KR'),
+              h('option', { key: 'en', value: 'en' }, 'EN'),
+              h('option', { key: 'es', value: 'es' }, 'ES')
+            ])
           ])
         ]),
 
@@ -2701,39 +2953,108 @@
             
             // 재고실사 달력
             h('div', { key: 'calendar', className: 'card', style: { marginTop: '1.5rem' }}, [
-              h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
-                h('span', { key: 'icon' }, '📅'),
-                h('span', { key: 'text' }, '재고실사 기록')
+              h('div', { key: 'header', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}, [
+                h('h3', { key: 'title', style: { color: '#7f1d1d', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}, 
+                  t.calendarTitle
+                ),
+                h('div', { key: 'nav', style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+                  h('button', {
+                    key: 'prev',
+                    onClick: () => {
+                      const newMonth = new Date(calendarMonth);
+                      newMonth.setMonth(newMonth.getMonth() - 1);
+                      setCalendarMonth(newMonth);
+                    },
+                    style: {
+                      background: 'white',
+                      border: '2px solid #e2e8f0',
+                      borderRadius: '6px',
+                      padding: '0.25rem 0.5rem',
+                      cursor: 'pointer',
+                      color: '#7f1d1d',
+                      fontWeight: '600'
+                    }
+                  }, '←'),
+                  h('div', { 
+                    key: 'month',
+                    style: { 
+                      fontSize: '0.875rem', 
+                      fontWeight: '600', 
+                      color: '#2c3e50',
+                      minWidth: '120px',
+                      textAlign: 'center'
+                    }
+                  }, calendarMonth.getFullYear() + '년 ' + t.monthNames[calendarMonth.getMonth()]),
+                  h('button', {
+                    key: 'next',
+                    onClick: () => {
+                      const newMonth = new Date(calendarMonth);
+                      newMonth.setMonth(newMonth.getMonth() + 1);
+                      setCalendarMonth(newMonth);
+                    },
+                    style: {
+                      background: 'white',
+                      border: '2px solid #e2e8f0',
+                      borderRadius: '6px',
+                      padding: '0.25rem 0.5rem',
+                      cursor: 'pointer',
+                      color: '#7f1d1d',
+                      fontWeight: '600'
+                    }
+                  }, '→')
+                ])
               ]),
-              h('div', { key: 'dates', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: '0.5rem' }},
+              h('div', { key: 'dates', style: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem' }},
                 (() => {
                   const dates = [];
                   const countDates = new Set(countRecords.map(r => r.date));
                   const today = new Date();
+                  const year = calendarMonth.getFullYear();
+                  const month = calendarMonth.getMonth();
                   
-                  // 최근 30일
-                  for (let i = 29; i >= 0; i--) {
-                    const date = new Date(today);
-                    date.setDate(date.getDate() - i);
+                  // 해당 월의 1일
+                  const firstDay = new Date(year, month, 1);
+                  // 해당 월의 마지막 날
+                  const lastDay = new Date(year, month + 1, 0);
+                  // 1일이 무슨 요일인지 (0=일요일)
+                  const startDay = firstDay.getDay();
+                  
+                  // 빈 칸 추가 (이전 달)
+                  for (let i = 0; i < startDay; i++) {
+                    dates.push(
+                      h('div', { key: 'empty-' + i, style: { padding: '0.5rem' }})
+                    );
+                  }
+                  
+                  // 날짜 추가
+                  for (let day = 1; day <= lastDay.getDate(); day++) {
+                    const date = new Date(year, month, day);
                     const dateStr = date.toISOString().split('T')[0];
                     const hasCount = countDates.has(dateStr);
-                    const isToday = i === 0;
+                    const isToday = dateStr === today.toISOString().split('T')[0];
                     
                     dates.push(
                       h('div', { 
-                        key: dateStr, 
+                        key: dateStr,
+                        onClick: hasCount ? () => {
+                          const recordsForDate = countRecords.filter(r => r.date === dateStr);
+                          setSelectedDateRecords({ date: dateStr, records: recordsForDate });
+                        } : undefined,
                         style: { 
                           padding: '0.5rem',
                           borderRadius: '8px',
                           textAlign: 'center',
                           background: hasCount ? 'linear-gradient(135deg, #4ade80, #22c55e)' : (isToday ? '#f8fafc' : 'white'),
                           border: isToday ? '2px solid #7f1d1d' : '1px solid #e2e8f0',
-                          fontSize: '0.75rem'
+                          fontSize: '0.75rem',
+                          cursor: hasCount ? 'pointer' : 'default',
+                          transition: 'transform 0.2s',
+                          ':hover': hasCount ? { transform: 'scale(1.05)' } : {}
                         }
                       }, [
-                        h('div', { key: 'date', style: { fontWeight: '600', color: hasCount ? 'white' : '#2c3e50' }}, date.getDate()),
+                        h('div', { key: 'date', style: { fontWeight: '600', color: hasCount ? 'white' : '#2c3e50' }}, day),
                         h('div', { key: 'day', style: { fontSize: '0.625rem', color: hasCount ? 'rgba(255,255,255,0.8)' : '#64748b' }}, 
-                          ['일', '월', '화', '수', '목', '금', '토'][date.getDay()])
+                          t.dayNames[date.getDay()])
                       ])
                     );
                   }
@@ -2743,11 +3064,11 @@
               h('div', { key: 'legend', style: { display: 'flex', gap: '1rem', marginTop: '1rem', fontSize: '0.75rem', justifyContent: 'center' }}, [
                 h('div', { key: 'done', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
                   h('div', { key: 'box', style: { width: '16px', height: '16px', borderRadius: '4px', background: 'linear-gradient(135deg, #4ade80, #22c55e)' }}),
-                  h('span', { key: 'text', style: { color: '#64748b' }}, '실사 완료')
+                  h('span', { key: 'text', style: { color: '#64748b' }}, t.countCompleted)
                 ]),
                 h('div', { key: 'today', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
                   h('div', { key: 'box', style: { width: '16px', height: '16px', borderRadius: '4px', border: '2px solid #7f1d1d', background: '#f8fafc' }}),
-                  h('span', { key: 'text', style: { color: '#64748b' }}, '오늘')
+                  h('span', { key: 'text', style: { color: '#64748b' }}, t.today)
                 ])
               ])
             ]),
@@ -2756,6 +3077,24 @@
           ]),
 
           activeTab === 'count' && h('div', { key: 'count' }, [
+            // 검색 칸
+            h('div', { key: 'search', style: { marginBottom: '1rem' }}, 
+              h('input', {
+                type: 'text',
+                placeholder: '🔍 ' + (t.searchItems || 'Search items...'),
+                value: countSearchTerm,
+                onChange: (e) => setCountSearchTerm(e.target.value),
+                style: {
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  border: '2px solid #e2e8f0',
+                  fontSize: '1rem',
+                  outline: 'none'
+                }
+              })
+            ),
+
             h('div', { key: 'mode-switch', style: { display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}, [
               h('button', { 
                 key: 'storage',
@@ -2817,15 +3156,25 @@
 
             (() => {
               let filtered = Array.isArray(tempItems) ? tempItems : [];
+              
+              // 검색어 필터링
+              if (countSearchTerm) {
+                filtered = filtered.filter(item => 
+                  item.name.toLowerCase().includes(countSearchTerm.toLowerCase())
+                );
+              }
+              
+              // 카테고리 필터링
               if (filterMode === 'storage' && categoryFilter !== 'all') {
-                filtered = Array.isArray(tempItems) ? tempItems.filter(i => i.category === categoryFilter) : [];
+                filtered = filtered.filter(i => i.category === categoryFilter);
               } else if (filterMode === 'category' && categoryFilter !== 'all') {
                 if (categoryFilter === 'Uncategorized') {
-                  filtered = Array.isArray(tempItems) ? tempItems.filter(i => !itemCategories[i.name]) : [];
+                  filtered = filtered.filter(i => !itemCategories[i.name]);
                 } else {
-                  filtered = Array.isArray(tempItems) ? tempItems.filter(i => itemCategories[i.name] === categoryFilter) : [];
+                  filtered = filtered.filter(i => itemCategories[i.name] === categoryFilter);
                 }
               }
+              
               return (Array.isArray(filtered) ? filtered : []).map((item, i) => {
                 const globalIndex = tempItems.findIndex(it => it.name === item.name);
                 const itemCategory = itemCategories[item.name] || 'Uncategorized';
@@ -2999,8 +3348,8 @@
                 }),
                 
                 h('div', { key: 'misc-section', style: { marginTop: '2rem', padding: '1.5rem', background: 'rgba(127,29,29,0.05)', borderRadius: '12px', border: '2px dashed #7f1d1d' }}, [
-                  h('h4', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', fontWeight: '700' }}, 'Miscellaneous'),
-                  h('p', { key: 'desc', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}, '재고 외 구매 아이템 (구매내역에만 기록)'),
+                  h('h4', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', fontWeight: '700' }}, t.miscellaneous),
+                  h('p', { key: 'desc', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}, t.miscellaneousDesc),
                   
                   miscItems.map((item, i) =>
                     h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}, [
@@ -3008,17 +3357,23 @@
                         h('div', { key: 'name', style: { fontWeight: '600', color: '#2c3e50' }}, item.name),
                         h('div', { key: 'price', style: { fontSize: '0.875rem', color: '#64748b' }}, `${item.quantity} × $${item.price} = $${(item.quantity * item.price).toFixed(2)}`)
                       ]),
-                      h('button', { key: 'delete', onClick: () => setMiscItems(miscItems.filter((_, idx) => idx !== i)), style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', cursor: 'pointer' }}, '삭제')
+                      h('button', { key: 'delete', onClick: () => setMiscItems(miscItems.filter((_, idx) => idx !== i)), style: { background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', cursor: 'pointer' }}, t.deleteButton)
                     ])
                   ),
                   
                   h('div', { key: 'add-form', style: { display: 'grid', gap: '0.75rem', marginTop: '1rem' }}, [
-                    h('input', { key: 'name', type: 'text', placeholder: '아이템명', value: newMisc.name, onChange: (e) => setNewMisc({...newMisc, name: e.target.value}) }),
+                    h('input', { key: 'name', type: 'text', placeholder: t.itemNamePlaceholder, value: newMisc.name, onChange: (e) => setNewMisc({...newMisc, name: e.target.value}) }),
                     h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
-                      h('input', { key: 'price', type: 'number', step: '0.01', placeholder: '가격', value: newMisc.price, onChange: (e) => setNewMisc({...newMisc, price: parseFloat(e.target.value) || 0}) }),
-                      h('input', { key: 'qty', type: 'number', step: '0.5', placeholder: '수량', value: newMisc.quantity, onChange: (e) => setNewMisc({...newMisc, quantity: parseFloat(e.target.value) || 1}) })
+                      h('div', { key: 'price-wrapper', style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+                        h('label', { key: 'label', style: { fontWeight: '600', color: '#2c3e50', fontSize: '0.875rem', minWidth: '50px' }}, 'Price:'),
+                        h('input', { key: 'price', type: 'number', step: '0.01', placeholder: '$0.00', value: newMisc.price, onChange: (e) => setNewMisc({...newMisc, price: parseFloat(e.target.value) || 0}), style: { flex: 1 }})
+                      ]),
+                      h('div', { key: 'qty-wrapper', style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+                        h('label', { key: 'label', style: { fontWeight: '600', color: '#2c3e50', fontSize: '0.875rem', minWidth: '40px' }}, 'Unit:'),
+                        h('input', { key: 'qty', type: 'number', step: '0.5', placeholder: '1', value: newMisc.quantity, onChange: (e) => setNewMisc({...newMisc, quantity: parseFloat(e.target.value) || 1}), style: { flex: 1 }})
+                      ])
                     ]),
-                    h('button', { key: 'add', className: 'btn btn-secondary', onClick: () => { if (newMisc.name) { setMiscItems([...miscItems, newMisc]); setNewMisc({ name: '', price: 0, quantity: 1 }); }}, disabled: !newMisc.name }, '+ 추가')
+                    h('button', { key: 'add', className: 'btn btn-secondary', onClick: () => { if (newMisc.name) { setMiscItems([...miscItems, newMisc]); setNewMisc({ name: '', price: 0, quantity: 1 }); }}, disabled: !newMisc.name }, t.addButton)
                   ])
                 ]),
                 
@@ -3248,9 +3603,15 @@
                     h('select', { key: 'item-category', value: itemCategories[item.name] || '', onChange: (e) => updateItemCategory(item.name, e.target.value) },
                       [h('option', { key: 'empty', value: '' }, t.itemCategory || '분류 선택')].concat(categories.map(c => h('option', { key: c, value: c }, c)))
                     ),
-                    h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}, [
-                      h('input', { key: 'price', type: 'number', value: item.price, onChange: (e) => { const u = [...items]; u[idx].price = parseFloat(e.target.value) || 0; setItems(u); }, placeholder: '$ 0.00', style: { minWidth: '80px' }}),
-                      h('input', { key: 'par', type: 'number', value: item.par, onChange: (e) => { const u = [...items]; u[idx].par = parseFloat(e.target.value) || 0; setItems(u); }, placeholder: 'PAR', style: { minWidth: '60px' }}),
+                    h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', alignItems: 'center' }}, [
+                      h('div', { key: 'price-wrapper', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
+                        h('label', { key: 'label', style: { fontWeight: '600', color: '#2c3e50', fontSize: '0.75rem', whiteSpace: 'nowrap' }}, '$'),
+                        h('input', { key: 'price', type: 'number', value: item.price, onChange: (e) => { const u = [...items]; u[idx].price = parseFloat(e.target.value) || 0; setItems(u); }, placeholder: '0.00', style: { flex: 1, minWidth: '60px' }})
+                      ]),
+                      h('div', { key: 'par-wrapper', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
+                        h('label', { key: 'label', style: { fontWeight: '600', color: '#2c3e50', fontSize: '0.75rem', whiteSpace: 'nowrap' }}, 'PAR'),
+                        h('input', { key: 'par', type: 'number', value: item.par, onChange: (e) => { const u = [...items]; u[idx].par = parseFloat(e.target.value) || 0; setItems(u); }, placeholder: '0', style: { flex: 1, minWidth: '50px' }})
+                      ]),
                       h('select', { key: 'category', value: item.category, onChange: (e) => { const u = [...items]; u[idx].category = e.target.value; setItems(u); }}, [
                         h('option', { key: 'frozen', value: 'frozen' }, '❄️ ' + t.frozen),
                         h('option', { key: 'refrigerated', value: 'refrigerated' }, '🧊 ' + t.refrigerated),
@@ -3385,11 +3746,11 @@
 
         showSimpleView && h('div', { key: 'simple-modal', className: 'modal', onClick: () => { if (!purchaseData) setShowSimpleView(false); } },
           h('div', { className: 'modal-content', onClick: (e) => e.stopPropagation() }, [
-            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, purchaseData ? '구매 확인' : t.simpleView),
+            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, purchaseData ? t.purchaseConfirmation : t.simpleView),
             h('pre', { key: 'text', style: { background: '#f3f4f6', padding: '1rem', borderRadius: '8px', fontSize: '0.875rem', whiteSpace: 'pre-wrap', marginBottom: '1rem', maxHeight: '50vh', overflow: 'auto' }}, generateSimpleText()),
             purchaseData ? h('div', { key: 'buttons', style: { display: 'flex', gap: '0.75rem' }}, [
-              h('button', { key: 'cancel', className: 'btn btn-secondary', onClick: () => { setShowSimpleView(false); setPurchaseData(null); }}, '취소'),
-              h('button', { key: 'confirm', className: 'btn', onClick: () => { completePurchase(); setShowSimpleView(false); setPurchaseData(null); setActiveTab('reports'); }, style: { background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ 구매 완료')
+              h('button', { key: 'cancel', className: 'btn btn-secondary', onClick: () => { setShowSimpleView(false); setPurchaseData(null); }}, t.cancel),
+              h('button', { key: 'confirm', className: 'btn', onClick: () => { completePurchase(); setShowSimpleView(false); setPurchaseData(null); setActiveTab('reports'); }, style: { background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.completePurchase)
             ]) : h('button', { key: 'copy', className: 'btn', onClick: copyToClipboard }, copySuccess ? t.copied : t.copyAll)
           ])
         ),
@@ -3412,6 +3773,48 @@
               ).join('\n\n')
             ),
             h('button', { key: 'close', className: 'btn', onClick: () => setSelectedPurchase(null) }, '닫기')
+          ])
+        ),
+
+        selectedDateRecords && h('div', { key: 'count-records-modal', className: 'modal', onClick: () => setSelectedDateRecords(null) },
+          h('div', { className: 'modal-content', onClick: (e) => e.stopPropagation() }, [
+            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d', display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+              h('span', { key: 'icon' }, '📅'),
+              h('span', { key: 'text' }, selectedDateRecords.date)
+            ]),
+            h('div', { key: 'count', style: { marginBottom: '1rem', padding: '1rem', background: '#f0fdf4', borderRadius: '8px', border: '2px solid #4ade80' }}, [
+              h('div', { key: 'label', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem' }}, t.countCompleted || '실사 완료'),
+              h('div', { key: 'value', style: { fontSize: '1.5rem', fontWeight: '700', color: '#22c55e' }}, selectedDateRecords.records.length + ' ' + (language === 'ko' ? '건' : language === 'es' ? 'registros' : 'records'))
+            ]),
+            h('div', { key: 'records', style: { maxHeight: '50vh', overflow: 'auto' }}, 
+              selectedDateRecords.records.map((record, idx) => 
+                h('div', { 
+                  key: idx, 
+                  className: 'card',
+                  style: { 
+                    marginBottom: '0.75rem',
+                    padding: '1rem',
+                    background: 'white',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px'
+                  }
+                }, [
+                  h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}, [
+                    h('div', { key: 'user', style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+                      h('span', { key: 'icon', style: { fontSize: '1.5rem' }}, '👤'),
+                      h('span', { key: 'name', style: { fontWeight: '700', color: '#2c3e50', fontSize: '1rem' }}, record.userName || 'Unknown')
+                    ]),
+                    h('div', { key: 'time', style: { fontSize: '0.875rem', color: '#64748b' }}, 
+                      record.timestamp ? new Date(record.timestamp).toLocaleTimeString(language === 'ko' ? 'ko-KR' : language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : ''
+                    )
+                  ]),
+                  record.items && h('div', { key: 'items', style: { fontSize: '0.875rem', color: '#64748b' }}, 
+                    (language === 'ko' ? '품목 수: ' : language === 'es' ? 'Artículos: ' : 'Items: ') + record.items.length
+                  )
+                ])
+              )
+            ),
+            h('button', { key: 'close', className: 'btn', onClick: () => setSelectedDateRecords(null), style: { marginTop: '1rem' }}, t.close || '닫기')
           ])
         ),
 
