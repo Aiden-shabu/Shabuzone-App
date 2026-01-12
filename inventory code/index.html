@@ -2375,7 +2375,13 @@
               value: password,
               maxLength: 4,
               onChange: (e) => setPassword(e.target.value),
-              autoFocus: true
+              autoFocus: true,
+              style: {
+                WebkitTextSecurity: 'disc',
+                textAlign: 'center',
+                letterSpacing: '0.5rem',
+                fontSize: '2rem'
+              }
             }),
             h('button', {
               key: 'submit',
