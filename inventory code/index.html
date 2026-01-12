@@ -1676,13 +1676,33 @@
       }
 
       async function generateShoppingList() {
+        // Vendor 매핑 (옛날 이름 → 새 이름)
+        const vendorMapping = {
+          'Suns': 'Suns club',
+          'king': 'King',
+          'hong Kong': 'HongKong Market'
+          // 필요한 매핑 추가
+        };
+        
         const list = Array.isArray(items) ? items.map(item => {
           const currentInv = parseFloat(item.current_inventory) || 0;
           const parValue = parseFloat(item.par) || 0;
+          
+          // Vendor 매핑 적용
+          let mappedVendor = item.vendor;
+          if (vendorMapping[item.vendor]) {
+            mappedVendor = vendorMapping[item.vendor];
+          }
+          
+          // Vendor 목록에 없으면 첫 번째 vendor 사용
+          if (!vendors.includes(mappedVendor)) {
+            mappedVendor = vendors[0] || 'Unknown';
+          }
+          
           return {
             ...item,
             shortage: Math.max(0, parValue - currentInv),
-            selected_vendor: item.vendor
+            selected_vendor: mappedVendor
           };
         }).filter(item => item.shortage > 0) : [];
         setShoppingList(list);
@@ -1690,6 +1710,31 @@
         await window.db.ref(getPath('shopping')).set(list);
         setActiveTab('shopping');
       }
+      
+      // Vendor 일괄 업데이트 함수 (콘솔에서 실행 가능하도록 window에 등록)
+      window.updateAllVendors = async function() {
+        const vendorMapping = {
+          'Suns': 'Suns club',
+          'king': 'King',
+          'hong Kong': 'HongKong Market'
+        };
+        
+        console.log('🔄 Starting vendor update...');
+        const updatedItems = items.map(item => {
+          let newVendor = item.vendor;
+          if (vendorMapping[item.vendor]) {
+            newVendor = vendorMapping[item.vendor];
+            console.log(`✅ ${item.name}: ${item.vendor} → ${newVendor}`);
+          }
+          return {...item, vendor: newVendor};
+        });
+        
+        setItems(updatedItems);
+        await window.db.ref(getPath('items')).set(updatedItems);
+        console.log('✅ All vendors updated!');
+        alert('Vendor 업데이트 완료!');
+      };
+
 
       async function completeOrder() {
         // Simple View용 데이터 준비
@@ -2322,7 +2367,9 @@
           h('form', { key: 'form', onSubmit: handleLogin }, [
             h('input', {
               key: 'input',
-              type: 'password',
+              type: 'tel',
+              pattern: '[0-9]*',
+              inputMode: 'numeric',
               className: 'login-input',
               placeholder: '••••',
               value: password,
@@ -3367,9 +3414,12 @@
                     }, '-0.25'),
                     h('input', { 
                       key: 'input', 
-                      type: 'number', 
+                      type: 'number',
+                      inputMode: 'decimal',
+                      pattern: '[0-9]*',
                       step: '0.01', 
                       value: item.current_inventory, 
+                      onFocus: (e) => e.target.select(),
                       onChange: (e) => updateTempInventory(globalIndex, parseFloat(e.target.value) || 0),
                       style: {
                         width: '80px',
@@ -3492,8 +3542,11 @@
                               h('input', {
                                 key: 'price',
                                 type: 'number',
+                                inputMode: 'decimal',
+                                pattern: '[0-9]*',
                                 step: '0.01',
                                 value: item.price,
+                                onFocus: (e) => e.target.select(),
                                 onChange: (e) => updateShoppingPrice(globalIndex, e.target.value),
                                 style: { flex: 1, background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
                               })
@@ -3509,7 +3562,18 @@
                           ]),
                           h('div', { key: 'row2', className: 'counter' }, [
                             h('button', { key: 'minus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, Math.max(0, item.shortage - 0.5)) }, '-'),
-                            h('input', { key: 'qty', className: 'counter-input', style: { width: '80px' }, type: 'number', step: '0.5', value: item.shortage, onChange: (e) => updateShoppingQuantity(globalIndex, e.target.value) }),
+                            h('input', { 
+                              key: 'qty', 
+                              className: 'counter-input',
+                              type: 'number',
+                              inputMode: 'decimal',
+                              pattern: '[0-9]*',
+                              step: '0.5',
+                              value: item.shortage,
+                              style: { width: '80px' },
+                              onFocus: (e) => e.target.select(),
+                              onChange: (e) => updateShoppingQuantity(globalIndex, e.target.value) 
+                            }),
                             h('button', { key: 'plus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, item.shortage + 0.5) }, '+')
                           ])
                         ])
@@ -4174,7 +4238,17 @@
                 return h('div', { key: 'item-' + idx, className: 'card', style: { color: '#2c3e50' }}, [
                   editingItem === idx ? h('div', { key: 'edit', className: 'input-group' }, [
                     h('input', { key: 'name', type: 'text', value: item.name, onChange: (e) => { const u = [...items]; u[idx].name = e.target.value; setItems(u); }}),
-                    h('select', { key: 'vendor', value: item.vendor, onChange: (e) => { const u = [...items]; u[idx].vendor = e.target.value; setItems(u); }},
+                    h('select', { 
+                      key: 'vendor', 
+                      value: item.vendor, 
+                      onChange: async (e) => { 
+                        const u = [...items]; 
+                        u[idx].vendor = e.target.value; 
+                        setItems(u);
+                        // Firebase에 즉시 저장
+                        await window.db.ref(getPath('items')).set(u);
+                      }
+                    },
                       vendors.map(v => h('option', { key: v, value: v }, v))
                     ),
                     h('select', { key: 'item-category', value: itemCategories[item.name] || '', onChange: (e) => updateItemCategory(item.name, e.target.value) },
@@ -4183,11 +4257,31 @@
                     h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', alignItems: 'center' }}, [
                       h('div', { key: 'price-wrapper', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
                         h('label', { key: 'label', style: { fontWeight: '600', color: '#2c3e50', fontSize: '0.75rem', whiteSpace: 'nowrap' }}, '$'),
-                        h('input', { key: 'price', type: 'number', value: item.price, onChange: (e) => { const u = [...items]; u[idx].price = parseFloat(e.target.value) || 0; setItems(u); }, placeholder: '0.00', style: { flex: 1, minWidth: '60px' }})
+                        h('input', { 
+                          key: 'price', 
+                          type: 'number',
+                          inputMode: 'decimal',
+                          pattern: '[0-9]*',
+                          value: item.price,
+                          onFocus: (e) => e.target.select(),
+                          onChange: (e) => { const u = [...items]; u[idx].price = parseFloat(e.target.value) || 0; setItems(u); }, 
+                          placeholder: '0.00', 
+                          style: { flex: 1, minWidth: '60px' }
+                        })
                       ]),
                       h('div', { key: 'par-wrapper', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
                         h('label', { key: 'label', style: { fontWeight: '600', color: '#2c3e50', fontSize: '0.75rem', whiteSpace: 'nowrap' }}, 'PAR'),
-                        h('input', { key: 'par', type: 'number', value: item.par, onChange: (e) => { const u = [...items]; u[idx].par = parseFloat(e.target.value) || 0; setItems(u); }, placeholder: '0', style: { flex: 1, minWidth: '50px' }})
+                        h('input', { 
+                          key: 'par', 
+                          type: 'number',
+                          inputMode: 'decimal',
+                          pattern: '[0-9]*',
+                          value: item.par,
+                          onFocus: (e) => e.target.select(),
+                          onChange: (e) => { const u = [...items]; u[idx].par = parseFloat(e.target.value) || 0; setItems(u); }, 
+                          placeholder: '0', 
+                          style: { flex: 1, minWidth: '50px' }
+                        })
                       ]),
                       h('select', { key: 'category', value: item.category, onChange: (e) => { const u = [...items]; u[idx].category = e.target.value; setItems(u); }}, [
                         h('option', { key: 'frozen', value: 'frozen' }, '❄️ ' + t.frozen),
@@ -4485,7 +4579,17 @@
           h('div', { className: 'modal-content', onClick: (e) => e.stopPropagation() }, [
             h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#f87171' }}, '⚠️ ' + t.resetData),
             h('p', { key: 'warn', style: { marginBottom: '1rem', color: '#666' }}, t.resetWarning),
-            h('input', { key: 'pwd', type: 'password', placeholder: t.enterPassword, value: resetPassword, onChange: (e) => setResetPassword(e.target.value), onKeyPress: (e) => e.key === 'Enter' && handleResetData(), style: { marginBottom: '1rem' }}),
+            h('input', { 
+              key: 'pwd', 
+              type: 'tel', 
+              pattern: '[0-9]*',
+              inputMode: 'numeric',
+              placeholder: t.enterPassword, 
+              value: resetPassword, 
+              onChange: (e) => setResetPassword(e.target.value), 
+              onKeyPress: (e) => e.key === 'Enter' && handleResetData(), 
+              style: { marginBottom: '1rem' }
+            }),
             h('div', { key: 'btns', style: { display: 'flex', gap: '0.75rem' }}, [
               h('button', { key: 'cancel', className: 'btn btn-secondary', onClick: () => { setShowResetModal(false); setResetPassword(''); }}, t.cancel),
               h('button', { key: 'reset', className: 'btn btn-danger', onClick: handleResetData }, t.reset)
