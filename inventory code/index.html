@@ -975,6 +975,8 @@
       const [expandedOrders, setExpandedOrders] = useState({}); // {orderId: true/false}
       const [vendors, setVendors] = useState([]);
       const [newVendor, setNewVendor] = useState('');
+      const [vendorToDelete, setVendorToDelete] = useState(null);
+      const [vendorReassignments, setVendorReassignments] = useState({});
       const [newItem, setNewItem] = useState({ name: '', vendor: '', price: 0, par: 0, category: 'refrigerated' });
       const [editingItem, setEditingItem] = useState(null);
       const [reportsSubTab, setReportsSubTab] = useState('history');
@@ -1578,12 +1580,24 @@
           
           console.log('📊 Setting state...');
           
-          setItems(itemsArray);
-          setTempItems(itemsArray);
+          // Vendors 중복 제거 및 정리
+          const uniqueVendors = [...new Set(vendorsData)].filter(v => v); // 중복 제거 + 빈 값 제거
+          console.log('🏪 Vendors cleaned:', vendorsData.length, '→', uniqueVendors.length);
+          
+          // Items의 vendor가 vendors 목록에 있는지 확인 (수정 안 함, 경고만)
+          const validatedItems = itemsArray.map(item => {
+            if (!uniqueVendors.includes(item.vendor)) {
+              console.warn(`⚠️ Invalid vendor for ${item.name}: "${item.vendor}" - 수동으로 변경 필요`);
+            }
+            return item;
+          });
+          
+          setItems(validatedItems);
+          setTempItems(validatedItems);
           setShoppingList(shopData);
           setOrderedLists(orderedData);
           setPurchaseHistory(histData);
-          setVendors(vendorsData);
+          setVendors(uniqueVendors);
           setCountRecords(countData);
           setCategories(categoriesData);
           setItemCategories(itemCategoriesData);
@@ -1673,15 +1687,28 @@
         updated[index].selected_vendor = vendor;
         setShoppingList(updated);
         await window.db.ref(getPath('shopping')).set(updated);
+        
+        // items의 vendor도 업데이트
+        const itemName = updated[index].name;
+        const itemIndex = items.findIndex(item => item.name === itemName);
+        
+        if (itemIndex !== -1) {
+          const updatedItems = [...items];
+          updatedItems[itemIndex].vendor = vendor;
+          setItems(updatedItems);
+          await window.db.ref(getPath('items')).set(updatedItems);
+          console.log(`✅ ${itemName}: vendor 업데이트 → ${vendor}`);
+        }
       }
 
       async function generateShoppingList() {
         // Vendor 매핑 (옛날 이름 → 새 이름)
         const vendorMapping = {
           'Suns': 'Suns club',
-          'king': 'King',
-          'hong Kong': 'HongKong Market'
-          // 필요한 매핑 추가
+          'suns': 'Suns club',
+          'suns club': 'Suns club'
+          // King과 king은 다름
+          // HongKong Market과 hong Kong은 다름
         };
         
         const list = Array.isArray(items) ? items.map(item => {
@@ -1690,19 +1717,29 @@
           
           // Vendor 매핑 적용
           let mappedVendor = item.vendor;
+          
+          // 1. 정확한 매핑 확인
           if (vendorMapping[item.vendor]) {
             mappedVendor = vendorMapping[item.vendor];
+          } else {
+            // 2. 대소문자 무시하고 매칭 (Suns만 해당)
+            const lowerVendor = item.vendor.toLowerCase();
+            if (lowerVendor.includes('suns')) {
+              mappedVendor = 'Suns club';
+            }
           }
           
-          // Vendor 목록에 없으면 첫 번째 vendor 사용
+          // 3. Vendor 목록에 없으면 Not Assigned
           if (!vendors.includes(mappedVendor)) {
-            mappedVendor = vendors[0] || 'Unknown';
+            console.warn(`⚠️ Vendor not found: ${item.vendor} → Not Assigned`);
+            mappedVendor = '⚠️ Not Assigned';
           }
           
           return {
             ...item,
             shortage: Math.max(0, parValue - currentInv),
-            selected_vendor: mappedVendor
+            selected_vendor: mappedVendor,
+            vendor: undefined  // ← 옛날 vendor 제거
           };
         }).filter(item => item.shortage > 0) : [];
         setShoppingList(list);
@@ -1713,35 +1750,237 @@
       
       // Vendor 일괄 업데이트 함수 (콘솔에서 실행 가능하도록 window에 등록)
       window.updateAllVendors = async function() {
-        const vendorMapping = {
-          'Suns': 'Suns club',
-          'king': 'King',
-          'hong Kong': 'HongKong Market'
-        };
-        
         console.log('🔄 Starting vendor update...');
         const updatedItems = items.map(item => {
           let newVendor = item.vendor;
-          if (vendorMapping[item.vendor]) {
-            newVendor = vendorMapping[item.vendor];
+          
+          // Suns 관련만 통합
+          const lowerVendor = item.vendor.toLowerCase();
+          if (lowerVendor.includes('suns')) {
+            newVendor = 'Suns club';
             console.log(`✅ ${item.name}: ${item.vendor} → ${newVendor}`);
           }
+          
           return {...item, vendor: newVendor};
         });
         
         setItems(updatedItems);
         await window.db.ref(getPath('items')).set(updatedItems);
-        console.log('✅ All vendors updated!');
-        alert('Vendor 업데이트 완료!');
+        
+        const changedCount = updatedItems.filter((item, idx) => item.vendor !== items[idx].vendor).length;
+        console.log(`✅ All vendors updated! ${changedCount} items changed`);
+        alert(`Vendor 업데이트 완료! 총 ${changedCount}개 수정됨`);
+      };
+      
+      // Vendors 목록 정리 (중복 제거 + Firebase 동기화)
+      window.cleanVendors = async function() {
+        console.log('🧹 Cleaning vendors list...');
+        
+        // 1. 현재 vendors 중복 제거
+        const uniqueVendors = [...new Set(vendors)].filter(v => v);
+        console.log(`📋 Vendors: ${vendors.length} → ${uniqueVendors.length}`);
+        
+        // 2. Items에서 실제 사용 중인 vendor 수집
+        const usedVendors = [...new Set(items.map(i => i.vendor))];
+        console.log('📦 Used vendors:', usedVendors);
+        
+        // 3. Vendors 목록에 없는데 사용 중인 vendor 찾기
+        const missingVendors = usedVendors.filter(v => !uniqueVendors.includes(v));
+        if (missingVendors.length > 0) {
+          console.warn('⚠️ Missing vendors:', missingVendors);
+          alert(`경고: 다음 vendor가 목록에 없습니다:\n${missingVendors.join(', ')}\n\nVendors 탭에서 추가하거나, items의 vendor를 변경하세요.`);
+        }
+        
+        // 4. Firebase에 정리된 목록 저장
+        setVendors(uniqueVendors);
+        await window.db.ref(getPath('vendors')).set(uniqueVendors);
+        
+        console.log('✅ Vendors cleaned!');
+        alert(`Vendors 정리 완료!\n중복 제거: ${vendors.length - uniqueVendors.length}개`);
+      };
+      
+      // Shopping List 정리 (vendor 필드 제거 + 검증)
+      window.cleanShoppingList = async function() {
+        console.log('🧹 Cleaning shopping list...');
+        console.log('📋 Before:', shoppingList.length, 'items');
+        
+        const cleaned = shoppingList.map(item => {
+          console.log(`\n📦 ${item.name}:`);
+          console.log('  vendor:', item.vendor);
+          console.log('  selected_vendor:', item.selected_vendor);
+          
+          // vendor 필드 제거
+          const { vendor, ...rest } = item;
+          
+          // selected_vendor가 없으면 경고
+          if (!rest.selected_vendor) {
+            console.warn(`  ⚠️ No selected_vendor!`);
+            rest.selected_vendor = '⚠️ Not Assigned';
+          }
+          
+          // selected_vendor가 vendors 목록에 없으면 경고
+          if (!vendors.includes(rest.selected_vendor) && rest.selected_vendor !== '⚠️ Not Assigned') {
+            console.warn(`  ⚠️ Invalid vendor: ${rest.selected_vendor}`);
+          }
+          
+          console.log('  → cleaned selected_vendor:', rest.selected_vendor);
+          return rest;
+        });
+        
+        console.log('\n✅ Cleaned:', cleaned.length, 'items');
+        console.log('📤 Saving to Firebase...');
+        
+        setShoppingList(cleaned);
+        await window.db.ref(getPath('shopping')).set(cleaned);
+        
+        console.log('✅ Shopping list cleaned and saved!');
+        alert('Shopping List 정리 완료!\nSimple View를 다시 확인해보세요.');
+      };
+      
+      // Shopping List 강제 리셋
+      window.resetShoppingList = async function() {
+        if (!confirm('현재 Shopping List를 완전히 삭제하시겠습니까?')) {
+          return;
+        }
+        
+        console.log('🗑️ Resetting shopping list...');
+        console.log('현재 location:', currentLocation);
+        
+        try {
+          const path = `${currentLocation}/inventory/shopping`;
+          console.log('Firebase 경로:', path);
+          
+          await window.db.ref(path).set([]);
+          console.log('✅ Firebase 삭제 완료!');
+          
+          setShoppingList([]);
+          console.log('✅ State 업데이트 완료!');
+          
+          alert('Shopping List가 삭제되었습니다.');
+          window.location.reload();
+        } catch (error) {
+          console.error('❌ 에러:', error);
+          alert('에러: ' + error.message);
+        }
+      };
+      
+      // Order 강제 삭제
+      window.forceDeleteOrder = async function(orderId) {
+        if (!orderId) {
+          console.error('❌ Order ID가 필요합니다!');
+          console.log('사용법: window.forceDeleteOrder("1768284338491")');
+          return;
+        }
+        
+        console.log('🗑️ Deleting order:', orderId);
+        console.log('현재 location:', currentLocation);
+        
+        try {
+          const path = `${currentLocation}/inventory/orderedLists`;
+          console.log('Firebase 경로:', path);
+          
+          const snap = await window.db.ref(path).once('value');
+          const current = snap.val() || [];
+          console.log('현재 주문 수:', current.length);
+          
+          const updated = current.filter(o => o.id !== orderId && o.id !== parseInt(orderId));
+          console.log('삭제 후 주문 수:', updated.length);
+          
+          await window.db.ref(path).set(updated);
+          console.log('✅ Firebase 업데이트 완료!');
+          
+          setOrderedLists(updated);
+          console.log('✅ State 업데이트 완료!');
+          
+          alert('주문이 삭제되었습니다.');
+          window.location.reload();
+        } catch (error) {
+          console.error('❌ 에러:', error);
+          alert('에러: ' + error.message);
+        }
+      };
+      
+      // 전체 orderedLists 확인
+      window.listOrders = async function() {
+        console.log('📋 현재 주문 목록:');
+        console.log('현재 location:', currentLocation);
+        
+        try {
+          const path = `${currentLocation}/inventory/orderedLists`;
+          const snap = await window.db.ref(path).once('value');
+          const orders = snap.val() || [];
+          
+          console.log('총 주문 수:', orders.length);
+          orders.forEach((order, idx) => {
+            console.log(`\n주문 ${idx + 1}:`);
+            console.log('  ID:', order.id);
+            console.log('  날짜:', order.date, order.time);
+            console.log('  금액:', '$' + order.totalCost.toFixed(2));
+            console.log('  아이템 수:', order.totalItems);
+            console.log('  완료:', order.completed ? 'Yes' : 'No');
+          });
+          
+          return orders;
+        } catch (error) {
+          console.error('❌ 에러:', error);
+        }
+      };
+      
+      // 디버깅: 현재 상태 확인
+      window.debugState = function() {
+        console.log('=== 현재 상태 ===');
+        console.log('📦 Items:', items.length, 'items');
+        console.log('🛒 Shopping List:', shoppingList.length, 'items');
+        console.log('📋 Ordered Lists:', orderedLists.length, 'orders');
+        console.log('🏪 Vendors:', vendors);
+        console.log('\n상세:');
+        console.log('  Items:', items);
+        console.log('  Shopping List:', shoppingList);
+        console.log('  Ordered Lists:', orderedLists);
+        return {
+          items,
+          shoppingList,
+          orderedLists,
+          vendors
+        };
+      };
+      
+      // Firebase 직접 확인
+      window.checkFirebase = async function() {
+        console.log('🔥 Firebase 데이터 확인 중...');
+        
+        try {
+          const shoppingSnap = await window.db.ref(getPath('shopping')).once('value');
+          const orderedSnap = await window.db.ref(getPath('orderedLists')).once('value');
+          
+          const shoppingData = shoppingSnap.val() || [];
+          const orderedData = orderedSnap.val() || [];
+          
+          console.log('📥 Firebase Shopping List:', shoppingData.length, 'items');
+          console.log('📥 Firebase Ordered Lists:', orderedData.length, 'orders');
+          console.log('\n상세:');
+          console.log('  Shopping:', shoppingData);
+          console.log('  Ordered:', orderedData);
+          
+          return {
+            shopping: shoppingData,
+            ordered: orderedData
+          };
+        } catch (error) {
+          console.error('❌ Firebase 에러:', error);
+        }
       };
 
 
       async function completeOrder() {
         // Simple View용 데이터 준비
-        const purchaseItems = shoppingList.map(item => ({
-          ...item,
-          total: item.shortage * item.price
-        }));
+        const purchaseItems = shoppingList.map(item => {
+          const { vendor, ...itemWithoutVendor } = item;  // vendor 제거
+          return {
+            ...itemWithoutVendor,
+            total: item.shortage * item.price
+          };
+        });
         
         miscItems.forEach(item => {
           purchaseItems.push({
@@ -1952,9 +2191,53 @@
       }
 
       async function deleteVendor(vendor) {
-        const updated = vendors.filter(v => v !== vendor);
+        // 이 vendor를 사용하는 아이템 찾기
+        const affectedItems = items.filter(item => item.vendor === vendor);
+        
+        if (affectedItems.length > 0) {
+          // 아이템이 있으면 재배치 모달 표시
+          const initialReassignments = {};
+          affectedItems.forEach(item => {
+            // 다른 vendor 중 첫 번째를 기본값으로
+            const otherVendors = vendors.filter(v => v !== vendor);
+            initialReassignments[item.name] = otherVendors[0] || '';
+          });
+          setVendorReassignments(initialReassignments);
+          setVendorToDelete(vendor);
+        } else {
+          // 아이템이 없으면 바로 삭제
+          if (confirm(`"${vendor}" 벤더를 삭제하시겠습니까?`)) {
+            const updated = vendors.filter(v => v !== vendor);
+            setVendors(updated);
+            await window.db.ref(getPath('vendors')).set(updated);
+          }
+        }
+      }
+      
+      async function confirmVendorDeletion() {
+        // 1. 아이템들의 vendor 재배치
+        const updatedItems = items.map(item => {
+          if (item.vendor === vendorToDelete) {
+            const newVendor = vendorReassignments[item.name];
+            console.log(`📦 ${item.name}: ${vendorToDelete} → ${newVendor}`);
+            return {...item, vendor: newVendor};
+          }
+          return item;
+        });
+        
+        setItems(updatedItems);
+        await window.db.ref(getPath('items')).set(updatedItems);
+        
+        // 2. Vendor 삭제
+        const updated = vendors.filter(v => v !== vendorToDelete);
         setVendors(updated);
         await window.db.ref(getPath('vendors')).set(updated);
+        
+        // 3. 모달 닫기
+        setVendorToDelete(null);
+        setVendorReassignments({});
+        
+        alert(`"${vendorToDelete}" 삭제 완료!`);
       }
 
       async function addCategory() {
@@ -2364,7 +2647,16 @@
           }),
           h('h1', { key: 'title', className: 'login-title' }, 'Shabu Zone'),
           h('p', { key: 'subtitle', className: 'login-subtitle' }, 'Management System'),
-          h('form', { key: 'form', onSubmit: handleLogin }, [
+          h('form', { 
+            key: 'form', 
+            onSubmit: handleLogin,
+            style: {
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              width: '100%'
+            }
+          }, [
             h('input', {
               key: 'input',
               type: 'tel',
@@ -2389,6 +2681,7 @@
               className: 'login-button',
               style: {
                 width: '100%',
+                maxWidth: '300px',
                 padding: '1rem',
                 marginTop: '1rem',
                 background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)',
@@ -3556,7 +3849,110 @@
             shoppingSubTab === 'list' && h('div', { key: 'list-content' }, [
               shoppingList.length === 0 ? h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 'No items in shopping list') : [
                 
-                h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.shoppingList || '쇼핑 리스트'),
+                h('div', { 
+                  key: 'header', 
+                  style: { 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    marginBottom: '1rem',
+                    gap: '0.75rem'
+                  }
+                }, [
+                  h('h3', { key: 'title', style: { color: '#7f1d1d', margin: 0, flex: 1 }}, t.shoppingList || '쇼핑 리스트'),
+                  h('div', { 
+                    key: 'buttons', 
+                    style: { 
+                      display: 'flex', 
+                      gap: '0.5rem',
+                      flexShrink: 0
+                    }
+                  }, [
+                    h('button', {
+                      key: 'clean',
+                      type: 'button',
+                      className: 'btn',
+                      onClick: async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        if (confirm('Shopping List를 정리하시겠습니까?\n(vendor 필드 제거)')) {
+                          try {
+                            const cleaned = shoppingList.map(item => {
+                              const { vendor, ...rest } = item;
+                              if (!rest.selected_vendor) {
+                                rest.selected_vendor = '⚠️ Not Assigned';
+                              }
+                              return rest;
+                            });
+                            
+                            await window.db.ref(getPath('shopping')).set(cleaned);
+                            setShoppingList(cleaned);
+                            
+                            alert('정리 완료!');
+                            window.location.reload();
+                          } catch (error) {
+                            alert('에러: ' + error.message);
+                          }
+                        }
+                      },
+                      style: {
+                        background: '#3b82f6',
+                        padding: '0.5rem 0.875rem',
+                        fontSize: '0.85rem',
+                        whiteSpace: 'nowrap'
+                      }
+                    }, '🔧 Clean'),
+                    h('button', {
+                      key: 'cancel',
+                      type: 'button',
+                      className: 'btn',
+                      onClick: async (e) => {
+                        console.log('🔴 Cancel 버튼 클릭됨!');
+                        console.log('  이벤트:', e);
+                        console.log('  현재 Shopping List:', shoppingList);
+                        console.log('  Shopping List 길이:', shoppingList.length);
+                        
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log('  confirm 팝업 표시 중...');
+                        const userConfirmed = confirm('쇼핑 리스트를 삭제하시겠습니까?');
+                        console.log('  사용자 응답:', userConfirmed);
+                        
+                        if (userConfirmed) {
+                          console.log('✅ 삭제 진행 중...');
+                          
+                          try {
+                            console.log('  1. Firebase 삭제 시작');
+                            await window.db.ref(getPath('shopping')).set([]);
+                            console.log('  2. Firebase 삭제 완료!');
+                            
+                            console.log('  3. State 업데이트');
+                            setShoppingList([]);
+                            
+                            console.log('✅ 모든 작업 완료! 페이지 새로고침...');
+                            alert('삭제 완료!');
+                            
+                            // 페이지 새로고침으로 확실하게 반영
+                            window.location.reload();
+                          } catch (error) {
+                            console.error('❌ 에러 발생:', error);
+                            alert('에러: ' + error.message);
+                          }
+                        } else {
+                          console.log('❌ 사용자가 취소함');
+                        }
+                      },
+                      style: {
+                        background: '#ef4444',
+                        padding: '0.5rem 0.875rem',
+                        fontSize: '0.85rem',
+                        whiteSpace: 'nowrap'
+                      }
+                    }, '✕ Cancel')
+                  ])
+                ]),
                   
                 ['frozen', 'refrigerated', 'dry'].map(cat => {
                   const catItems = Array.isArray(shoppingList) ? shoppingList.filter(item => item.category === cat) : [];
@@ -3590,8 +3986,20 @@
                                 key: 'vendor',
                                 value: item.selected_vendor,
                                 onChange: (e) => updateShoppingVendor(globalIndex, e.target.value),
-                                style: { width: '100%', background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
-                              }, vendors.map(v => h('option', { key: v, value: v }, v)))
+                                style: { 
+                                  width: '100%', 
+                                  background: item.selected_vendor === '⚠️ Not Assigned' ? '#fef2f2' : 'white',
+                                  border: item.selected_vendor === '⚠️ Not Assigned' ? '2px solid #ef4444' : '2px solid #e2e8f0',
+                                  borderRadius: '6px', 
+                                  padding: '0.5rem', 
+                                  color: item.selected_vendor === '⚠️ Not Assigned' ? '#ef4444' : '#2c3e50',
+                                  fontSize: '0.875rem',
+                                  fontWeight: item.selected_vendor === '⚠️ Not Assigned' ? '700' : '400'
+                                }
+                              }, [
+                                item.selected_vendor === '⚠️ Not Assigned' && h('option', { key: 'not-assigned', value: '⚠️ Not Assigned' }, '⚠️ Not Assigned'),
+                                ...vendors.map(v => h('option', { key: v, value: v }, v))
+                              ])
                             ])
                           ]),
                           h('div', { key: 'row2', className: 'counter' }, [
@@ -3761,6 +4169,7 @@
                         }, [
                           h('button', {
                             key: 'view',
+                            type: 'button',
                             className: 'btn',
                             onClick: (e) => {
                               e.stopPropagation();
@@ -3783,6 +4192,50 @@
                               whiteSpace: 'nowrap'
                             }
                           }, '📋'),
+                          h('button', {
+                            key: 'delete',
+                            type: 'button',
+                            className: 'btn',
+                            onClick: async (e) => {
+                              console.log('🗑️ Order 삭제 버튼 클릭됨!');
+                              console.log('  주문 ID:', order.id);
+                              
+                              e.stopPropagation();
+                              
+                              const userConfirmed = confirm(`주문을 삭제하시겠습니까?\n${order.date} ${order.time}\n$${order.totalCost.toFixed(2)}`);
+                              console.log('  사용자 응답:', userConfirmed);
+                              
+                              if (userConfirmed) {
+                                console.log('✅ 삭제 진행 중...');
+                                
+                                try {
+                                  console.log('  1. Firebase 업데이트 시작');
+                                  const updated = orderedLists.filter(o => o.id !== order.id);
+                                  await window.db.ref(getPath('orderedLists')).set(updated);
+                                  console.log('  2. Firebase 업데이트 완료!');
+                                  
+                                  console.log('  3. State 업데이트');
+                                  setOrderedLists(updated);
+                                  
+                                  console.log('✅ 모든 작업 완료! 페이지 새로고침...');
+                                  alert('삭제 완료!');
+                                  window.location.reload();
+                                } catch (error) {
+                                  console.error('❌ 에러 발생:', error);
+                                  alert('에러: ' + error.message);
+                                }
+                              } else {
+                                console.log('❌ 사용자가 취소함');
+                              }
+                            },
+                            style: { 
+                              padding: '0.375rem 0.625rem',
+                              background: '#ef4444',
+                              fontSize: '0.75rem',
+                              minWidth: 0,
+                              whiteSpace: 'nowrap'
+                            }
+                          }, '🗑️'),
                           !order.completed && pendingItems.length > 0 && h('div', {
                             key: 'badge',
                             style: {
@@ -4276,15 +4729,37 @@
                       key: 'vendor', 
                       value: item.vendor, 
                       onChange: async (e) => { 
+                        const newVendor = e.target.value;
+                        const itemName = item.name;
+                        
+                        // items 업데이트
                         const u = [...items]; 
-                        u[idx].vendor = e.target.value; 
+                        u[idx].vendor = newVendor; 
                         setItems(u);
-                        // Firebase에 즉시 저장
                         await window.db.ref(getPath('items')).set(u);
+                        
+                        // Shopping List에 해당 아이템이 있으면 업데이트
+                        if (shoppingList.length > 0) {
+                          const shoppingIndex = shoppingList.findIndex(si => si.name === itemName);
+                          if (shoppingIndex !== -1) {
+                            const updatedShopping = [...shoppingList];
+                            updatedShopping[shoppingIndex].selected_vendor = newVendor;
+                            setShoppingList(updatedShopping);
+                            await window.db.ref(getPath('shopping')).set(updatedShopping);
+                            console.log(`✅ Shopping List도 업데이트: ${itemName} → ${newVendor}`);
+                          }
+                        }
+                      },
+                      style: {
+                        background: !vendors.includes(item.vendor) ? '#fef2f2' : 'white',
+                        border: !vendors.includes(item.vendor) ? '2px solid #ef4444' : '1px solid #e2e8f0',
+                        color: !vendors.includes(item.vendor) ? '#ef4444' : '#2c3e50',
+                        fontWeight: !vendors.includes(item.vendor) ? '700' : '400'
                       }
-                    },
-                      vendors.map(v => h('option', { key: v, value: v }, v))
-                    ),
+                    }, [
+                      !vendors.includes(item.vendor) && h('option', { key: 'invalid', value: item.vendor }, `⚠️ ${item.vendor} (삭제됨)`),
+                      ...vendors.map(v => h('option', { key: v, value: v }, v))
+                    ]),
                     h('select', { key: 'item-category', value: itemCategories[item.name] || '', onChange: (e) => updateItemCategory(item.name, e.target.value) },
                       [h('option', { key: 'empty', value: '' }, t.itemCategory || '분류 선택')].concat(categories.map(c => h('option', { key: c, value: c }, c)))
                     ),
@@ -4606,6 +5081,76 @@
               )
             ),
             h('button', { key: 'close', className: 'btn', onClick: () => setSelectedDateRecords(null), style: { marginTop: '1rem' }}, t.close || '닫기')
+          ])
+        ),
+
+        vendorToDelete && h('div', { key: 'vendor-delete-modal', className: 'modal', onClick: () => { setVendorToDelete(null); setVendorReassignments({}); }},
+          h('div', { className: 'modal-content', onClick: (e) => e.stopPropagation(), style: { maxWidth: '600px' }}, [
+            h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#f87171' }}, '⚠️ Vendor 삭제'),
+            h('p', { key: 'warning', style: { marginBottom: '1rem', color: '#666', fontSize: '0.95rem' }}, 
+              `"${vendorToDelete}"를 사용하는 아이템이 ${Object.keys(vendorReassignments).length}개 있습니다. 각 아이템을 다른 vendor로 옮겨주세요.`
+            ),
+            h('div', { key: 'items', style: { maxHeight: '400px', overflow: 'auto', marginBottom: '1rem' }},
+              Object.entries(vendorReassignments).map(([itemName, selectedVendor]) => 
+                h('div', {
+                  key: itemName,
+                  style: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    padding: '0.75rem',
+                    marginBottom: '0.5rem',
+                    background: '#f8fafc',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0'
+                  }
+                }, [
+                  h('div', { key: 'name', style: { flex: 1, fontWeight: '600', color: '#2c3e50' }}, itemName),
+                  h('div', { key: 'arrow', style: { color: '#64748b', fontSize: '1.2rem' }}, '→'),
+                  h('select', {
+                    key: 'select',
+                    value: selectedVendor,
+                    onChange: (e) => {
+                      setVendorReassignments({
+                        ...vendorReassignments,
+                        [itemName]: e.target.value
+                      });
+                    },
+                    style: {
+                      padding: '0.5rem',
+                      borderRadius: '6px',
+                      border: '2px solid #e2e8f0',
+                      background: 'white',
+                      minWidth: '150px',
+                      fontWeight: '600'
+                    }
+                  }, vendors.filter(v => v !== vendorToDelete).map(v => 
+                    h('option', { key: v, value: v }, v)
+                  ))
+                ])
+              )
+            ),
+            h('div', { key: 'buttons', style: { display: 'flex', gap: '0.75rem' }}, [
+              h('button', { 
+                key: 'cancel', 
+                className: 'btn btn-secondary', 
+                onClick: () => { 
+                  setVendorToDelete(null); 
+                  setVendorReassignments({}); 
+                },
+                style: { flex: 1 }
+              }, '취소'),
+              h('button', { 
+                key: 'confirm', 
+                className: 'btn btn-danger', 
+                onClick: confirmVendorDeletion,
+                disabled: Object.values(vendorReassignments).some(v => !v),
+                style: { 
+                  flex: 1,
+                  opacity: Object.values(vendorReassignments).some(v => !v) ? 0.5 : 1
+                }
+              }, `✓ 확인 및 "${vendorToDelete}" 삭제`)
+            ])
           ])
         ),
 
