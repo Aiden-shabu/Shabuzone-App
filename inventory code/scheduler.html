@@ -1880,13 +1880,32 @@
     
         const totalCols = 2 + DAYS.length;
         const lastCol = String.fromCharCode(65 + totalCols - 1);
-        worksheet.mergeCells('A1:' + lastCol + '1');
-        const titleCell = worksheet.getCell('A1');
-        titleCell.value = 'Schedule';
-        titleCell.font = {bold:true,size:16,color:{argb:'FFFFFFFF'}};
-        titleCell.alignment = {horizontal:'center',vertical:'middle'};
-        titleCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF667eea'}};
-        titleCell.border = {top:{style:'thick'},left:{style:'thick'},bottom:{style:'thick'},right:{style:'thick'}};
+        
+        // 다음 주 월요일 계산
+        const currentDate = new Date();
+        const currentDay = currentDate.getDay(); // 0(일) ~ 6(토)
+        const daysUntilNextMonday = currentDay === 0 ? 1 : (8 - currentDay); // 다음 주 월요일까지 날짜
+        const nextMonday = new Date(currentDate);
+        nextMonday.setDate(currentDate.getDate() + daysUntilNextMonday);
+        
+        // 제목 행 제거하고 바로 날짜 헤더
+        const dateHeaderRow = worksheet.getRow(1);
+        dateHeaderRow.height = 20;
+        
+        // 날짜 데이터 준비 (다음 주 월요일부터 7일)
+        const dates = DAYS.map((day, idx) => {
+          const date = new Date(nextMonday);
+          date.setDate(nextMonday.getDate() + idx);
+          return `${date.getMonth() + 1}/${date.getDate()}`;
+        });
+        
+        dateHeaderRow.values = ['','', ...dates];
+        dateHeaderRow.eachCell((cell)=>{
+          cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF667eea'}};
+          cell.font = {bold:true,color:{argb:'FFFFFFFF'},size:11};
+          cell.alignment = {horizontal:'center',vertical:'middle'};
+          cell.border = {top:{style:'thick'},left:{style:'thick'},bottom:{style:'thick'},right:{style:'thick'}};
+        });
     
         const dayHeaderRow = worksheet.getRow(2);
         dayHeaderRow.height = 20;
@@ -1917,21 +1936,27 @@
           // Lunch Row
           const lunchRow = worksheet.getRow(currentRow);
           lunchRow.height = 18;
-          const lunchData = [idx+1,emp.name];
-          DAYS.forEach(day=>{
+          
+          // 먼저 병합
+          worksheet.mergeCells('A'+currentRow+':A'+(currentRow+1));
+          worksheet.mergeCells('B'+currentRow+':B'+(currentRow+1));
+          
+          // 병합 후 절대 좌표로 값 설정
+          worksheet.getCell('A'+currentRow).value = idx+1;
+          worksheet.getCell('B'+currentRow).value = emp.name;
+          
+          // Lunch shift 값 설정
+          DAYS.forEach((day, i)=>{
             const daySchedule = state.schedule[day]||{};
             const lunchShift = (daySchedule.lunch||[]).find(e=>e.id===emp.id);
-            lunchData.push(lunchShift?lunchShift.shift:'');
+            lunchRow.getCell(3+i).value = lunchShift ? lunchShift.shift : '';
           });
-          lunchRow.values = lunchData;
     
-          // 번호 셀 (Lunch + Dinner 병합)
-          worksheet.mergeCells('A'+currentRow+':A'+(currentRow+1));
-          const numCell = lunchRow.getCell(1);
+          // 번호 셀 스타일
+          const numCell = worksheet.getCell('A'+currentRow);
           numCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F0F0'}};
           numCell.font = {bold:true,size:10};
           numCell.alignment = {horizontal:'center',vertical:'middle'};
-          // 직원 그룹 테두리: 위, 왼쪽, 오른쪽만
           numCell.border = {
             top:{style:'thick'},
             left:{style:'thick'},
@@ -1939,11 +1964,10 @@
             right:{style:'medium'}
           };
     
-          // 이름 셀 (Lunch + Dinner 병합)
-          worksheet.mergeCells('B'+currentRow+':B'+(currentRow+1));
-          const nameCell = lunchRow.getCell(2);
+          // 이름 셀 스타일
+          const nameCell = worksheet.getCell('B'+currentRow);
           nameCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF9F9F9'}};
-          nameCell.font = {bold:true,size:10};
+          nameCell.font = {bold:true,size:14};
           nameCell.alignment = {horizontal:'center',vertical:'middle'};
           nameCell.border = {
             top:{style:'thick'},
@@ -1957,11 +1981,39 @@
             const day = DAYS[i];
             const daySchedule = state.schedule[day]||{};
             const lunchShift = (daySchedule.lunch||[]).find(e=>e.id===emp.id);
+            const dinnerShift = (daySchedule.dinner||[]).find(e=>e.id===emp.id);
             const cell = lunchRow.getCell(3+i);
             
             if(lunchShift){
-              cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:getShiftColorARGB(lunchShift.shift)}};
-              cell.font = {bold:true,size:9};
+              let shiftText = lunchShift.shift;
+              
+              // Lunch가 "11:00~Break" 또는 "11:30~Break"이고
+              // Dinner가 "3:30~Close"인 경우 → 빨간색 처리
+              const isLunchBreak = /^(11:00|11:30)~Break$/i.test(shiftText.trim());
+              const isDinnerClose = dinnerShift && /^3:30~Close$/i.test(dinnerShift.shift.trim());
+              
+              if (isLunchBreak && isDinnerClose) {
+                // 빨간색 + "~Break" 제거
+                const timeOnly = shiftText.replace(/~Break$/i, '').trim();
+                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFFF0000'}};  // 빨간색
+                cell.font = {bold:true,size:9,color:{argb:'FFFFFFFF'}};  // 흰색 글씨
+                cell.value = timeOnly;
+              } else {
+                // 텍스트 제거: Open~Break, 6~Close, 6:00~Close
+                let displayText = shiftText;
+                if (/^Open~Break$/i.test(shiftText.trim())) {
+                  displayText = '';  // Open~Break 제거
+                } else if (/^6:00~Close$/i.test(shiftText.trim())) {
+                  displayText = '';  // 6:00~Close 제거
+                } else if (/^6~Close$/i.test(shiftText.trim())) {
+                  displayText = '';  // 6~Close 제거
+                }
+                
+                // 일반 shift
+                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:getShiftColorARGB(shiftText)}};
+                cell.font = {bold:true,size:9};
+                cell.value = displayText;
+              }
             } else {
               // 빈 셀도 그룹 배경색
               cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:groupBgColor}};
@@ -1982,24 +2034,52 @@
           // Dinner Row
           const dinnerRow = worksheet.getRow(currentRow);
           dinnerRow.height = 18;
-          const dinnerData = ['',''];
-          DAYS.forEach(day=>{
+          
+          // 번호/이름은 이미 병합되어 있으므로 건드리지 않음!
+          
+          // Dinner shift 값 설정
+          DAYS.forEach((day, i)=>{
             const daySchedule = state.schedule[day]||{};
             const dinnerShift = (daySchedule.dinner||[]).find(e=>e.id===emp.id);
-            dinnerData.push(dinnerShift?dinnerShift.shift:'');
+            dinnerRow.getCell(3+i).value = dinnerShift ? dinnerShift.shift : '';
           });
-          dinnerRow.values = dinnerData;
     
           // Dinner 셀 스타일
           for(let i=0; i<DAYS.length; i++){
             const day = DAYS[i];
             const daySchedule = state.schedule[day]||{};
+            const lunchShift = (daySchedule.lunch||[]).find(e=>e.id===emp.id);
             const dinnerShift = (daySchedule.dinner||[]).find(e=>e.id===emp.id);
             const cell = dinnerRow.getCell(3+i);
             
             if(dinnerShift){
-              cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:getShiftColorARGB(dinnerShift.shift)}};
-              cell.font = {bold:true,size:9};
+              let shiftText = dinnerShift.shift;
+              
+              // Lunch가 "11:00~Break" 또는 "11:30~Break"이고
+              // Dinner가 "3:30~Close"인 경우 → 빈칸 처리
+              const isLunchBreak = lunchShift && /^(11:00|11:30)~Break$/i.test(lunchShift.shift.trim());
+              const isDinnerClose = /^3:30~Close$/i.test(shiftText.trim());
+              
+              if (isLunchBreak && isDinnerClose) {
+                // 빈칸으로 (아무것도 표시 안 함)
+                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:groupBgColor}};
+                cell.value = '';
+              } else {
+                // 텍스트 제거: 3:30~Close, 6~Close, 6:00~Close
+                let displayText = shiftText;
+                if (/^3:30~Close$/i.test(shiftText.trim())) {
+                  displayText = '';  // 3:30~Close 제거
+                } else if (/^6:00~Close$/i.test(shiftText.trim())) {
+                  displayText = '';  // 6:00~Close 제거
+                } else if (/^6~Close$/i.test(shiftText.trim())) {
+                  displayText = '';  // 6~Close 제거
+                }
+                
+                // 일반 shift
+                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:getShiftColorARGB(shiftText)}};
+                cell.font = {bold:true,size:9};
+                cell.value = displayText;
+              }
             } else {
               cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:groupBgColor}};
             }
