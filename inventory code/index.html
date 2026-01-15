@@ -982,6 +982,9 @@
       const [vendorReassignments, setVendorReassignments] = useState({});
       const [newItem, setNewItem] = useState({ name: '', vendor: '', price: 0, par: 0, category: 'refrigerated' });
       const [editingItem, setEditingItem] = useState(null);
+      const [showImageModal, setShowImageModal] = useState(false);
+      const [selectedItemForImage, setSelectedItemForImage] = useState(null);
+      const [uploadingImage, setUploadingImage] = useState(false);
       const [reportsSubTab, setReportsSubTab] = useState('history');
       const [expandedChart, setExpandedChart] = useState(null);
       const [itemSearchQuery, setItemSearchQuery] = useState('');
@@ -2170,6 +2173,68 @@
         }
         
         console.log('🎉 All Firebase operations completed!');
+      }
+
+      // 사진 업로드 함수
+      async function uploadItemImage(itemName, file) {
+        try {
+          setUploadingImage(true);
+          
+          // 파일명 생성 (공백을 언더스코어로 변경)
+          const fileName = `${currentLocation.replace(/\s+/g, '_')}_${itemName.replace(/\s+/g, '_')}.jpg`;
+          const storageRef = firebase.storage().ref(`item-images/${fileName}`);
+          
+          // 파일 업로드
+          await storageRef.put(file);
+          
+          // 다운로드 URL 가져오기
+          const imageUrl = await storageRef.getDownloadURL();
+          
+          // items에 imageUrl 추가
+          const updatedItems = items.map(item => 
+            item.name === itemName ? { ...item, imageUrl } : item
+          );
+          
+          setItems(updatedItems);
+          await window.db.ref(getPath('items')).set(updatedItems);
+          
+          alert(language === 'ko' ? '사진이 업로드되었습니다!' : 'Image uploaded!');
+          setShowImageModal(false);
+          setUploadingImage(false);
+        } catch (error) {
+          console.error('Image upload error:', error);
+          alert(language === 'ko' ? '업로드 실패: ' + error.message : 'Upload failed: ' + error.message);
+          setUploadingImage(false);
+        }
+      }
+      
+      // 사진 삭제 함수
+      async function deleteItemImage(itemName) {
+        try {
+          const item = items.find(i => i.name === itemName);
+          if (!item || !item.imageUrl) return;
+          
+          if (!confirm(language === 'ko' ? '사진을 삭제하시겠습니까?' : 'Delete image?')) return;
+          
+          // Storage에서 삭제
+          const fileName = `${currentLocation.replace(/\s+/g, '_')}_${itemName.replace(/\s+/g, '_')}.jpg`;
+          const storageRef = firebase.storage().ref(`item-images/${fileName}`);
+          await storageRef.delete();
+          
+          // items에서 imageUrl 제거
+          const updatedItems = items.map(item => 
+            item.name === itemName ? { ...item, imageUrl: undefined } : item
+          );
+          
+          setItems(updatedItems);
+          await window.db.ref(getPath('items')).set(updatedItems);
+          
+          alert(language === 'ko' ? '사진이 삭제되었습니다!' : 'Image deleted!');
+          setShowImageModal(false);
+        } catch (error) {
+          console.error('Image delete error:', error);
+          alert(language === 'ko' ? '삭제 실패: ' + error.message : 'Delete failed: ' + error.message);
+        }
       }
 
       async function addNewItem() {
@@ -5043,6 +5108,43 @@
                       h('div', { key: 'meta', style: { fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}, item.vendor + ' • $' + item.price + ' • PAR: ' + item.par)
                     ]),
                     h('div', { key: 'actions', style: { display: 'flex', gap: '0.5rem' }}, [
+                      h('button', { 
+                        key: 'image', 
+                        onClick: () => {
+                          setSelectedItemForImage(item);
+                          setShowImageModal(true);
+                        }, 
+                        style: { 
+                          background: 'rgba(168,85,247,0.1)', 
+                          border: '1px solid rgba(168,85,247,0.3)', 
+                          borderRadius: '8px', 
+                          color: '#a855f7', 
+                          cursor: 'pointer', 
+                          padding: '0.5rem', 
+                          fontSize: '0.875rem',
+                          position: 'relative'
+                        }
+                      }, [
+                        '📸',
+                        item.imageUrl && h('span', {
+                          key: 'check',
+                          style: {
+                            position: 'absolute',
+                            top: '-4px',
+                            right: '-4px',
+                            background: '#10b981',
+                            color: 'white',
+                            borderRadius: '50%',
+                            width: '16px',
+                            height: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '10px',
+                            fontWeight: 'bold'
+                          }
+                        }, '✓')
+                      ]),
                       h('button', { key: 'edit', onClick: () => setEditingItem(idx), style: { background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.3)', borderRadius: '8px', color: '#7f1d1d', cursor: 'pointer', padding: '0.5rem', fontSize: '0.875rem' }}, '✏️'),
                       h('button', { key: 'delete', onClick: () => deleteItem(idx), style: { background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', cursor: 'pointer', padding: '0.5rem', fontSize: '0.875rem' }}, '🗑️')
                     ])
@@ -5157,6 +5259,141 @@
                   ])
                 )
               )
+            ])
+          ]),
+          
+          // 사진 모달
+          showImageModal && selectedItemForImage && h('div', {
+            key: 'image-modal',
+            style: {
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: '1rem'
+            },
+            onClick: () => {
+              if (!uploadingImage) {
+                setShowImageModal(false);
+                setSelectedItemForImage(null);
+              }
+            }
+          }, [
+            h('div', {
+              key: 'modal-content',
+              className: 'card',
+              style: {
+                maxWidth: '500px',
+                width: '100%',
+                maxHeight: '80vh',
+                overflow: 'auto'
+              },
+              onClick: (e) => e.stopPropagation()
+            }, [
+              h('h3', { 
+                key: 'title', 
+                style: { color: '#7f1d1d', marginBottom: '1rem' }
+              }, '📸 ' + selectedItemForImage.name),
+              
+              // 현재 사진 표시
+              selectedItemForImage.imageUrl ? h('div', { key: 'current-image' }, [
+                h('img', {
+                  key: 'img',
+                  src: selectedItemForImage.imageUrl,
+                  style: {
+                    width: '100%',
+                    maxHeight: '300px',
+                    objectFit: 'contain',
+                    borderRadius: '8px',
+                    marginBottom: '1rem',
+                    background: '#f3f4f6'
+                  }
+                }),
+                h('button', {
+                  key: 'delete',
+                  className: 'btn',
+                  onClick: () => deleteItemImage(selectedItemForImage.name),
+                  style: {
+                    background: '#ef4444',
+                    marginBottom: '1rem',
+                    width: '100%'
+                  }
+                }, language === 'ko' ? '🗑️ 사진 삭제' : '🗑️ Delete Image')
+              ]) : h('div', {
+                key: 'no-image',
+                style: {
+                  padding: '2rem',
+                  background: '#f3f4f6',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  marginBottom: '1rem'
+                }
+              }, language === 'ko' ? '사진이 없습니다' : 'No image'),
+              
+              // 파일 업로드
+              h('div', { key: 'upload' }, [
+                h('label', {
+                  key: 'label',
+                  style: {
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    fontWeight: '600',
+                    color: '#2c3e50'
+                  }
+                }, language === 'ko' ? '새 사진 업로드:' : 'Upload new image:'),
+                h('input', {
+                  key: 'file',
+                  type: 'file',
+                  accept: 'image/*',
+                  onChange: (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      uploadItemImage(selectedItemForImage.name, file);
+                    }
+                  },
+                  disabled: uploadingImage,
+                  style: {
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    marginBottom: '1rem'
+                  }
+                }),
+                uploadingImage && h('div', {
+                  key: 'uploading',
+                  style: {
+                    padding: '0.75rem',
+                    background: '#dbeafe',
+                    borderRadius: '8px',
+                    color: '#1e40af',
+                    textAlign: 'center',
+                    marginBottom: '1rem'
+                  }
+                }, language === 'ko' ? '업로드 중...' : 'Uploading...')
+              ]),
+              
+              // 닫기 버튼
+              h('button', {
+                key: 'close',
+                className: 'btn',
+                onClick: () => {
+                  setShowImageModal(false);
+                  setSelectedItemForImage(null);
+                },
+                disabled: uploadingImage,
+                style: {
+                  background: '#64748b',
+                  width: '100%'
+                }
+              }, language === 'ko' ? '닫기' : 'Close')
             ])
           ])
         ]),
