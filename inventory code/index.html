@@ -504,6 +504,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
@@ -523,6 +524,7 @@
       }
       window.db = firebase.database();
       window.storage = firebase.storage();
+      window.auth = firebase.auth();
       console.log('✅ Firebase initialized successfully');
     } catch (error) {
       console.error('❌ Firebase initialization error:', error);
@@ -1124,7 +1126,15 @@
       }, [currentUser]);
 
       // 로그아웃 함수
-      const handleLogout = () => {
+      const handleLogout = async () => {
+        // Firebase Auth 로그아웃
+        try {
+          await firebase.auth().signOut();
+          console.log('✅ Firebase Auth: Signed out');
+        } catch (error) {
+          console.log('⚠️ Firebase Auth 로그아웃 실패 (괜찮음):', error.message);
+        }
+        
         localStorage.removeItem('currentUser');
         localStorage.removeItem('lastActiveTime');
         localStorage.removeItem('currentLocation');
@@ -1207,6 +1217,14 @@
         
         // 관리자 로그인
         if (password === '0214') {
+          // Firebase Auth 익명 로그인 (보안 규칙용)
+          try {
+            await firebase.auth().signInAnonymously();
+            console.log('✅ Firebase Auth: Admin signed in');
+          } catch (error) {
+            console.log('⚠️ Firebase Auth 실패 (괜찮음):', error.message);
+          }
+          
           setIsAdmin(true);
           const adminUser = { name: 'Admin', isAdmin: true };
           setCurrentUser(adminUser);
@@ -1222,6 +1240,14 @@
         // 일반 사용자 로그인
         const user = users.find(u => u.password === password);
         if (user) {
+          // Firebase Auth 익명 로그인 (보안 규칙용)
+          try {
+            await firebase.auth().signInAnonymously();
+            console.log('✅ Firebase Auth: User signed in');
+          } catch (error) {
+            console.log('⚠️ Firebase Auth 실패 (괜찮음):', error.message);
+          }
+          
           // 사용자가 관리자인지 확인
           if (user.isAdmin) {
             setIsAdmin(true);
