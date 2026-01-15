@@ -956,6 +956,9 @@
       const [shoppingList, setShoppingList] = useState([]);
       const [orderedLists, setOrderedLists] = useState([]); // 주문 완료된 리스트들
       const [shoppingSubTab, setShoppingSubTab] = useState('list'); // 'list' or 'confirm'
+      const [showAddItemModal, setShowAddItemModal] = useState(false);
+      const [addItemSearch, setAddItemSearch] = useState('');
+      const [addItemQuantity, setAddItemQuantity] = useState(1);
       const [miscItems, setMiscItems] = useState([]);
       const [newMisc, setNewMisc] = useState({ name: '', price: 0, quantity: 1 });
       const [shoppingStep, setShoppingStep] = useState('edit');
@@ -981,6 +984,7 @@
       const [editingItem, setEditingItem] = useState(null);
       const [reportsSubTab, setReportsSubTab] = useState('history');
       const [expandedChart, setExpandedChart] = useState(null);
+      const [itemSearchQuery, setItemSearchQuery] = useState('');
       const [showScrollButtons, setShowScrollButtons] = useState(false);
       const [tempItems, setTempItems] = useState([]);
       const [countRecords, setCountRecords] = useState([]);
@@ -1740,6 +1744,20 @@
             shortage: Math.max(0, parValue - currentInv),
             selected_vendor: mappedVendor,
             vendor: undefined  // ← 옛날 vendor 제거
+          };
+        }).map(item => {
+          // 반올림: 0.5 미만은 내림, 0.5 이상은 올림
+          const rawShortage = item.shortage;
+          let roundedShortage = 0;
+          
+          if (rawShortage >= 0.5) {
+            roundedShortage = Math.ceil(rawShortage);  // 0.5 이상 → 올림
+          }
+          // 0.5 미만은 0으로 (내림)
+          
+          return {
+            ...item,
+            shortage: roundedShortage
           };
         }).filter(item => item.shortage > 0) : [];
         setShoppingList(list);
@@ -2570,25 +2588,66 @@
       }
 
       function getItemUsageData(itemName) {
+        // 날짜별 사용량 계산
         const usageMap = {};
-        purchaseHistory.forEach(purchase => {
-          const date = purchase.date;
-          const item = purchase.items.find(i => i.name === itemName);
-          if (item) {
-            if (!usageMap[date]) usageMap[date] = 0;
-            usageMap[date] += item.quantity;
-          }
+        
+        // countRecords를 날짜별로 그룹화 (같은 날짜는 마지막 것만)
+        const countsByDate = {};
+        countRecords.forEach(count => {
+          countsByDate[count.date] = count;  // 같은 날짜면 덮어씀 (마지막 것만 유지)
         });
         
-        const sortedDates = Object.keys(usageMap).sort();
-        const last7Days = sortedDates.slice(-7);
+        // 날짜순으로 정렬
+        const sortedDates = Object.keys(countsByDate).sort();
+        
+        // 각 날짜별 계산
+        for (let i = 1; i < sortedDates.length; i++) {
+          const todayDate = sortedDates[i];
+          const yesterdayDate = sortedDates[i - 1];
+          
+          const today = countsByDate[todayDate];
+          const yesterday = countsByDate[yesterdayDate];
+          
+          // 오늘 재고실사에서 해당 아이템 찾기
+          const todayItem = today.items.find(item => item.name === itemName);
+          const yesterdayItem = yesterday.items.find(item => item.name === itemName);
+          
+          if (!todayItem || !yesterdayItem) continue;
+          
+          const todayInventory = parseFloat(todayItem.current_inventory) || 0;
+          const yesterdayInventory = parseFloat(yesterdayItem.current_inventory) || 0;
+          
+          // 오늘 컨펌한 구매량 찾기 (orderedLists에서)
+          let todayConfirmed = 0;
+          orderedLists.forEach(order => {
+            const orderDate = order.date;
+            // 오늘 날짜와 주문 컨펌 날짜 비교
+            if (orderDate === todayDate) {
+              const orderItem = order.items.find(item => item.name === itemName && item.received);
+              if (orderItem) {
+                todayConfirmed += parseFloat(orderItem.quantity) || 0;
+              }
+            }
+          });
+          
+          // 사용량 = 어제 재고 + 오늘 컨펌 - 오늘 재고
+          const usage = yesterdayInventory + todayConfirmed - todayInventory;
+          
+          // 음수 방지 (재고가 늘어난 경우 = 컨펌 누락 가능성)
+          if (usage >= 0) {
+            usageMap[todayDate] = usage;
+          }
+        }
+        
+        const sortedUsageDates = Object.keys(usageMap).sort();
+        const last7Days = sortedUsageDates.slice(-7);
         
         return {
-          lastUsed: sortedDates.length > 0 ? usageMap[sortedDates[sortedDates.length - 1]] : 0,
-          weeklyAvg: last7Days.length > 0 ? (last7Days.reduce((sum, d) => sum + usageMap[d], 0) / last7Days.length) : 0,
+          lastUsed: sortedUsageDates.length > 0 ? usageMap[sortedUsageDates[sortedUsageDates.length - 1]] : 0,
+          weeklyAvg: last7Days.length > 0 ? (last7Days.reduce((sum, d) => sum + (usageMap[d] || 0), 0) / last7Days.length) : 0,
           chartData: {
             labels: last7Days,
-            values: last7Days.map(d => usageMap[d])
+            values: last7Days.map(d => usageMap[d] || 0)
           }
         };
       }
@@ -4528,77 +4587,112 @@
             ],
 
             reportsSubTab === 'analysis' && [
+              h('div', { key: 'search-bar', className: 'card', style: { marginBottom: '1rem', padding: '1rem' }}, [
+                h('input', {
+                  key: 'search',
+                  type: 'text',
+                  placeholder: language === 'ko' ? '🔍 아이템 검색...' : '🔍 Search items...',
+                  value: itemSearchQuery,
+                  onChange: (e) => setItemSearchQuery(e.target.value),
+                  style: {
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    outline: 'none'
+                  },
+                  onFocus: (e) => e.target.style.borderColor = '#7f1d1d',
+                  onBlur: (e) => e.target.style.borderColor = '#e2e8f0'
+                })
+              ]),
               purchaseHistory.length === 0 ? h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, t.noHistory) :
-              items.slice(0, 50).map((item, idx) => {
-                const usage = getItemUsageData(item.name);
-                return h('div', { key: idx, className: 'card', style: { color: '#2c3e50' }}, [
-                  h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}, [
-                    h('div', { key: 'left' }, [
-                      h('div', { key: 'name', style: { fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2c3e50' }}, [
-                        h('span', { key: 'icon' }, storageIcons[item.category]),
-                        h('span', { key: 'text' }, item.name)
+              (() => {
+                // 검색 필터링
+                const filteredItems = items.filter(item => 
+                  item.name.toLowerCase().includes(itemSearchQuery.toLowerCase())
+                );
+                
+                return filteredItems.length === 0 ? 
+                  h('div', { key: 'no-results', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 
+                    language === 'ko' ? '검색 결과가 없습니다' : 'No results found') :
+                  filteredItems.map((item, idx) => {
+                    const usage = getItemUsageData(item.name);
+                    return h('div', { key: item.name, className: 'card', style: { color: '#2c3e50' }}, [
+                      h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}, [
+                        h('div', { key: 'left' }, [
+                          h('div', { key: 'name', style: { fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2c3e50' }}, [
+                            h('span', { key: 'icon' }, storageIcons[item.category]),
+                            h('span', { key: 'text' }, item.name)
+                          ]),
+                          h('div', { key: 'stats', style: { fontSize: '0.875rem', color: '#64748b', marginTop: '0.25rem' }}, 
+                            t.lastUsed + ': ' + usage.lastUsed.toFixed(1) + ' | ' + t.weeklyAvg + ': ' + usage.weeklyAvg.toFixed(1))
+                        ]),
+                        usage.chartData.values.length > 0 && h('button', { 
+                          key: 'chart-btn',
+                          onClick: () => setExpandedChart(expandedChart === item.name ? null : item.name),
+                          style: { 
+                            background: expandedChart === item.name ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(96,165,250,0.3)',
+                            borderRadius: '8px',
+                            color: '#7f1d1d',
+                            cursor: 'pointer',
+                            padding: '0.5rem 0.75rem',
+                            fontSize: '0.875rem',
+                            whiteSpace: 'nowrap'
+                          }
+                        }, expandedChart === item.name ? t.hideChart : t.showChart)
                       ]),
-                      h('div', { key: 'stats', style: { fontSize: '0.875rem', color: '#64748b', marginTop: '0.25rem' }}, 
-                        t.lastUsed + ': ' + usage.lastUsed.toFixed(1) + ' | ' + t.weeklyAvg + ': ' + usage.weeklyAvg.toFixed(1))
-                    ]),
-                    usage.chartData.values.length > 0 && h('button', { 
-                      key: 'chart-btn',
-                      onClick: () => setExpandedChart(expandedChart === idx ? null : idx),
-                      style: { 
-                        background: expandedChart === idx ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.1)',
-                        border: '1px solid rgba(96,165,250,0.3)',
-                        borderRadius: '8px',
-                        color: '#7f1d1d',
-                        cursor: 'pointer',
-                        padding: '0.5rem 0.75rem',
-                        fontSize: '0.875rem',
-                        whiteSpace: 'nowrap'
-                      }
-                    }, expandedChart === idx ? t.hideChart : t.showChart)
-                  ]),
-                  expandedChart === idx && usage.chartData.values.length > 0 && h('div', { key: 'chart', style: { marginTop: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px' }}, [
-                    h('div', { key: 'title', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}, t.usageChart),
-                    h('div', { key: 'chart-container', style: { height: '200px', position: 'relative' }}, [
-                      h('canvas', { key: 'canvas', id: 'chart-' + idx, ref: (canvas) => {
-                        if (canvas && expandedChart === idx) {
-                          const ctx = canvas.getContext('2d');
-                          if (canvas.chart) canvas.chart.destroy();
-                          canvas.chart = new Chart(ctx, {
-                            type: 'line',
-                            data: {
-                              labels: usage.chartData.labels,
-                              datasets: [{
-                                label: t.qty,
-                                data: usage.chartData.values,
-                                borderColor: '#7f1d1d',
-                                backgroundColor: 'rgba(96,165,250,0.1)',
-                                tension: 0.3,
-                                fill: true
-                              }]
-                            },
-                            options: {
-                              responsive: true,
-                              maintainAspectRatio: false,
-                              plugins: { legend: { display: false }},
-                              scales: {
-                                y: { 
-                                  beginAtZero: true,
-                                  grid: { color: 'rgba(255,255,255,0.1)' },
-                                  ticks: { color: '#2c3e50' }
+                      expandedChart === item.name && usage.chartData.values.length > 0 && h('div', { key: 'chart', style: { marginTop: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px' }}, [
+                        h('div', { key: 'title', style: { fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}, t.usageChart),
+                        h('div', { key: 'chart-container', style: { height: '200px', position: 'relative' }}, [
+                          h('canvas', { key: 'canvas', id: 'chart-' + item.name, ref: (canvas) => {
+                            if (canvas && expandedChart === item.name) {
+                              const ctx = canvas.getContext('2d');
+                              if (canvas.chart) canvas.chart.destroy();
+                              canvas.chart = new Chart(ctx, {
+                                type: 'line',
+                                data: {
+                                  labels: usage.chartData.labels,
+                                  datasets: [{
+                                    label: t.qty,
+                                    data: usage.chartData.values,
+                                    borderColor: '#7f1d1d',
+                                    backgroundColor: 'rgba(127,29,29,0.1)',
+                                    tension: 0,  // 직선 제거 (부드러운 곡선 X)
+                                    fill: false,  // 배경 채우기 제거
+                                    pointRadius: 6,  // 포인트 크기
+                                    pointBackgroundColor: '#7f1d1d',  // 포인트 색상
+                                    pointBorderColor: '#ffffff',  // 포인트 테두리
+                                    pointBorderWidth: 2,  // 포인트 테두리 두께
+                                    pointHoverRadius: 8,  // 마우스 올렸을 때 크기
+                                    showLine: true  // 선은 표시 (포인트 연결)
+                                  }]
                                 },
-                                x: { 
-                                  grid: { color: 'rgba(255,255,255,0.1)' },
-                                  ticks: { color: '#2c3e50' }
+                                options: {
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  plugins: { legend: { display: false }},
+                                  scales: {
+                                    y: { 
+                                      beginAtZero: true,
+                                      grid: { color: 'rgba(255,255,255,0.1)' },
+                                      ticks: { color: '#2c3e50' }
+                                    },
+                                    x: { 
+                                      grid: { color: 'rgba(255,255,255,0.1)' },
+                                      ticks: { color: '#2c3e50' }
+                                    }
+                                  }
                                 }
-                              }
+                              });
                             }
-                          });
-                        }
-                      }})
-                    ])
-                  ])
-                ]);
-              })
+                          }})
+                        ])
+                      ])
+                    ]);
+                  });
+              })()
             ],
 
             reportsSubTab === 'count' && (
