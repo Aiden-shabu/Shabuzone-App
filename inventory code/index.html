@@ -3906,6 +3906,22 @@
 
             // Shopping List 탭
             shoppingSubTab === 'list' && h('div', { key: 'list-content' }, [
+              // 아이템 추가 버튼
+              h('button', {
+                key: 'add-item-btn',
+                className: 'btn',
+                onClick: () => setShowAddItemModal(true),
+                style: {
+                  width: '100%',
+                  marginBottom: '1rem',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }
+              }, ['➕ ', language === 'ko' ? '아이템 추가' : 'Add Item']),
+              
               shoppingList.length === 0 ? h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 'No items in shopping list') : [
                 
                 h('div', { 
@@ -4556,6 +4572,131 @@
                     })()
                   )
                 ])
+              ])
+            ]),
+            
+            // 아이템 추가 모달
+            showAddItemModal && h('div', {
+              key: 'add-item-modal',
+              style: {
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                padding: '1rem'
+              },
+              onClick: () => setShowAddItemModal(false)
+            }, [
+              h('div', {
+                key: 'modal-content',
+                className: 'card',
+                style: {
+                  maxWidth: '500px',
+                  width: '100%',
+                  maxHeight: '80vh',
+                  overflow: 'auto'
+                },
+                onClick: (e) => e.stopPropagation()
+              }, [
+                h('h3', { key: 'title', style: { color: '#7f1d1d', marginBottom: '1rem' }}, 
+                  language === 'ko' ? '아이템 추가' : 'Add Item'),
+                
+                // 검색창
+                h('input', {
+                  key: 'search',
+                  type: 'text',
+                  placeholder: language === 'ko' ? '🔍 아이템 검색...' : '🔍 Search items...',
+                  value: addItemSearch,
+                  onChange: (e) => setAddItemSearch(e.target.value),
+                  style: {
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    marginBottom: '1rem'
+                  }
+                }),
+                
+                // 아이템 목록
+                h('div', { key: 'items-' + addItemSearch, style: { maxHeight: '400px', overflow: 'auto' }}, 
+                  items
+                    .filter(item => {
+                      // 이미 쇼핑리스트에 있는 아이템 제외
+                      const inShoppingList = shoppingList.some(si => si.name === item.name);
+                      if (inShoppingList) return false;
+                      
+                      // 검색 필터
+                      if (addItemSearch) {
+                        return item.name.toLowerCase().includes(addItemSearch.toLowerCase());
+                      }
+                      return true;
+                    })
+                    .map(item => 
+                      h('div', {
+                        key: item.name,
+                        style: {
+                          padding: '0.75rem',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          marginBottom: '0.5rem',
+                          cursor: 'pointer',
+                          background: 'white',
+                          transition: 'all 0.2s'
+                        },
+                        onMouseEnter: (e) => e.currentTarget.style.background = '#f8fafc',
+                        onMouseLeave: (e) => e.currentTarget.style.background = 'white',
+                        onClick: async () => {
+                          // 수량 입력 받기
+                          const qty = prompt(
+                            language === 'ko' ? `${item.name} 수량을 입력하세요:` : `Enter quantity for ${item.name}:`,
+                            '1'
+                          );
+                          
+                          if (qty && parseFloat(qty) > 0) {
+                            const newItem = {
+                              ...item,
+                              shortage: parseFloat(qty),
+                              selected_vendor: item.vendor || '⚠️ Not Assigned'
+                            };
+                            
+                            const updatedList = [...shoppingList, newItem];
+                            setShoppingList(updatedList);
+                            await window.db.ref(getPath('shopping')).set(updatedList);
+                            
+                            setShowAddItemModal(false);
+                            setAddItemSearch('');
+                            alert(language === 'ko' ? '추가되었습니다!' : 'Added!');
+                          }
+                        }
+                      }, [
+                        h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.25rem' }}, 
+                          storageIcons[item.category] + ' ' + item.name),
+                        h('div', { key: 'info', style: { fontSize: '0.875rem', color: '#64748b' }},
+                          `${item.vendor || 'No vendor'} • $${item.price}`)
+                      ])
+                    )
+                ),
+                
+                // 닫기 버튼
+                h('button', {
+                  key: 'close',
+                  className: 'btn',
+                  onClick: () => {
+                    setShowAddItemModal(false);
+                    setAddItemSearch('');
+                  },
+                  style: {
+                    marginTop: '1rem',
+                    background: '#64748b'
+                  }
+                }, language === 'ko' ? '닫기' : 'Close')
               ])
             ])
           ]),
