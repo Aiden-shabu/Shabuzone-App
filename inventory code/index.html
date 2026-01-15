@@ -912,6 +912,9 @@
         return localStorage.getItem('currentModule') || '';
       });
       const [managementType, setManagementType] = useState(''); // 'server' or 'kitchen'
+      const [inventoryRole, setInventoryRole] = useState(() => {
+        return localStorage.getItem('inventoryRole') || '';
+      }); // 'manager' or 'employee'
       
       // 사용자 관리
       const [currentUser, setCurrentUser] = useState(() => {
@@ -968,6 +971,7 @@
       const [shoppingStep, setShoppingStep] = useState('edit');
       const [purchaseHistory, setPurchaseHistory] = useState([]);
       const [categoryFilter, setCategoryFilter] = useState('all');
+      const [filterMode, setFilterMode] = useState('storage'); // 'storage' or 'category'
       const [showSimpleView, setShowSimpleView] = useState(false);
       const [purchaseData, setPurchaseData] = useState(null);
       const [selectedPurchase, setSelectedPurchase] = useState(null);
@@ -1004,7 +1008,6 @@
         'Sysco - Beverages/Food', 'Sysco - Gloves', 'Sysco - Ice Cream',
         'Sysco - To-go/Cleaning', 'Sysco - Soup Base', 'Sysco - Operations'
       ]);
-      const [filterMode, setFilterMode] = useState('storage');
       const [itemCategories, setItemCategories] = useState({});
       const [newCategory, setNewCategory] = useState({ name_en: '', name_ko: '', name_es: '', icon: '📦' });
       const [categoryData, setCategoryData] = useState({});
@@ -1066,6 +1069,9 @@
         }
         return cat;
       }
+
+      // getCategoryLabel은 getCategoryName과 동일
+      const getCategoryLabel = getCategoryName;
 
       function getCategoryIcon(cat) {
         if (categoryData[cat] && categoryData[cat].icon) {
@@ -1333,12 +1339,25 @@
         setCurrentModule(mod);
         localStorage.setItem('currentModule', mod);
         if (mod === 'inventory') {
-          setScreen('inventory');
-          localStorage.setItem('currentScreen', 'inventory');
-          setActiveTab('dashboard');
+          // Inventory 선택 시 Role 선택 화면으로
+          setScreen('inventory-role');
+          localStorage.setItem('currentScreen', 'inventory-role');
         } else if (mod === 'management') {
           setScreen('management-select');
           localStorage.setItem('currentScreen', 'management-select');
+        }
+      }
+      
+      function selectInventoryRole(role) {
+        setInventoryRole(role);
+        localStorage.setItem('inventoryRole', role);
+        setScreen('inventory');
+        localStorage.setItem('currentScreen', 'inventory');
+        if (role === 'manager') {
+          setActiveTab('dashboard');
+        } else {
+          // Employee는 Count 탭부터 시작
+          setActiveTab('count');
         }
       }
       
@@ -1351,6 +1370,11 @@
       
       function goBack() {
         if (screen === 'inventory') {
+          setScreen('inventory-role');
+          localStorage.setItem('currentScreen', 'inventory-role');
+          setInventoryRole('');
+          localStorage.removeItem('inventoryRole');
+        } else if (screen === 'inventory-role') {
           setScreen('menu');
           localStorage.setItem('currentScreen', 'menu');
           setCurrentModule('');
@@ -1700,7 +1724,47 @@
         await window.db.ref(getPath('items')).set(updatedItems);
         await window.db.ref(getPath('countRecords')).set(newRecords);
         
-        alert(t.countRegistered);
+        alert(language === 'ko' ? t.countRegistered : 'Count registered!');
+        setTempItems([...updatedItems]);
+      }
+
+      // Employee용 간단한 저장 함수
+      async function saveCount() {
+        try {
+          // 현재 items 상태를 Firebase에 저장
+          await window.db.ref(getPath('items')).set(items);
+          
+          // 재고 실사 기록 저장
+          const now = new Date();
+          const date = now.toISOString().split('T')[0];
+          const time = now.toTimeString().split(' ')[0].slice(0, 5);
+          const totalValue = items.reduce((sum, item) => sum + (item.current_inventory * item.price), 0);
+          
+          const record = {
+            id: Date.now(),
+            date,
+            time,
+            timestamp: Date.now(),
+            userName: 'Employee',
+            totalValue,
+            totalItems: items.length,
+            items: items.map(item => ({
+              name: item.name,
+              current_inventory: item.current_inventory,
+              price: item.price,
+              vendor: item.vendor
+            }))
+          };
+          
+          const newRecords = [record, ...countRecords];
+          setCountRecords(newRecords);
+          await window.db.ref(getPath('countRecords')).set(newRecords);
+          
+          alert('✅ 저장되었습니다!');
+        } catch (error) {
+          console.error('Save error:', error);
+          alert('❌ 저장 실패: ' + error.message);
+        }
       }
 
       async function updateShoppingQuantity(index, value) {
@@ -2056,6 +2120,10 @@
         
         const orderItems = purchaseData.map(item => {
           totalCost += item.total;
+          
+          // items에서 imageUrl 찾기
+          const originalItem = items.find(i => i.name === item.name);
+          
           return {
             name: item.name,
             category: item.category,
@@ -2063,7 +2131,8 @@
             quantity: item.shortage,
             price: item.price,
             total: item.total,
-            received: false
+            received: false,
+            imageUrl: originalItem?.imageUrl || null
           };
         });
         
@@ -3405,6 +3474,73 @@
         ]);
       }
 
+      // Inventory Role 선택 화면
+      if (screen === 'inventory-role') {
+        return h('div', { className: 'screen-container', style: { position: 'relative' } }, [
+          h('button', { 
+            key: 'back',
+            className: 'back-btn',
+            onClick: goBack,
+            style: {
+              position: 'absolute',
+              left: '1.5rem',
+              top: '1.5rem',
+              zIndex: 10
+            }
+          }, '←'),
+          h('div', { key: 'header', className: 'screen-header' }, [
+            h('img', { 
+              key: 'logo',
+              src: LOGO_DATA,
+              alt: 'Shabu Zone',
+              style: {
+                width: '80px',
+                height: '80px',
+                objectFit: 'contain',
+                marginBottom: '1rem'
+              }
+            }),
+            h('h1', { key: 'title', className: 'screen-title' }, 'Inventory'),
+            h('p', { key: 'subtitle', className: 'screen-subtitle', style: { fontSize: '0.9rem', color: '#64748b' }}, '역할을 선택하세요')
+          ]),
+          h('div', { key: 'grid', className: 'selection-grid', style: { gap: '1.5rem' }}, [
+            // Manager Inventory
+            h('div', { 
+              key: 'manager', 
+              className: 'selection-card', 
+              onClick: () => selectInventoryRole('manager'),
+              style: {
+                background: 'linear-gradient(135deg, rgba(127,29,29,0.1), rgba(153,27,27,0.05))',
+                border: '2px solid rgba(127,29,29,0.3)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }
+            }, [
+              h('div', { key: 'icon', className: 'selection-icon', style: { fontSize: '3.5rem', marginBottom: '1rem' }}, '👔'),
+              h('div', { key: 'name', className: 'selection-name', style: { fontSize: '1.3rem', fontWeight: '700', marginBottom: '0.5rem', color: '#7f1d1d' }}, 'Manager'),
+              h('div', { key: 'desc', className: 'selection-desc', style: { fontSize: '0.95rem', color: '#64748b', lineHeight: '1.4' }}, '전체 기능 접근\n사진 관리 가능')
+            ]),
+            
+            // Employee Inventory - 심플!
+            h('div', { 
+              key: 'employee', 
+              className: 'selection-card', 
+              onClick: () => selectInventoryRole('employee'),
+              style: {
+                background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(37,99,235,0.05))',
+                border: '2px solid rgba(59,130,246,0.3)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }
+            }, [
+              h('div', { key: 'icon', className: 'selection-icon', style: { fontSize: '3.5rem', marginBottom: '1rem' }}, '👷'),
+              h('div', { key: 'name', className: 'selection-name', style: { fontSize: '1.3rem', fontWeight: '700', marginBottom: '0.5rem', color: '#3b82f6' }}, 'Employee'),
+              h('div', { key: 'desc', className: 'selection-desc', style: { fontSize: '0.95rem', color: '#64748b', lineHeight: '1.4' }}, '재고 세기 & 쇼핑\n간편 모드')
+            ])
+          ])
+        ]);
+      }
+
       // Management 화면
       if (screen === 'management') {
         return h('div', { 
@@ -3608,13 +3744,24 @@
 
         h('div', { key: 'nav', className: 'nav' },
           h('div', { className: 'nav-inner' }, [
-            ['dashboard', 'count', 'shopping', 'reports', 'add'].map(tab =>
-              h('button', {
+            // Employee는 count, shopping만 / Manager는 전체
+            (inventoryRole === 'employee' 
+              ? ['count', 'shopping'] 
+              : ['dashboard', 'count', 'shopping', 'reports', 'add']
+            ).map(tab => {
+              // Employee용 심플한 이름
+              let tabLabel = t[tab];
+              if (inventoryRole === 'employee') {
+                if (tab === 'count') tabLabel = '📦 재고 세기';
+                if (tab === 'shopping') tabLabel = '🛒 쇼핑하기';
+              }
+              
+              return h('button', {
                 key: tab,
                 className: 'nav-btn' + (activeTab === tab ? ' active' : ''),
                 onClick: () => setActiveTab(tab)
-              }, t[tab])
-            )
+              }, tabLabel);
+            })
           ])
         ),
 
@@ -3784,6 +3931,405 @@
           ]),
 
           activeTab === 'count' && h('div', { key: 'count' }, [
+            // Employee용 심플 모드
+            inventoryRole === 'employee' ? h('div', { key: 'employee-count' }, [
+              // 검색 칸
+              h('div', { key: 'search', style: { marginBottom: '1rem' }}, 
+                h('input', {
+                  type: 'text',
+                  placeholder: '🔍 아이템 검색...',
+                  value: countSearchTerm,
+                  onChange: (e) => setCountSearchTerm(e.target.value),
+                  style: {
+                    width: '100%',
+                    padding: '1rem',
+                    borderRadius: '12px',
+                    border: '2px solid #e2e8f0',
+                    fontSize: '1.1rem',
+                    outline: 'none'
+                  }
+                })
+              ),
+              
+              // 필터 모드 선택
+              h('div', { key: 'filter-mode', style: { display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}, [
+                h('button', { 
+                  key: 'storage',
+                  onClick: () => { setFilterMode('storage'); setCategoryFilter('all'); },
+                  style: { 
+                    flex: 1,
+                    padding: '0.75rem',
+                    background: filterMode === 'storage' ? '#3b82f6' : '#f8fafc',
+                    border: filterMode === 'storage' ? '2px solid #3b82f6' : '2px solid #e2e8f0',
+                    borderRadius: '12px',
+                    color: filterMode === 'storage' ? 'white' : '#64748b',
+                    cursor: 'pointer',
+                    fontWeight: '700',
+                    fontSize: '1rem'
+                  }
+                }, '보관별'),
+                h('button', { 
+                  key: 'category',
+                  onClick: () => { setFilterMode('category'); setCategoryFilter('all'); },
+                  style: { 
+                    flex: 1,
+                    padding: '0.75rem',
+                    background: filterMode === 'category' ? '#3b82f6' : '#f8fafc',
+                    border: filterMode === 'category' ? '2px solid #3b82f6' : '2px solid #e2e8f0',
+                    borderRadius: '12px',
+                    color: filterMode === 'category' ? 'white' : '#64748b',
+                    cursor: 'pointer',
+                    fontWeight: '700',
+                    fontSize: '1rem'
+                  }
+                }, '분류별')
+              ]),
+              
+              // 필터 버튼들
+              h('div', { key: 'filter', style: { display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto' }},
+                (filterMode === 'storage' 
+                  ? ['all', 'frozen', 'refrigerated', 'dry']
+                  : ['all', ...categories, 'Uncategorized']
+                ).map(cat =>
+                  h('button', {
+                    key: cat,
+                    onClick: () => setCategoryFilter(cat),
+                    style: {
+                      padding: '0.75rem 1.25rem',
+                      background: categoryFilter === cat ? '#3b82f6' : 'white',
+                      border: categoryFilter === cat ? '2px solid #3b82f6' : '2px solid #e2e8f0',
+                      borderRadius: '12px',
+                      color: categoryFilter === cat ? 'white' : '#64748b',
+                      cursor: 'pointer',
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }
+                  }, filterMode === 'storage' 
+                    ? [
+                        h('span', { key: 'icon' }, cat === 'all' ? '📦' : storageIcons[cat]),
+                        h('span', { key: 'text' }, cat === 'all' ? '전체' : (cat === 'frozen' ? '냉동' : cat === 'refrigerated' ? '냉장' : '실온'))
+                      ]
+                    : [
+                        h('span', { key: 'icon' }, cat === 'all' ? '📦' : (categoryData[cat]?.icon || '📦')),
+                        h('span', { key: 'text' }, cat === 'all' ? '전체' : getCategoryLabel(cat))
+                      ]
+                  )
+                )
+              ),
+              
+              // 아이템 카드
+              h('div', { key: 'items', style: { display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '100px' }},
+                items
+                  .filter(item => {
+                    // 검색 필터
+                    if (countSearchTerm && !item.name.toLowerCase().includes(countSearchTerm.toLowerCase())) return false;
+                    
+                    // 보관별/분류별 필터
+                    if (categoryFilter !== 'all') {
+                      if (filterMode === 'storage') {
+                        // 보관별 (냉동/냉장/실온)
+                        if (item.category !== categoryFilter) return false;
+                      } else {
+                        // 분류별 (Meat, Seafood 등)
+                        const itemCat = itemCategories[item.name];
+                        if (categoryFilter === 'Uncategorized') {
+                          if (itemCat) return false;
+                        } else {
+                          if (itemCat !== categoryFilter) return false;
+                        }
+                      }
+                    }
+                    return true;
+                  })
+                  .map((item, idx) => {
+                    const actualIdx = items.findIndex(i => i.name === item.name);
+                    return h('div', {
+                      key: item.name,
+                      style: {
+                        background: 'white',
+                        borderRadius: '16px',
+                        padding: '1.5rem',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        border: '2px solid #e2e8f0'
+                      }
+                    }, [
+                      // 아이템 이름 + 분류
+                      h('div', { 
+                        key: 'header',
+                        style: { 
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '1rem'
+                        }
+                      }, [
+                        h('div', {
+                          key: 'name',
+                          style: { 
+                            fontSize: '1.3rem', 
+                            fontWeight: '700', 
+                            color: '#2c3e50',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }
+                        }, [
+                          h('span', { key: 'icon' }, storageIcons[item.category]),
+                          h('span', { key: 'text' }, item.name)
+                        ]),
+                        // 분류 표시
+                        itemCategories[item.name] && h('div', {
+                          key: 'category-badge',
+                          style: {
+                            padding: '0.4rem 0.8rem',
+                            background: '#f0f9ff',
+                            border: '1px solid #3b82f6',
+                            borderRadius: '8px',
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            color: '#3b82f6'
+                          }
+                        }, itemCategories[item.name])
+                      ]),
+                      
+                      // 사진 (원본 비율!)
+                      item.imageUrl && h('img', {
+                        key: 'image',
+                        src: item.imageUrl,
+                        style: {
+                          width: '100%',
+                          maxHeight: '250px',
+                          objectFit: 'contain',
+                          borderRadius: '12px',
+                          marginBottom: '1rem',
+                          background: '#f8fafc',
+                          cursor: 'pointer'
+                        },
+                        onClick: () => {
+                          // 사진 크게 보기 모달
+                          const modal = document.createElement('div');
+                          modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem;';
+                          modal.onclick = () => modal.remove();
+                          const img = document.createElement('img');
+                          img.src = item.imageUrl;
+                          img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+                          modal.appendChild(img);
+                          document.body.appendChild(modal);
+                        }
+                      }),
+                      
+                      // 수량 조절 (한 줄)
+                      h('div', {
+                        key: 'counter',
+                        style: {
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem',
+                          marginBottom: '1rem'
+                        }
+                      }, [
+                        // -1
+                        h('button', {
+                          key: 'minus1',
+                          onClick: () => {
+                            const u = [...items];
+                            const val = parseFloat(u[actualIdx].current_inventory) || 0;
+                            u[actualIdx].current_inventory = Math.max(0, val - 1);
+                            setItems(u);
+                          },
+                          style: {
+                            width: '55px',
+                            height: '55px',
+                            borderRadius: '10px',
+                            border: '2px solid #ef4444',
+                            background: 'white',
+                            color: '#ef4444',
+                            fontSize: '1.4rem',
+                            fontWeight: '700',
+                            cursor: 'pointer'
+                          }
+                        }, '-1'),
+                        
+                        // -0.5
+                        h('button', {
+                          key: 'minus05',
+                          onClick: () => {
+                            const u = [...items];
+                            const val = parseFloat(u[actualIdx].current_inventory) || 0;
+                            u[actualIdx].current_inventory = Math.max(0, val - 0.5);
+                            setItems(u);
+                          },
+                          style: {
+                            width: '55px',
+                            height: '55px',
+                            borderRadius: '10px',
+                            border: '2px solid #ef4444',
+                            background: 'white',
+                            color: '#ef4444',
+                            fontSize: '1.2rem',
+                            fontWeight: '700',
+                            cursor: 'pointer'
+                          }
+                        }, '-0.5'),
+                        
+                        // -0.25
+                        h('button', {
+                          key: 'minus025',
+                          onClick: () => {
+                            const u = [...items];
+                            const val = parseFloat(u[actualIdx].current_inventory) || 0;
+                            u[actualIdx].current_inventory = Math.max(0, val - 0.25);
+                            setItems(u);
+                          },
+                          style: {
+                            width: '55px',
+                            height: '55px',
+                            borderRadius: '10px',
+                            border: '2px solid #ef4444',
+                            background: 'white',
+                            color: '#ef4444',
+                            fontSize: '1rem',
+                            fontWeight: '700',
+                            cursor: 'pointer'
+                          }
+                        }, '-0.25'),
+                        
+                        // 입력칸 (박스만 크게!)
+                        h('input', {
+                          key: 'input',
+                          type: 'number',
+                          inputMode: 'decimal',
+                          value: item.current_inventory,
+                          onChange: (e) => {
+                            const u = [...items];
+                            u[actualIdx].current_inventory = parseFloat(e.target.value) || 0;
+                            setItems(u);
+                          },
+                          style: {
+                            width: '142px',
+                            height: '82px',
+                            fontSize: '1.8rem',
+                            fontWeight: '700',
+                            textAlign: 'center',
+                            border: '3px solid #3b82f6',
+                            borderRadius: '10px',
+                            outline: 'none',
+                            background: '#f0f9ff'
+                          }
+                        }),
+                        
+                        // +0.25
+                        h('button', {
+                          key: 'plus025',
+                          onClick: () => {
+                            const u = [...items];
+                            const val = parseFloat(u[actualIdx].current_inventory) || 0;
+                            u[actualIdx].current_inventory = val + 0.25;
+                            setItems(u);
+                          },
+                          style: {
+                            width: '55px',
+                            height: '55px',
+                            borderRadius: '10px',
+                            border: '2px solid #10b981',
+                            background: 'white',
+                            color: '#10b981',
+                            fontSize: '1rem',
+                            fontWeight: '700',
+                            cursor: 'pointer'
+                          }
+                        }, '+0.25'),
+                        
+                        // +0.5
+                        h('button', {
+                          key: 'plus05',
+                          onClick: () => {
+                            const u = [...items];
+                            const val = parseFloat(u[actualIdx].current_inventory) || 0;
+                            u[actualIdx].current_inventory = val + 0.5;
+                            setItems(u);
+                          },
+                          style: {
+                            width: '55px',
+                            height: '55px',
+                            borderRadius: '10px',
+                            border: '2px solid #10b981',
+                            background: 'white',
+                            color: '#10b981',
+                            fontSize: '1.2rem',
+                            fontWeight: '700',
+                            cursor: 'pointer'
+                          }
+                        }, '+0.5'),
+                        
+                        // +1
+                        h('button', {
+                          key: 'plus1',
+                          onClick: () => {
+                            const u = [...items];
+                            const val = parseFloat(u[actualIdx].current_inventory) || 0;
+                            u[actualIdx].current_inventory = val + 1;
+                            setItems(u);
+                          },
+                          style: {
+                            width: '55px',
+                            height: '55px',
+                            borderRadius: '10px',
+                            border: '2px solid #10b981',
+                            background: 'white',
+                            color: '#10b981',
+                            fontSize: '1.4rem',
+                            fontWeight: '700',
+                            cursor: 'pointer'
+                          }
+                        }, '+1')
+                      ]),
+                      
+                      // PAR 표시
+                      h('div', {
+                        key: 'par',
+                        style: {
+                          fontSize: '0.9rem',
+                          color: '#64748b',
+                          textAlign: 'center'
+                        }
+                      }, `Par: ${item.par}`)
+                    ]);  // 카드 닫기
+                  })  // map 닫기
+              ),
+              
+              // 저장 버튼
+              h('button', {
+                key: 'save',
+                onClick: saveCount,
+                style: {
+                  position: 'fixed',
+                  bottom: '2rem',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 'calc(100% - 3rem)',
+                  maxWidth: '500px',
+                  padding: '1.2rem',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '16px',
+                  fontSize: '1.2rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(16,185,129,0.4)',
+                  zIndex: 100
+                }
+              }, '✅ 저장하기')
+              
+            ]) : 
+            // Manager용 기존 화면
+            h('div', { key: 'manager-count' }, [
             // 검색 칸
             h('div', { key: 'search', style: { marginBottom: '1rem' }}, 
               h('input', {
@@ -4006,7 +4552,8 @@
             })(),
 
             h('button', { key: 'register', className: 'btn', onClick: saveCountRecord, style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}, '✓ ' + t.registerCount)
-          ]),
+          ])  // Manager Count 닫기
+          ]),  // Count 탭 전체 닫기
 
           activeTab === 'shopping' && h('div', { key: 'shop' }, [
             // 서브탭 네비게이션
@@ -4038,7 +4585,7 @@
                   }
                 }, orderedLists.filter(o => !o.completed).length)
               ]),
-              h('button', { 
+              inventoryRole !== 'employee' && h('button', { 
                 key: 'stock', 
                 className: 'nav-btn' + (shoppingSubTab === 'stock' ? ' active' : ''), 
                 onClick: () => setShoppingSubTab('stock') 
@@ -4047,8 +4594,26 @@
 
             // Shopping List 탭
             shoppingSubTab === 'list' && h('div', { key: 'list-content' }, [
-              // 아이템 추가 버튼
-              h('button', {
+              // Employee: 쇼핑리스트 생성 버튼
+              inventoryRole === 'employee' && h('button', {
+                key: 'generate-list-btn',
+                className: 'btn',
+                onClick: generateShoppingList,
+                style: {
+                  width: '100%',
+                  marginBottom: '1rem',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  fontSize: '1.1rem',
+                  padding: '1rem'
+                }
+              }, ['🛒 ', language === 'ko' ? '쇼핑리스트 생성' : 'Generate Shopping List']),
+              
+              // Manager: 아이템 추가 버튼
+              inventoryRole !== 'employee' && h('button', {
                 key: 'add-item-btn',
                 className: 'btn',
                 onClick: () => setShowAddItemModal(true),
@@ -4179,6 +4744,116 @@
                     ]),
                     catItems.sort((a, b) => a.name.localeCompare(b.name)).map((item, i) => {
                       const globalIndex = shoppingList.findIndex(si => si.name === item.name);
+                      
+                      // Employee: 사진 + 수량만 표시
+                      if (inventoryRole === 'employee') {
+                        return h('div', { 
+                          key: i, 
+                          className: 'card', 
+                          style: { 
+                            marginBottom: '0.75rem', 
+                            padding: '1.5rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '1rem'
+                          }
+                        }, [
+                          // 아이템 이름
+                          h('div', { 
+                            key: 'name', 
+                            style: { 
+                              fontWeight: '700', 
+                              fontSize: '1.2rem',
+                              color: '#2c3e50' 
+                            }
+                          }, item.name),
+                          
+                          // 사진
+                          item.imageUrl && h('img', {
+                            key: 'image',
+                            src: item.imageUrl,
+                            style: {
+                              width: '100%',
+                              maxHeight: '200px',
+                              objectFit: 'contain',
+                              borderRadius: '12px',
+                              background: '#f8fafc',
+                              cursor: 'pointer'
+                            },
+                            onClick: () => {
+                              const modal = document.createElement('div');
+                              modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem;';
+                              modal.onclick = () => modal.remove();
+                              const img = document.createElement('img');
+                              img.src = item.imageUrl;
+                              img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+                              modal.appendChild(img);
+                              document.body.appendChild(modal);
+                            }
+                          }),
+                          
+                          // 수량 조절
+                          h('div', { 
+                            key: 'quantity', 
+                            style: { 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center',
+                              gap: '1rem' 
+                            }
+                          }, [
+                            h('span', { 
+                              key: 'label', 
+                              style: { 
+                                fontSize: '1.1rem', 
+                                fontWeight: '600',
+                                color: '#64748b' 
+                              }
+                            }, t.quantity || 'Quantity:'),
+                            h('div', { key: 'counter', className: 'counter' }, [
+                              h('button', { 
+                                key: 'minus', 
+                                className: 'counter-btn', 
+                                style: { 
+                                  width: '50px', 
+                                  height: '50px',
+                                  fontSize: '1.5rem'
+                                }, 
+                                onClick: () => updateShoppingQuantity(globalIndex, Math.max(0, item.shortage - 0.5)) 
+                              }, '-'),
+                              h('input', { 
+                                key: 'qty', 
+                                className: 'counter-input',
+                                type: 'number',
+                                inputMode: 'decimal',
+                                pattern: '[0-9]*',
+                                step: '0.5',
+                                value: item.shortage,
+                                style: { 
+                                  width: '100px',
+                                  height: '50px',
+                                  fontSize: '1.5rem',
+                                  textAlign: 'center'
+                                },
+                                onFocus: (e) => e.target.select(),
+                                onChange: (e) => updateShoppingQuantity(globalIndex, e.target.value) 
+                              }),
+                              h('button', { 
+                                key: 'plus', 
+                                className: 'counter-btn', 
+                                style: { 
+                                  width: '50px', 
+                                  height: '50px',
+                                  fontSize: '1.5rem'
+                                }, 
+                                onClick: () => updateShoppingQuantity(globalIndex, item.shortage + 0.5) 
+                              }, '+')
+                            ])
+                          ])
+                        ]);
+                      }
+                      
+                      // Manager: 전체 정보 표시
                       return h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', padding: '1rem' }}, [
                         h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.75rem', color: '#2c3e50' }}, item.name),
                         h('div', { key: 'inputs', style: { display: 'grid', gap: '0.75rem' }}, [
@@ -4483,6 +5158,122 @@
                         order.items.map((item, idx) => {
                           const isSelected = selectedForThisOrder.includes(idx);
                           
+                          // Employee: 사진 + 수량만
+                          if (inventoryRole === 'employee') {
+                            return h('div', { 
+                              key: idx,
+                              style: { 
+                                display: 'flex',
+                                flexDirection: 'column',
+                                padding: '1rem',
+                                marginBottom: '0.75rem',
+                                background: item.received ? 'rgba(34, 197, 94, 0.1)' : (isSelected ? 'rgba(59, 130, 246, 0.1)' : 'white'),
+                                borderRadius: '12px',
+                                border: item.received ? '2px solid #22c55e' : (isSelected ? '2px solid #3b82f6' : '2px solid #e2e8f0'),
+                                gap: '1rem'
+                              }
+                            }, [
+                              // 체크박스 + 이름
+                              h('div', {
+                                key: 'header',
+                                style: {
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.75rem'
+                                }
+                              }, [
+                                h('input', {
+                                  key: 'checkbox',
+                                  type: 'checkbox',
+                                  checked: item.received || isSelected,
+                                  disabled: order.completed || item.received,
+                                  onChange: () => {
+                                    if (!order.completed && !item.received) {
+                                      const newSelected = {...selectedDeliveryItems};
+                                      if (!newSelected[order.id]) {
+                                        newSelected[order.id] = [];
+                                      }
+                                      
+                                      if (isSelected) {
+                                        newSelected[order.id] = newSelected[order.id].filter(i => i !== idx);
+                                        if (newSelected[order.id].length === 0) {
+                                          delete newSelected[order.id];
+                                        }
+                                      } else {
+                                        newSelected[order.id].push(idx);
+                                      }
+                                      
+                                      setSelectedDeliveryItems(newSelected);
+                                    }
+                                  },
+                                  style: { 
+                                    width: '24px', 
+                                    height: '24px',
+                                    flexShrink: 0,
+                                    cursor: (order.completed || item.received) ? 'not-allowed' : 'pointer'
+                                  }
+                                }),
+                                h('div', { 
+                                  key: 'name', 
+                                  style: { 
+                                    fontWeight: '700', 
+                                    fontSize: '1.1rem',
+                                    color: '#2c3e50',
+                                    flex: 1
+                                  }
+                                }, item.name),
+                                item.received && h('span', { 
+                                  key: 'status', 
+                                  style: { 
+                                    color: '#22c55e', 
+                                    fontWeight: '600', 
+                                    fontSize: '1.5rem',
+                                    flexShrink: 0
+                                  }
+                                }, '✓')
+                              ]),
+                              
+                              // 사진
+                              item.imageUrl && h('img', {
+                                key: 'image',
+                                src: item.imageUrl,
+                                style: {
+                                  width: '100%',
+                                  maxHeight: '200px',
+                                  objectFit: 'contain',
+                                  borderRadius: '12px',
+                                  background: '#f8fafc',
+                                  cursor: 'pointer'
+                                },
+                                onClick: () => {
+                                  const modal = document.createElement('div');
+                                  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem;';
+                                  modal.onclick = () => modal.remove();
+                                  const img = document.createElement('img');
+                                  img.src = item.imageUrl;
+                                  img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+                                  modal.appendChild(img);
+                                  document.body.appendChild(modal);
+                                }
+                              }),
+                              
+                              // 수량
+                              h('div', { 
+                                key: 'quantity', 
+                                style: { 
+                                  textAlign: 'center',
+                                  fontSize: '1.2rem',
+                                  fontWeight: '600',
+                                  color: '#2c3e50',
+                                  padding: '0.75rem',
+                                  background: '#f8fafc',
+                                  borderRadius: '8px'
+                                }
+                              }, `${t.quantity || 'Quantity'}: ${item.quantity}`)
+                            ]);
+                          }
+                          
+                          // Manager: 기존 표시
                           return h('div', { 
                             key: idx,
                             style: { 
