@@ -4650,7 +4650,7 @@
                             setItems(u);
                           },
                           style: {
-                            width: '55px',
+                            width: '60px',
                             height: '55px',
                             borderRadius: '10px',
                             border: '2px solid #ef4444',
@@ -4662,28 +4662,6 @@
                           }
                         }, '-1'),
                         
-                        // -0.5
-                        h('button', {
-                          key: 'minus05',
-                          onClick: () => {
-                            const u = [...items];
-                            const val = parseFloat(u[actualIdx].current_inventory) || 0;
-                            u[actualIdx].current_inventory = Math.max(0, val - 0.5);
-                            setItems(u);
-                          },
-                          style: {
-                            width: '55px',
-                            height: '55px',
-                            borderRadius: '10px',
-                            border: '2px solid #ef4444',
-                            background: 'white',
-                            color: '#ef4444',
-                            fontSize: '1.2rem',
-                            fontWeight: '700',
-                            cursor: 'pointer'
-                          }
-                        }, '-0.5'),
-                        
                         // -0.25
                         h('button', {
                           key: 'minus025',
@@ -4694,7 +4672,7 @@
                             setItems(u);
                           },
                           style: {
-                            width: '55px',
+                            width: '60px',
                             height: '55px',
                             borderRadius: '10px',
                             border: '2px solid #ef4444',
@@ -4706,27 +4684,36 @@
                           }
                         }, '-0.25'),
                         
-                        // 입력칸 (박스만 크게!)
+                        // 입력칸
                         h('input', {
                           key: 'input',
                           type: 'number',
                           inputMode: 'decimal',
                           value: item.current_inventory,
+                          onFocus: (e) => {
+                            // 포커스 시 0이면 선택
+                            if (e.target.value === '0') {
+                              e.target.select();
+                            }
+                          },
                           onChange: (e) => {
                             const u = [...items];
-                            u[actualIdx].current_inventory = parseFloat(e.target.value) || 0;
+                            const val = e.target.value;
+                            // 빈 문자열이면 0, 아니면 숫자로 변환
+                            u[actualIdx].current_inventory = val === '' ? 0 : parseFloat(val) || 0;
                             setItems(u);
                           },
                           style: {
-                            width: '110px',
-                            height: '82px',
-                            fontSize: '1.8rem',
+                            width: '100px',
+                            height: '80px',
+                            fontSize: '1.5rem',
                             fontWeight: '700',
                             textAlign: 'center',
                             border: '3px solid #3b82f6',
                             borderRadius: '10px',
                             outline: 'none',
-                            background: '#f0f9ff'
+                            background: '#f0f9ff',
+                            margin: '-12.5px 0'
                           }
                         }),
                         
@@ -4740,7 +4727,7 @@
                             setItems(u);
                           },
                           style: {
-                            width: '55px',
+                            width: '60px',
                             height: '55px',
                             borderRadius: '10px',
                             border: '2px solid #10b981',
@@ -4752,28 +4739,6 @@
                           }
                         }, '+0.25'),
                         
-                        // +0.5
-                        h('button', {
-                          key: 'plus05',
-                          onClick: () => {
-                            const u = [...items];
-                            const val = parseFloat(u[actualIdx].current_inventory) || 0;
-                            u[actualIdx].current_inventory = val + 0.5;
-                            setItems(u);
-                          },
-                          style: {
-                            width: '55px',
-                            height: '55px',
-                            borderRadius: '10px',
-                            border: '2px solid #10b981',
-                            background: 'white',
-                            color: '#10b981',
-                            fontSize: '1.2rem',
-                            fontWeight: '700',
-                            cursor: 'pointer'
-                          }
-                        }, '+0.5'),
-                        
                         // +1
                         h('button', {
                           key: 'plus1',
@@ -4784,7 +4749,7 @@
                             setItems(u);
                           },
                           style: {
-                            width: '55px',
+                            width: '60px',
                             height: '55px',
                             borderRadius: '10px',
                             border: '2px solid #10b981',
@@ -4820,13 +4785,13 @@
                   left: '50%',
                   transform: 'translateX(-50%)',
                   width: 'calc(100% - 3rem)',
-                  maxWidth: '500px',
-                  padding: '1.2rem',
+                  maxWidth: '400px',
+                  padding: '0.9rem',
                   background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '16px',
-                  fontSize: '1.2rem',
+                  borderRadius: '12px',
+                  fontSize: '1rem',
                   fontWeight: '700',
                   cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(16,185,129,0.4)',
