@@ -117,6 +117,7 @@
       width: 100%;
       min-height: 48px;
       transition: opacity 0.2s;
+      white-space: nowrap;
     }
     .btn:active { opacity: 0.7; }
     .btn-secondary {
@@ -938,6 +939,7 @@
       const [users, setUsers] = useState([]);
       const [showRegisterModal, setShowRegisterModal] = useState(false);
       const [showUserManagement, setShowUserManagement] = useState(false);
+      const [editingUser, setEditingUser] = useState(null); // 편집 중인 사용자 ID
       const [locations, setLocations] = useState(['houston', 'seattle']);
       const [showAddLocation, setShowAddLocation] = useState(false);
       const [newLocationName, setNewLocationName] = useState('');
@@ -945,11 +947,14 @@
         name: '',
         password: '',
         isAdmin: false,
+        preferredLanguage: 'ko',
         permissions: {
-          houston_inventory: false,
+          houston_inventory_employee: false,
+          houston_inventory_manager: false,
           houston_server: false,
           houston_kitchen: false,
-          seattle_inventory: false,
+          seattle_inventory_employee: false,
+          seattle_inventory_manager: false,
           seattle_server: false,
           seattle_kitchen: false
         }
@@ -959,7 +964,7 @@
       const [language, setLanguage] = useState(() => {
         return localStorage.getItem('appLanguage') || 'ko';
       });
-      const [loading, setLoading] = useState(true);
+      const [loading, setLoading] = useState(false);
       const [shoppingList, setShoppingList] = useState([]);
       const [orderedLists, setOrderedLists] = useState([]); // 주문 완료된 리스트들
       const [shoppingSubTab, setShoppingSubTab] = useState('list'); // 'list' or 'confirm'
@@ -988,7 +993,15 @@
       const [newVendor, setNewVendor] = useState('');
       const [vendorToDelete, setVendorToDelete] = useState(null);
       const [vendorReassignments, setVendorReassignments] = useState({});
-      const [newItem, setNewItem] = useState({ name: '', vendor: '', price: 0, par: 0, category: 'refrigerated' });
+      const [newItem, setNewItem] = useState({ 
+        name: '',           // 영어 (기본)
+        name_ko: '',        // 한국어
+        name_es: '',        // 스페인어
+        vendor: '', 
+        price: 0, 
+        par: 0, 
+        category: 'refrigerated' 
+      });
       const [editingItem, setEditingItem] = useState(null);
       const [showImageModal, setShowImageModal] = useState(false);
       const [selectedItemForImage, setSelectedItemForImage] = useState(null);
@@ -1070,6 +1083,13 @@
         return cat;
       }
 
+      // 아이템 이름 다국어 처리
+      function getItemName(item) {
+        if (language === 'ko' && item.name_ko) return item.name_ko;
+        if (language === 'es' && item.name_es) return item.name_es;
+        return item.name; // 영어 (기본)
+      }
+
       // getCategoryLabel은 getCategoryName과 동일
       const getCategoryLabel = getCategoryName;
 
@@ -1146,7 +1166,10 @@
         localStorage.removeItem('currentLocation');
         localStorage.removeItem('currentModule');
         localStorage.removeItem('currentScreen');
+        localStorage.removeItem('inventoryRole');
+        localStorage.removeItem('managementType');
         setCurrentUser(null);
+        setIsAdmin(false);
         setCurrentLocation('');
         setCurrentModule('');
         setScreen('login');
@@ -1260,6 +1283,13 @@
             setCurrentUser(user);
             localStorage.setItem('currentUser', JSON.stringify(user));
             localStorage.setItem('lastActiveTime', Date.now().toString());
+            
+            // 사용자 선호 언어 적용
+            if (user.preferredLanguage) {
+              setLanguage(user.preferredLanguage);
+              localStorage.setItem('language', user.preferredLanguage);
+            }
+            
             setScreen('location');
             localStorage.setItem('currentScreen', 'location');
             setPassword('');
@@ -1271,6 +1301,13 @@
           setCurrentUser(user);
           localStorage.setItem('currentUser', JSON.stringify(user));
           localStorage.setItem('lastActiveTime', Date.now().toString());
+          
+          // 사용자 선호 언어 적용
+          if (user.preferredLanguage) {
+            setLanguage(user.preferredLanguage);
+            localStorage.setItem('language', user.preferredLanguage);
+          }
+          
           setPassword('');
           setLoginError('');
           
@@ -1280,11 +1317,20 @@
           
           // 동적으로 사용 가능한 페이지 생성
           locations.forEach(location => {
-            if (perms[`${location}_inventory`]) {
+            if (perms[`${location}_inventory_employee`]) {
               availablePages.push({ 
                 location, 
                 module: 'inventory',
-                name: `${formatLocationName(location)} - Inventory` 
+                role: 'employee',
+                name: `${formatLocationName(location)} - Employee Inventory` 
+              });
+            }
+            if (perms[`${location}_inventory_manager`]) {
+              availablePages.push({ 
+                location, 
+                module: 'inventory',
+                role: 'manager',
+                name: `${formatLocationName(location)} - Manager Inventory` 
               });
             }
             if (perms[`${location}_server`]) {
@@ -1312,16 +1358,28 @@
             // 권한이 1개만 있으면 자동 이동
             const page = availablePages[0];
             setCurrentLocation(page.location);
+            localStorage.setItem('currentLocation', page.location);
+            
             if (page.module === 'inventory') {
+              // Employee 또는 Manager role 설정
+              if (page.role) {
+                setInventoryRole(page.role);
+                localStorage.setItem('inventoryRole', page.role);
+              }
               setScreen('inventory');
-              setActiveTab('dashboard');
+              localStorage.setItem('currentScreen', 'inventory');
+              // Employee는 count 탭, Manager는 dashboard 탭
+              setActiveTab(page.role === 'employee' ? 'count' : 'dashboard');
             } else {
               setManagementType(page.type);
+              localStorage.setItem('managementType', page.type);
               setScreen('management');
+              localStorage.setItem('currentScreen', 'management');
             }
           } else {
             // 여러 권한이 있으면 선택 화면
             setScreen('user-page-select');
+            localStorage.setItem('currentScreen', 'user-page-select');
           }
         } else {
           setLoginError('비밀번호가 올바르지 않습니다');
@@ -1369,6 +1427,21 @@
       }
       
       function goBack() {
+        // 일반 사용자의 경우
+        if (currentUser && !isAdmin) {
+          if (screen === 'inventory' || screen === 'management') {
+            // Inventory나 Management에서 뒤로가기 → 사용자 페이지 선택 화면
+            setScreen('user-page-select');
+            localStorage.setItem('currentScreen', 'user-page-select');
+            setInventoryRole('');
+            localStorage.removeItem('inventoryRole');
+            setManagementType('');
+            localStorage.removeItem('managementType');
+            return;
+          }
+        }
+        
+        // Admin의 경우 (기존 로직)
         if (screen === 'inventory') {
           setScreen('inventory-role');
           localStorage.setItem('currentScreen', 'inventory-role');
@@ -1403,6 +1476,8 @@
         }
       }
       
+      // 로그아웃
+      
       // 사용자 등록
       async function handleRegister() {
         if (!registerData.name || !registerData.password) {
@@ -1435,6 +1510,7 @@
             name: '',
             password: '',
             isAdmin: false,
+            preferredLanguage: 'ko',
             permissions: {}
           });
           loadUsers();
@@ -1476,9 +1552,11 @@
         
         const location = formatLocationName(parts[0]);
         const type = parts[1];
+        const subtype = parts[2]; // employee or manager
         
         const typeLabels = {
-          inventory: 'Inventory',
+          inventory: subtype === 'employee' ? 'Employee Inventory' : 
+                     subtype === 'manager' ? 'Manager Inventory' : 'Inventory',
           server: 'Server Management',
           kitchen: 'Kitchen Management'
         };
@@ -1500,8 +1578,14 @@
       function selectUserPage(page) {
         setCurrentLocation(page.location);
         if (page.module === 'inventory') {
+          // Employee 또는 Manager role 설정
+          if (page.role) {
+            setInventoryRole(page.role);
+            localStorage.setItem('inventoryRole', page.role);
+          }
           setScreen('inventory');
-          setActiveTab('dashboard');
+          // Employee는 count 탭, Manager는 dashboard 탭
+          setActiveTab(page.role === 'employee' ? 'count' : 'dashboard');
         } else {
           setManagementType(page.type);
           setScreen('management');
@@ -2392,7 +2476,16 @@
             await updateItemCategory(newItem.name, newItem.itemCategory);
           }
           
-          setNewItem({ name: '', vendor: '', price: 0, par: 0, category: 'refrigerated', itemCategory: '' });
+          setNewItem({ 
+            name: '', 
+            name_ko: '',
+            name_es: '',
+            vendor: '', 
+            price: 0, 
+            par: 0, 
+            category: 'refrigerated', 
+            itemCategory: '' 
+          });
         }
       }
 
@@ -2902,6 +2995,7 @@
       
       // 로그인 화면
       if (screen === 'login') {
+        console.log('📱 Login screen');
         return h('div', { className: 'login-screen' }, [
           h('img', { 
             key: 'logo', 
@@ -3080,6 +3174,21 @@
                 ])
               ]),
               
+              // 선호 언어 선택
+              h('div', { key: 'language-group', className: 'form-group' }, [
+                h('label', { key: 'label', className: 'form-label' }, '🌍 선호 언어 (Preferred Language)'),
+                h('select', {
+                  key: 'select',
+                  className: 'form-input',
+                  value: registerData.preferredLanguage || 'ko',
+                  onChange: (e) => setRegisterData({ ...registerData, preferredLanguage: e.target.value })
+                }, [
+                  h('option', { key: 'ko', value: 'ko' }, '🇰🇷 한국어 (Korean)'),
+                  h('option', { key: 'en', value: 'en' }, '🇺🇸 English'),
+                  h('option', { key: 'es', value: 'es' }, '🇪🇸 Español (Spanish)')
+                ])
+              ]),
+              
               !registerData.isAdmin && h('div', { key: 'permissions-group', className: 'form-group' }, [
                 h('label', { key: 'label', className: 'form-label' }, '접근 권한 (일반 사용자)'),
                 h('div', { key: 'checkboxes', className: 'checkbox-group' },
@@ -3094,18 +3203,31 @@
                         borderRadius: '6px'
                       }
                     }, getLocationIcon(location) + ' ' + formatLocationName(location)),
-                    h('div', { key: `${location}_inventory`, className: 'checkbox-item' }, [
+                    h('div', { key: `${location}_inventory_employee`, className: 'checkbox-item' }, [
                       h('input', {
                         key: 'checkbox',
                         type: 'checkbox',
-                        id: `${location}_inventory`,
-                        checked: registerData.permissions[`${location}_inventory`] || false,
-                        onChange: (e) => updatePermission(`${location}_inventory`, e.target.checked)
+                        id: `${location}_inventory_employee`,
+                        checked: registerData.permissions[`${location}_inventory_employee`] || false,
+                        onChange: (e) => updatePermission(`${location}_inventory_employee`, e.target.checked)
                       }),
                       h('label', { 
                         key: 'label',
-                        htmlFor: `${location}_inventory`
-                      }, '📦 Inventory (재고 관리)')
+                        htmlFor: `${location}_inventory_employee`
+                      }, '👷 Employee Inventory (직원 재고)')
+                    ]),
+                    h('div', { key: `${location}_inventory_manager`, className: 'checkbox-item' }, [
+                      h('input', {
+                        key: 'checkbox',
+                        type: 'checkbox',
+                        id: `${location}_inventory_manager`,
+                        checked: registerData.permissions[`${location}_inventory_manager`] || false,
+                        onChange: (e) => updatePermission(`${location}_inventory_manager`, e.target.checked)
+                      }),
+                      h('label', { 
+                        key: 'label',
+                        htmlFor: `${location}_inventory_manager`
+                      }, '👔 Manager Inventory (매니저 재고)')
                     ]),
                     h('div', { key: `${location}_server`, className: 'checkbox-item' }, [
                       h('input', {
@@ -3168,16 +3290,337 @@
                 users.length === 0 
                   ? h('p', { style: { textAlign: 'center', color: '#64748b', padding: '2rem' } }, '등록된 사용자가 없습니다')
                   : users.map(user =>
-                      h('div', { key: user.id, className: 'user-item' }, [
-                        h('div', { key: 'info', className: 'user-info' }, [
-                          h('div', { key: 'name', className: 'user-name' }, user.name),
-                          h('div', { key: 'perms', className: 'user-permissions' }, getUserPermissions(user))
+                      h('div', { 
+                        key: 'item-' + user.id, 
+                        style: {
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem',
+                          padding: '1.5rem',
+                          background: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          marginBottom: '0.75rem'
+                        }
+                      }, [
+                        h('div', { 
+                          key: 'row1',
+                          style: {
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            gap: '1rem'
+                          }
+                        }, [
+                          // 왼쪽: 이름 + 권한
+                          h('div', { 
+                            key: 'info', 
+                            style: {
+                              flex: 1,
+                              minWidth: 0,
+                              textAlign: 'left'
+                            }
+                          }, [
+                            h('div', { 
+                              key: 'name', 
+                              style: {
+                                fontSize: '1.3rem',
+                                fontWeight: '700',
+                                color: '#2c3e50',
+                                marginBottom: '0.5rem'
+                              }
+                            }, user.name),
+                            h('div', { 
+                              key: 'perms', 
+                              style: {
+                                fontSize: '0.95rem',
+                                color: '#64748b',
+                                lineHeight: '1.5'
+                              }
+                            }, getUserPermissions(user))
+                          ]),
+                          // 오른쪽: 버튼
+                          h('div', { 
+                            key: 'buttons', 
+                            style: { 
+                              display: 'flex', 
+                              gap: '0.5rem',
+                              flexShrink: 0,
+                              alignItems: 'flex-start'
+                            }
+                          }, [
+                            h('button', {
+                              key: 'edit',
+                              style: {
+                                padding: '0.75rem 1.25rem',
+                                fontSize: '1rem',
+                                fontWeight: '700',
+                                background: editingUser === user.id ? '#64748b' : '#3b82f6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                              },
+                              onClick: () => setEditingUser(editingUser === user.id ? null : user.id)
+                            }, editingUser === user.id ? '닫기' : '편집'),
+                            h('button', {
+                              key: 'delete',
+                              style: {
+                                padding: '0.75rem 1.25rem',
+                                fontSize: '1rem',
+                                fontWeight: '700',
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                              },
+                              onClick: () => handleDeleteUser(user.id)
+                            }, '삭제')
+                          ])
                         ]),
-                        h('button', {
-                          key: 'delete',
-                          className: 'btn-delete',
-                          onClick: () => handleDeleteUser(user.id)
-                        }, '삭제')
+                        
+                        // 편집 모드
+                        editingUser === user.id && h('div', {
+                          key: 'edit-form',
+                          style: {
+                            padding: '1rem',
+                            background: '#f8fafc',
+                            borderRadius: '8px',
+                            border: '2px solid #3b82f6'
+                          }
+                        }, [
+                          // 선호 언어
+                          h('div', { key: 'language-group', style: { marginBottom: '1.5rem' }}, [
+                            h('label', { 
+                              key: 'label',
+                              style: { 
+                                display: 'block',
+                                fontWeight: '600',
+                                marginBottom: '0.5rem',
+                                color: '#2c3e50'
+                              }
+                            }, '🌍 선호 언어'),
+                            h('select', {
+                              key: 'select',
+                              value: user.preferredLanguage || 'ko',
+                              onChange: async (e) => {
+                                const newLang = e.target.value;
+                                const updatedUsers = users.map(u => 
+                                  u.id === user.id 
+                                    ? { ...u, preferredLanguage: newLang }
+                                    : u
+                                );
+                                setUsers(updatedUsers);
+                                await window.db.ref('users').set(updatedUsers);
+                                alert('✅ 언어가 변경되었습니다!');
+                              },
+                              style: {
+                                width: '100%',
+                                padding: '0.75rem',
+                                border: '2px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '1rem',
+                                background: 'white'
+                              }
+                            }, [
+                              h('option', { key: 'ko', value: 'ko' }, '🇰🇷 한국어 (Korean)'),
+                              h('option', { key: 'en', value: 'en' }, '🇺🇸 English'),
+                              h('option', { key: 'es', value: 'es' }, '🇪🇸 Español (Spanish)')
+                            ])
+                          ]),
+                          
+                          // 권한 관리
+                          h('div', { key: 'permissions-group' }, [
+                            h('label', { 
+                              key: 'label',
+                              style: { 
+                                display: 'block',
+                                fontWeight: '600',
+                                marginBottom: '0.5rem',
+                                color: '#2c3e50'
+                              }
+                            }, '🔑 접근 권한'),
+                            
+                            // 각 지점별 권한
+                            ...locations.flatMap(location => [
+                              h('div', { 
+                                key: `${location}-header`, 
+                                style: { 
+                                  fontWeight: '700', 
+                                  padding: '0.5rem 0.75rem',
+                                  background: 'rgba(127, 29, 29, 0.05)',
+                                  marginTop: '0.75rem',
+                                  marginBottom: '0.5rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.9rem'
+                                }
+                              }, getLocationIcon(location) + ' ' + formatLocationName(location)),
+                              
+                              // Employee Inventory
+                              h('div', { 
+                                key: `${location}_inventory_employee`, 
+                                style: { 
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  padding: '0.5rem',
+                                  marginBottom: '0.25rem'
+                                }
+                              }, [
+                                h('input', {
+                                  key: 'checkbox',
+                                  type: 'checkbox',
+                                  id: `edit_${user.id}_${location}_inventory_employee`,
+                                  checked: (user.permissions || {})[`${location}_inventory_employee`] || false,
+                                  onChange: async (e) => {
+                                    const updatedUsers = users.map(u => 
+                                      u.id === user.id 
+                                        ? { 
+                                            ...u, 
+                                            permissions: {
+                                              ...(u.permissions || {}),
+                                              [`${location}_inventory_employee`]: e.target.checked
+                                            }
+                                          }
+                                        : u
+                                    );
+                                    setUsers(updatedUsers);
+                                    await window.db.ref('users').set(updatedUsers);
+                                  },
+                                  style: { cursor: 'pointer' }
+                                }),
+                                h('label', { 
+                                  key: 'label',
+                                  htmlFor: `edit_${user.id}_${location}_inventory_employee`,
+                                  style: { cursor: 'pointer', fontSize: '0.9rem' }
+                                }, '👷 Employee Inventory')
+                              ]),
+                              
+                              // Manager Inventory
+                              h('div', { 
+                                key: `${location}_inventory_manager`, 
+                                style: { 
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  padding: '0.5rem',
+                                  marginBottom: '0.25rem'
+                                }
+                              }, [
+                                h('input', {
+                                  key: 'checkbox',
+                                  type: 'checkbox',
+                                  id: `edit_${user.id}_${location}_inventory_manager`,
+                                  checked: (user.permissions || {})[`${location}_inventory_manager`] || false,
+                                  onChange: async (e) => {
+                                    const updatedUsers = users.map(u => 
+                                      u.id === user.id 
+                                        ? { 
+                                            ...u, 
+                                            permissions: {
+                                              ...(u.permissions || {}),
+                                              [`${location}_inventory_manager`]: e.target.checked
+                                            }
+                                          }
+                                        : u
+                                    );
+                                    setUsers(updatedUsers);
+                                    await window.db.ref('users').set(updatedUsers);
+                                  },
+                                  style: { cursor: 'pointer' }
+                                }),
+                                h('label', { 
+                                  key: 'label',
+                                  htmlFor: `edit_${user.id}_${location}_inventory_manager`,
+                                  style: { cursor: 'pointer', fontSize: '0.9rem' }
+                                }, '👔 Manager Inventory')
+                              ]),
+                              
+                              // Server Management
+                              h('div', { 
+                                key: `${location}_server`, 
+                                style: { 
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  padding: '0.5rem',
+                                  marginBottom: '0.25rem'
+                                }
+                              }, [
+                                h('input', {
+                                  key: 'checkbox',
+                                  type: 'checkbox',
+                                  id: `edit_${user.id}_${location}_server`,
+                                  checked: (user.permissions || {})[`${location}_server`] || false,
+                                  onChange: async (e) => {
+                                    const updatedUsers = users.map(u => 
+                                      u.id === user.id 
+                                        ? { 
+                                            ...u, 
+                                            permissions: {
+                                              ...(u.permissions || {}),
+                                              [`${location}_server`]: e.target.checked
+                                            }
+                                          }
+                                        : u
+                                    );
+                                    setUsers(updatedUsers);
+                                    await window.db.ref('users').set(updatedUsers);
+                                  },
+                                  style: { cursor: 'pointer' }
+                                }),
+                                h('label', { 
+                                  key: 'label',
+                                  htmlFor: `edit_${user.id}_${location}_server`,
+                                  style: { cursor: 'pointer', fontSize: '0.9rem' }
+                                }, '🍽️ Server Management')
+                              ]),
+                              
+                              // Kitchen Management
+                              h('div', { 
+                                key: `${location}_kitchen`, 
+                                style: { 
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  padding: '0.5rem',
+                                  marginBottom: '0.25rem'
+                                }
+                              }, [
+                                h('input', {
+                                  key: 'checkbox',
+                                  type: 'checkbox',
+                                  id: `edit_${user.id}_${location}_kitchen`,
+                                  checked: (user.permissions || {})[`${location}_kitchen`] || false,
+                                  onChange: async (e) => {
+                                    const updatedUsers = users.map(u => 
+                                      u.id === user.id 
+                                        ? { 
+                                            ...u, 
+                                            permissions: {
+                                              ...(u.permissions || {}),
+                                              [`${location}_kitchen`]: e.target.checked
+                                            }
+                                          }
+                                        : u
+                                    );
+                                    setUsers(updatedUsers);
+                                    await window.db.ref('users').set(updatedUsers);
+                                  },
+                                  style: { cursor: 'pointer' }
+                                }),
+                                h('label', { 
+                                  key: 'label',
+                                  htmlFor: `edit_${user.id}_${location}_kitchen`,
+                                  style: { cursor: 'pointer', fontSize: '0.9rem' }
+                                }, '👨‍🍳 Kitchen Management')
+                              ])
+                            ])
+                          ])
+                        ])
                       ])
                     )
               ),
@@ -3195,20 +3638,36 @@
 
       // 사용자 페이지 선택 화면
       if (screen === 'user-page-select' && currentUser && !isAdmin) {
-        const perms = currentUser.permissions || {};
+        console.log('📱 User page select screen');
+        console.log('👤 CurrentUser:', currentUser);
+        const user = typeof currentUser === 'string' ? JSON.parse(currentUser) : currentUser;
+        console.log('👤 Parsed user:', user);
+        const perms = user.permissions || {};
+        console.log('🔑 Permissions:', perms);
         const availablePages = [];
         
         // 동적으로 사용 가능한 페이지 생성
         locations.forEach(location => {
           const locationName = formatLocationName(location);
           
-          if (perms[`${location}_inventory`]) {
+          if (perms[`${location}_inventory_employee`]) {
             availablePages.push({ 
               location, 
               module: 'inventory',
-              icon: '📦',
-              name: `${locationName} - Inventory`,
-              desc: `${locationName} 재고 관리`
+              role: 'employee',
+              icon: '👷',
+              name: `${locationName} - Employee Inventory`,
+              desc: `${locationName} 직원 재고 관리`
+            });
+          }
+          if (perms[`${location}_inventory_manager`]) {
+            availablePages.push({ 
+              location, 
+              module: 'inventory',
+              role: 'manager',
+              icon: '👔',
+              name: `${locationName} - Manager Inventory`,
+              desc: `${locationName} 매니저 재고 관리`
             });
           }
           if (perms[`${location}_server`]) {
@@ -3216,9 +3675,9 @@
               location, 
               module: 'management', 
               type: 'server',
-              icon: '👔',
-              name: `${locationName} - Server`,
-              desc: `${locationName} 서버 관리`
+              icon: '🍽️',
+              name: `${locationName} - Server Management`,
+              desc: `${locationName} 서버 업무 관리`
             });
           }
           if (perms[`${location}_kitchen`]) {
@@ -3227,11 +3686,13 @@
               module: 'management', 
               type: 'kitchen',
               icon: '👨‍🍳',
-              name: `${locationName} - Kitchen`,
-              desc: `${locationName} 주방 관리`
+              name: `${locationName} - Kitchen Management`,
+              desc: `${locationName} 주방 업무 관리`
             });
           }
         });
+        
+        console.log('📋 Available pages:', availablePages.length, availablePages);
         
         return h('div', { className: 'screen-container' }, [
           h('div', { key: 'header', className: 'screen-header' }, [
@@ -3246,8 +3707,15 @@
                 marginBottom: '1rem'
               }
             }),
-            h('h1', { key: 'title', className: 'screen-title' }, 'Welcome, ' + currentUser.name),
-            h('p', { key: 'subtitle', className: 'screen-subtitle' }, '페이지를 선택하세요')
+            h('h1', { key: 'title', className: 'screen-title' }, 
+              (language === 'ko' ? '환영합니다, ' : language === 'es' ? 'Bienvenido, ' : 'Welcome, ') + 
+              (typeof currentUser === 'string' ? JSON.parse(currentUser).name : currentUser.name)
+            ),
+            h('p', { key: 'subtitle', className: 'screen-subtitle' }, 
+              language === 'ko' ? '페이지를 선택하세요' : 
+              language === 'es' ? 'Seleccione una página' : 
+              'Select a page'
+            )
           ]),
           h('div', { key: 'grid', className: 'selection-grid' }, 
             availablePages.map((page, idx) => 
@@ -3269,13 +3737,18 @@
               setCurrentUser(null);
               setIsAdmin(false);
               setScreen('login');
+              localStorage.removeItem('currentUser');
+              localStorage.removeItem('currentLocation');
+              localStorage.removeItem('inventoryRole');
+              localStorage.removeItem('currentScreen');
             },
             style: { maxWidth: '300px', margin: '2rem auto 0', width: '100%' }
-          }, '로그아웃')
+          }, language === 'ko' ? '로그아웃' : language === 'es' ? 'Cerrar Sesión' : 'Logout')
         ]);
       }
       // 지점 선택 화면
       if (screen === 'location') {
+        console.log('📱 Location screen');
         return h('div', { className: 'screen-container' }, [
           h('div', { key: 'header', className: 'screen-header' }, [
             h('img', { 
@@ -3543,6 +4016,7 @@
 
       // Management 화면
       if (screen === 'management') {
+        console.log('📱 Management screen');
         return h('div', { 
           key: 'management-wrapper',
           style: { 
@@ -3625,9 +4099,10 @@
                   cursor: 'pointer',
                   fontSize: '0.875rem',
                   fontWeight: '600',
-                  padding: '0'
+                  padding: '0',
+                  whiteSpace: 'nowrap'
                 }
-              }, 'Logout')
+              }, language === 'ko' ? '로그아웃' : language === 'es' ? 'Salir' : 'Logout')
             ]),
             h('select', { 
               key: 'lang',
@@ -3666,7 +4141,19 @@
         ]);
       }
 
+      // ===== 디버그 로그 =====
+      console.log('🔍 RENDER:', {
+        screen,
+        loading,
+        currentUser: currentUser ? (typeof currentUser === 'string' ? 'string' : 'object') : 'null',
+        currentLocation,
+        inventoryRole,
+        isAdmin
+      });
+      // =======================
+
       if (loading) {
+        console.log('⏳ Loading screen');
         return h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontSize: '1.5rem', color: '#7f1d1d' }}, 'Loading...');
       }
 
@@ -3717,9 +4204,10 @@
                   cursor: 'pointer',
                   fontSize: '0.875rem',
                   fontWeight: '600',
-                  padding: '0'
+                  padding: '0',
+                  whiteSpace: 'nowrap'
                 }
-              }, 'Logout')
+              }, language === 'ko' ? '로그아웃' : language === 'es' ? 'Salir' : 'Logout')
             ]),
             h('select', { 
               key: 'lang',
@@ -3749,11 +4237,19 @@
               ? ['count', 'shopping'] 
               : ['dashboard', 'count', 'shopping', 'reports', 'add']
             ).map(tab => {
-              // Employee용 심플한 이름
+              // Employee용 다국어 이름
               let tabLabel = t[tab];
               if (inventoryRole === 'employee') {
-                if (tab === 'count') tabLabel = '📦 재고 세기';
-                if (tab === 'shopping') tabLabel = '🛒 쇼핑하기';
+                if (tab === 'count') {
+                  tabLabel = language === 'ko' ? '📦 재고 세기' : 
+                             language === 'es' ? '📦 Contar Inventario' : 
+                             '📦 Count Inventory';
+                }
+                if (tab === 'shopping') {
+                  tabLabel = language === 'ko' ? '🛒 쇼핑하기' : 
+                             language === 'es' ? '🛒 Ir de Compras' : 
+                             '🛒 Shopping';
+                }
               }
               
               return h('button', {
@@ -3937,7 +4433,9 @@
               h('div', { key: 'search', style: { marginBottom: '1rem' }}, 
                 h('input', {
                   type: 'text',
-                  placeholder: '🔍 아이템 검색...',
+                  placeholder: language === 'ko' ? '🔍 아이템 검색...' : 
+                               language === 'es' ? '🔍 Buscar artículo...' : 
+                               '🔍 Search item...',
                   value: countSearchTerm,
                   onChange: (e) => setCountSearchTerm(e.target.value),
                   style: {
@@ -3967,7 +4465,7 @@
                     fontWeight: '700',
                     fontSize: '1rem'
                   }
-                }, '보관별'),
+                }, language === 'ko' ? '보관별' : language === 'es' ? 'Por Almacenamiento' : 'By Storage'),
                 h('button', { 
                   key: 'category',
                   onClick: () => { setFilterMode('category'); setCategoryFilter('all'); },
@@ -3982,7 +4480,7 @@
                     fontWeight: '700',
                     fontSize: '1rem'
                   }
-                }, '분류별')
+                }, language === 'ko' ? '분류별' : language === 'es' ? 'Por Categoría' : 'By Category')
               ]),
               
               // 필터 버튼들
@@ -4011,11 +4509,20 @@
                   }, filterMode === 'storage' 
                     ? [
                         h('span', { key: 'icon' }, cat === 'all' ? '📦' : storageIcons[cat]),
-                        h('span', { key: 'text' }, cat === 'all' ? '전체' : (cat === 'frozen' ? '냉동' : cat === 'refrigerated' ? '냉장' : '실온'))
+                        h('span', { key: 'text' }, 
+                          cat === 'all' ? (language === 'ko' ? '전체' : language === 'es' ? 'Todo' : 'All') : 
+                          cat === 'frozen' ? (language === 'ko' ? '냉동' : language === 'es' ? 'Congelado' : 'Frozen') : 
+                          cat === 'refrigerated' ? (language === 'ko' ? '냉장' : language === 'es' ? 'Refrigerado' : 'Refrigerated') : 
+                          (language === 'ko' ? '실온' : language === 'es' ? 'Temperatura Ambiente' : 'Room Temp')
+                        )
                       ]
                     : [
                         h('span', { key: 'icon' }, cat === 'all' ? '📦' : (categoryData[cat]?.icon || '📦')),
-                        h('span', { key: 'text' }, cat === 'all' ? '전체' : getCategoryLabel(cat))
+                        h('span', { key: 'text' }, 
+                          cat === 'all' ? (language === 'ko' ? '전체' : language === 'es' ? 'Todo' : 'All') : 
+                          cat === 'Uncategorized' ? (language === 'ko' ? '미분류' : language === 'es' ? 'Sin Categorizar' : 'Uncategorized') :
+                          getCategoryLabel(cat)
+                        )
                       ]
                   )
                 )
@@ -4079,7 +4586,7 @@
                           }
                         }, [
                           h('span', { key: 'icon' }, storageIcons[item.category]),
-                          h('span', { key: 'text' }, item.name)
+                          h('span', { key: 'text' }, getItemName(item))
                         ]),
                         // 분류 표시
                         itemCategories[item.name] && h('div', {
@@ -4211,7 +4718,7 @@
                             setItems(u);
                           },
                           style: {
-                            width: '142px',
+                            width: '110px',
                             height: '82px',
                             fontSize: '1.8rem',
                             fontWeight: '700',
@@ -4298,7 +4805,7 @@
                           color: '#64748b',
                           textAlign: 'center'
                         }
-                      }, `Par: ${item.par}`)
+                      }, `${language === 'ko' ? 'Par' : language === 'es' ? 'Par' : 'Par'}: ${item.par}`)
                     ]);  // 카드 닫기
                   })  // map 닫기
               ),
@@ -4325,7 +4832,7 @@
                   boxShadow: '0 4px 12px rgba(16,185,129,0.4)',
                   zIndex: 100
                 }
-              }, '✅ 저장하기')
+              }, language === 'ko' ? '✅ 저장하기' : language === 'es' ? '✅ Guardar' : '✅ Save')
               
             ]) : 
             // Manager용 기존 화면
@@ -4610,7 +5117,7 @@
                   fontSize: '1.1rem',
                   padding: '1rem'
                 }
-              }, ['🛒 ', language === 'ko' ? '쇼핑리스트 생성' : 'Generate Shopping List']),
+              }, ['🛒 ', language === 'ko' ? '쇼핑리스트 생성' : language === 'es' ? 'Generar Lista de Compras' : 'Generate Shopping List']),
               
               // Manager: 아이템 추가 버튼
               inventoryRole !== 'employee' && h('button', {
@@ -4855,7 +5362,7 @@
                       
                       // Manager: 전체 정보 표시
                       return h('div', { key: i, className: 'card', style: { marginBottom: '0.75rem', padding: '1rem' }}, [
-                        h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.75rem', color: '#2c3e50' }}, item.name),
+                        h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.75rem', color: '#2c3e50' }}, getItemName(item)),
                         h('div', { key: 'inputs', style: { display: 'grid', gap: '0.75rem' }}, [
                           h('div', { key: 'row1', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}, [
                             h('div', { key: 'price-group', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
@@ -4985,6 +5492,7 @@
                         justifyContent: 'space-between', 
                         alignItems: 'flex-start', 
                         padding: '0',
+                  whiteSpace: 'nowrap',
                         gap: '0.5rem'
                       }
                     }, [
@@ -5489,7 +5997,7 @@
                           key: idx,
                           style: { borderBottom: '1px solid #e2e8f0' }
                         }, [
-                          h('td', { key: 'name', style: { padding: '0.75rem', fontWeight: '600', color: '#2c3e50' }}, item.name),
+                          h('td', { key: 'name', style: { padding: '0.75rem', fontWeight: '600', color: '#2c3e50' }}, getItemName(item)),
                           h('td', { key: 'current', style: { padding: '0.75rem', textAlign: 'center', color: '#64748b' }}, item.current_inventory.toFixed(1)),
                           h('td', { key: 'par', style: { padding: '0.75rem', textAlign: 'center', color: '#64748b' }}, item.par.toFixed(1)),
                           h('td', { key: 'shortage', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: shortage > 0 ? '#ef4444' : '#64748b' }}, 
@@ -5844,7 +6352,30 @@
               h('div', { key: 'add-form', className: 'card', style: { background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.2)', marginBottom: '2rem' }}, [
                 h('h3', { key: 'title', style: { marginBottom: '1rem', color: '#7f1d1d' }}, t.addNewItem),
                 h('div', { key: 'inputs', className: 'input-group' }, [
-                  h('input', { key: 'name', type: 'text', placeholder: t.itemName, value: newItem.name, onChange: (e) => setNewItem({...newItem, name: e.target.value}) }),
+                  // 영어 이름 (필수)
+                  h('input', { 
+                    key: 'name', 
+                    type: 'text', 
+                    placeholder: t.itemName + ' (English) *', 
+                    value: newItem.name, 
+                    onChange: (e) => setNewItem({...newItem, name: e.target.value}) 
+                  }),
+                  // 한국어 이름
+                  h('input', { 
+                    key: 'name-ko', 
+                    type: 'text', 
+                    placeholder: '한국어 이름 (선택)', 
+                    value: newItem.name_ko || '', 
+                    onChange: (e) => setNewItem({...newItem, name_ko: e.target.value}) 
+                  }),
+                  // 스페인어 이름
+                  h('input', { 
+                    key: 'name-es', 
+                    type: 'text', 
+                    placeholder: 'Nombre en Español (opcional)', 
+                    value: newItem.name_es || '', 
+                    onChange: (e) => setNewItem({...newItem, name_es: e.target.value}) 
+                  }),
                   h('select', { key: 'vendor', value: newItem.vendor, onChange: (e) => setNewItem({...newItem, vendor: e.target.value}) },
                     [h('option', { key: 'empty', value: '' }, t.selectVendor)].concat(vendors.map(v => h('option', { key: v, value: v }, v)))
                   ),
@@ -5891,7 +6422,27 @@
                     const idx = items.findIndex(i => i.name === item.name);
                 return h('div', { key: 'item-' + idx, className: 'card', style: { color: '#2c3e50' }}, [
                   editingItem === idx ? h('div', { key: 'edit', className: 'input-group' }, [
-                    h('input', { key: 'name', type: 'text', value: item.name, onChange: (e) => { const u = [...items]; u[idx].name = e.target.value; setItems(u); }}),
+                    h('input', { 
+                      key: 'name', 
+                      type: 'text', 
+                      placeholder: 'English Name *',
+                      value: item.name, 
+                      onChange: (e) => { const u = [...items]; u[idx].name = e.target.value; setItems(u); }
+                    }),
+                    h('input', { 
+                      key: 'name-ko', 
+                      type: 'text', 
+                      placeholder: '한국어 이름',
+                      value: item.name_ko || '', 
+                      onChange: (e) => { const u = [...items]; u[idx].name_ko = e.target.value; setItems(u); }
+                    }),
+                    h('input', { 
+                      key: 'name-es', 
+                      type: 'text', 
+                      placeholder: 'Nombre en Español',
+                      value: item.name_es || '', 
+                      onChange: (e) => { const u = [...items]; u[idx].name_es = e.target.value; setItems(u); }
+                    }),
                     h('select', { 
                       key: 'vendor', 
                       value: item.vendor, 
@@ -6098,7 +6649,8 @@
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            padding: '0'
+                            padding: '0',
+                  whiteSpace: 'nowrap'
                           }
                         }, emoji)
                       )
