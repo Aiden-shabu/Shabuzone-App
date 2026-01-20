@@ -1108,6 +1108,24 @@
         }
       }, [currentLocation, screen]);
 
+      // Shopping List 실시간 동기화 (Role 전환 시)
+      useEffect(() => {
+        if (currentLocation && screen === 'inventory' && inventoryRole) {
+          console.log('🔄 Role 전환 감지 - Shopping List 리프레시');
+          const refreshShoppingList = async () => {
+            try {
+              const shopSnap = await window.db.ref(getPath('shopping')).once('value');
+              const shopData = shopSnap.val() || [];
+              setShoppingList(shopData);
+              console.log('✅ Shopping List 동기화 완료:', shopData.length, '개');
+            } catch (error) {
+              console.error('❌ Shopping List 리프레시 실패:', error);
+            }
+          };
+          refreshShoppingList();
+        }
+      }, [currentLocation, screen, inventoryRole]);
+
       useEffect(() => {
         const handleScroll = () => {
           setShowScrollButtons(window.scrollY > 300);
@@ -1180,6 +1198,27 @@
       useEffect(() => {
         localStorage.setItem('appLanguage', language);
       }, [language]);
+
+      // currentUser 복원 시 isAdmin 동기화
+      useEffect(() => {
+        if (currentUser) {
+          try {
+            const user = typeof currentUser === 'string' ? JSON.parse(currentUser) : currentUser;
+            if (user.isAdmin) {
+              console.log('✅ Admin user detected, setting isAdmin to true');
+              setIsAdmin(true);
+            } else {
+              console.log('👤 Regular user detected, setting isAdmin to false');
+              setIsAdmin(false);
+            }
+          } catch (e) {
+            console.error('❌ Error parsing currentUser:', e);
+            setIsAdmin(false);
+          }
+        } else {
+          setIsAdmin(false);
+        }
+      }, [currentUser]);
 
       // 사용자 데이터 로드
       useEffect(() => {
@@ -1400,6 +1439,9 @@
           // Inventory 선택 시 Role 선택 화면으로
           setScreen('inventory-role');
           localStorage.setItem('currentScreen', 'inventory-role');
+          // Inventory 데이터 로드
+          console.log('📦 Inventory 모듈 선택 - 데이터 로드 시작');
+          loadData();
         } else if (mod === 'management') {
           setScreen('management-select');
           localStorage.setItem('currentScreen', 'management-select');
@@ -1417,6 +1459,7 @@
           // Employee는 Count 탭부터 시작
           setActiveTab('count');
         }
+        // ❌ loadData() 제거 - Role 변경은 데이터 리로드 안 함
       }
       
       function selectManagementType(type) {
@@ -1427,6 +1470,7 @@
       }
       
       function goBack() {
+        console.log('🔙 goBack called - isAdmin:', isAdmin, 'currentUser:', currentUser);
         // 일반 사용자의 경우
         if (currentUser && !isAdmin) {
           if (screen === 'inventory' || screen === 'management') {
@@ -1768,7 +1812,11 @@
 
       async function saveCountRecord() {
         const now = new Date();
-        const date = now.toISOString().split('T')[0];
+        // UTC 대신 로컬 날짜 사용
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const date = `${year}-${month}-${day}`;
         const time = now.toTimeString().split(' ')[0].slice(0, 5);
         const totalValue = tempItems.reduce((sum, item) => sum + (item.current_inventory * item.price), 0);
         
@@ -1851,25 +1899,59 @@
         }
       }
 
+      // undefined 값 제거 함수
+      function cleanUndefined(obj) {
+        if (Array.isArray(obj)) {
+          return obj.map(item => cleanUndefined(item));
+        } else if (obj !== null && typeof obj === 'object') {
+          const cleaned = {};
+          for (const key in obj) {
+            if (obj[key] !== undefined) {
+              cleaned[key] = cleanUndefined(obj[key]);
+            }
+          }
+          return cleaned;
+        }
+        return obj;
+      }
+
       async function updateShoppingQuantity(index, value) {
         const updated = [...shoppingList];
-        updated[index].shortage = parseFloat(value) || 0;
+        const newQuantity = parseFloat(value) || 0;
+        
+        // 0이면 아이템 삭제
+        if (newQuantity === 0) {
+          updated.splice(index, 1);
+          setShoppingList(updated);
+          // undefined 제거 후 저장
+          const cleaned = cleanUndefined(updated);
+          await window.db.ref(getPath('shopping')).set(cleaned);
+          return;
+        }
+        
+        updated[index].shortage = newQuantity;
         setShoppingList(updated);
-        await window.db.ref(getPath('shopping')).set(updated);
+        // undefined 제거 후 저장
+        const cleaned = cleanUndefined(updated);
+        await window.db.ref(getPath('shopping')).set(cleaned);
       }
 
       async function updateShoppingPrice(index, value) {
         const updated = [...shoppingList];
         updated[index].price = parseFloat(value) || 0;
         setShoppingList(updated);
-        await window.db.ref(getPath('shopping')).set(updated);
+        // undefined 제거 후 저장
+        const cleaned = cleanUndefined(updated);
+        await window.db.ref(getPath('shopping')).set(cleaned);
       }
 
       async function updateShoppingVendor(index, vendor) {
         const updated = [...shoppingList];
         updated[index].selected_vendor = vendor;
         setShoppingList(updated);
-        await window.db.ref(getPath('shopping')).set(updated);
+        // undefined 제거 후 저장
+        const cleaned = cleanUndefined(updated);
+        await window.db.ref(getPath('shopping')).set(cleaned);
         
         // items의 vendor도 업데이트
         const itemName = updated[index].name;
@@ -1918,11 +2000,12 @@
             mappedVendor = '⚠️ Not Assigned';
           }
           
+          // vendor 필드를 제거하고 새 객체 생성
+          const { vendor, ...itemWithoutVendor } = item;
           return {
-            ...item,
+            ...itemWithoutVendor,
             shortage: Math.max(0, parValue - currentInv),
-            selected_vendor: mappedVendor,
-            vendor: undefined  // ← 옛날 vendor 제거
+            selected_vendor: mappedVendor
           };
         }).map(item => {
           // 반올림: 0.5 미만은 내림, 0.5 이상은 올림
@@ -1939,9 +2022,12 @@
             shortage: roundedShortage
           };
         }).filter(item => item.shortage > 0) : [];
-        setShoppingList(list);
+        
+        // undefined 제거 후 저장
+        const cleanedList = cleanUndefined(list);
+        setShoppingList(cleanedList);
         setShoppingStep('edit');
-        await window.db.ref(getPath('shopping')).set(list);
+        await window.db.ref(getPath('shopping')).set(cleanedList);
         setActiveTab('shopping');
       }
       
@@ -2439,30 +2525,42 @@
       
       // 사진 삭제 함수
       async function deleteItemImage(itemName) {
+        const item = items.find(i => i.name === itemName);
+        if (!item || !item.imageUrl) return;
+        
+        if (!confirm(language === 'ko' ? '사진을 삭제하시겠습니까?' : 'Delete image?')) return;
+        
+        // Storage에서 삭제 시도 (실패해도 계속 진행)
         try {
-          const item = items.find(i => i.name === itemName);
-          if (!item || !item.imageUrl) return;
-          
-          if (!confirm(language === 'ko' ? '사진을 삭제하시겠습니까?' : 'Delete image?')) return;
-          
-          // Storage에서 삭제
           const fileName = `${currentLocation.replace(/\s+/g, '_')}_${itemName.replace(/\s+/g, '_')}.jpg`;
           const storageRef = firebase.storage().ref(`item-images/${fileName}`);
           await storageRef.delete();
-          
-          // items에서 imageUrl 제거
-          const updatedItems = items.map(item => 
-            item.name === itemName ? { ...item, imageUrl: undefined } : item
-          );
+          console.log('✅ Storage에서 삭제 완료');
+        } catch (storageError) {
+          console.warn('⚠️ Storage 삭제 실패 (권한 문제):', storageError.code, storageError.message);
+          // Storage 삭제 실패해도 계속 진행
+        }
+        
+        // items에서 imageUrl 제거 (항상 실행)
+        try {
+          const updatedItems = items.map(item => {
+            if (item.name === itemName) {
+              const { imageUrl, ...itemWithoutImage } = item;
+              return itemWithoutImage;
+            }
+            return item;
+          });
           
           setItems(updatedItems);
-          await window.db.ref(getPath('items')).set(updatedItems);
+          // cleanUndefined 적용
+          const cleaned = cleanUndefined(updatedItems);
+          await window.db.ref(getPath('items')).set(cleaned);
           
           alert(language === 'ko' ? '사진이 삭제되었습니다!' : 'Image deleted!');
           setShowImageModal(false);
-        } catch (error) {
-          console.error('Image delete error:', error);
-          alert(language === 'ko' ? '삭제 실패: ' + error.message : 'Delete failed: ' + error.message);
+        } catch (dbError) {
+          console.error('Database 업데이트 실패:', dbError);
+          alert(language === 'ko' ? 'Database 업데이트 실패: ' + dbError.message : 'Database update failed: ' + dbError.message);
         }
       }
 
@@ -4017,6 +4115,10 @@
       // Management 화면
       if (screen === 'management') {
         console.log('📱 Management screen');
+        console.log('🔧 Management Type:', managementType);
+        console.log('📍 Current Location:', currentLocation);
+        console.log('👤 Current User:', currentUser);
+        console.log('🔑 Is Admin:', isAdmin);
         return h('div', { 
           key: 'management-wrapper',
           style: { 
@@ -4255,7 +4357,21 @@
               return h('button', {
                 key: tab,
                 className: 'nav-btn' + (activeTab === tab ? ' active' : ''),
-                onClick: () => setActiveTab(tab)
+                onClick: async () => {
+                  setActiveTab(tab);
+                  // Shopping 탭 클릭 시 데이터 리프레시
+                  if (tab === 'shopping') {
+                    console.log('🔄 Shopping 탭 클릭 - 데이터 리프레시');
+                    try {
+                      const shopSnap = await window.db.ref(getPath('shopping')).once('value');
+                      const shopData = shopSnap.val() || [];
+                      setShoppingList(shopData);
+                      console.log('✅ Shopping List 리프레시 완료:', shopData.length);
+                    } catch (error) {
+                      console.error('❌ Shopping List 리프레시 실패:', error);
+                    }
+                  }
+                }
               }, tabLabel);
             })
           ])
@@ -4379,9 +4495,19 @@
                   // 날짜 추가
                   for (let day = 1; day <= lastDay.getDate(); day++) {
                     const date = new Date(year, month, day);
-                    const dateStr = date.toISOString().split('T')[0];
+                    // UTC 대신 로컬 날짜 사용
+                    const dateYear = date.getFullYear();
+                    const dateMonth = String(date.getMonth() + 1).padStart(2, '0');
+                    const dateDay = String(date.getDate()).padStart(2, '0');
+                    const dateStr = `${dateYear}-${dateMonth}-${dateDay}`;
+                    
+                    const todayYear = today.getFullYear();
+                    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
+                    const todayDay = String(today.getDate()).padStart(2, '0');
+                    const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
+                    
                     const hasCount = countDates.has(dateStr);
-                    const isToday = dateStr === today.toISOString().split('T')[0];
+                    const isToday = dateStr === todayStr;
                     
                     dates.push(
                       h('div', { 
@@ -4432,6 +4558,7 @@
               // 검색 칸
               h('div', { key: 'search', style: { marginBottom: '1rem' }}, 
                 h('input', {
+                  key: 'search-input-' + countSearchTerm,
                   type: 'text',
                   placeholder: language === 'ko' ? '🔍 아이템 검색...' : 
                                language === 'es' ? '🔍 Buscar artículo...' : 
@@ -4484,7 +4611,7 @@
               ]),
               
               // 필터 버튼들
-              h('div', { key: 'filter', style: { display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto' }},
+              h('div', { key: 'filter-' + filterMode + '-' + categoryFilter, style: { display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto' }},
                 (filterMode === 'storage' 
                   ? ['all', 'frozen', 'refrigerated', 'dry']
                   : ['all', ...categories, 'Uncategorized']
@@ -4529,7 +4656,7 @@
               ),
               
               // 아이템 카드
-              h('div', { key: 'items', style: { display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '100px' }},
+              h('div', { key: 'items-' + filterMode + '-' + categoryFilter + '-' + countSearchTerm, style: { display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '100px' }},
                 items
                   .filter(item => {
                     // 검색 필터
@@ -4616,6 +4743,10 @@
                           background: '#f8fafc',
                           cursor: 'pointer'
                         },
+                        onError: (e) => {
+                          // 이미지 로드 실패 시 숨기기
+                          e.target.style.display = 'none';
+                        },
                         onClick: () => {
                           // 사진 크게 보기 모달
                           const modal = document.createElement('div');
@@ -4696,11 +4827,27 @@
                               e.target.select();
                             }
                           },
+                          onInput: (e) => {
+                            // 입력 중에 앞의 0 제거 (예: "02.5" → "2.5")
+                            let val = e.target.value;
+                            // "0"으로 시작하고 두 번째 문자가 숫자면 0 제거 (단, "0." 제외)
+                            if (val.length > 1 && val[0] === '0' && val[1] !== '.') {
+                              val = val.substring(1);
+                              e.target.value = val;
+                            }
+                          },
                           onChange: (e) => {
                             const u = [...items];
-                            const val = e.target.value;
-                            // 빈 문자열이면 0, 아니면 숫자로 변환
-                            u[actualIdx].current_inventory = val === '' ? 0 : parseFloat(val) || 0;
+                            let val = e.target.value;
+                            
+                            // 빈 문자열이면 0
+                            if (val === '') {
+                              u[actualIdx].current_inventory = 0;
+                            } else {
+                              // parseFloat로 변환 (앞의 0 자동 제거됨)
+                              const numVal = parseFloat(val);
+                              u[actualIdx].current_inventory = isNaN(numVal) ? 0 : numVal;
+                            }
                             setItems(u);
                           },
                           style: {
@@ -4930,20 +5077,6 @@
                       onClick: () => updateTempInventory(globalIndex, Math.max(0, item.current_inventory - 1)) 
                     }, '-1'),
                     h('button', { 
-                      key: 'minus05', 
-                      style: { 
-                        padding: '0.5rem 0.75rem', 
-                        background: '#f87171', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '8px', 
-                        cursor: 'pointer', 
-                        fontWeight: '600',
-                        fontSize: '0.875rem'
-                      }, 
-                      onClick: () => updateTempInventory(globalIndex, Math.max(0, item.current_inventory - 0.5)) 
-                    }, '-0.5'),
-                    h('button', { 
                       key: 'minus025', 
                       style: { 
                         padding: '0.5rem 0.75rem', 
@@ -4964,8 +5097,24 @@
                       pattern: '[0-9]*',
                       step: '0.01', 
                       value: item.current_inventory, 
-                      onFocus: (e) => e.target.select(),
-                      onChange: (e) => updateTempInventory(globalIndex, parseFloat(e.target.value) || 0),
+                      onFocus: (e) => {
+                        e.target.select();
+                        if (e.target.value === '0') {
+                          e.target.select();
+                        }
+                      },
+                      onInput: (e) => {
+                        let val = e.target.value;
+                        if (val.length > 1 && val[0] === '0' && val[1] !== '.') {
+                          val = val.substring(1);
+                          e.target.value = val;
+                        }
+                      },
+                      onChange: (e) => {
+                        let val = e.target.value;
+                        const numVal = val === '' ? 0 : parseFloat(val);
+                        updateTempInventory(globalIndex, isNaN(numVal) ? 0 : numVal);
+                      },
                       style: {
                         width: '80px',
                         padding: '0.5rem',
@@ -4990,20 +5139,6 @@
                       }, 
                       onClick: () => updateTempInventory(globalIndex, item.current_inventory + 0.25) 
                     }, '+0.25'),
-                    h('button', { 
-                      key: 'plus05', 
-                      style: { 
-                        padding: '0.5rem 0.75rem', 
-                        background: '#4ade80', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '8px', 
-                        cursor: 'pointer', 
-                        fontWeight: '600',
-                        fontSize: '0.875rem'
-                      }, 
-                      onClick: () => updateTempInventory(globalIndex, item.current_inventory + 0.5) 
-                    }, '+0.5'),
                     h('button', { 
                       key: 'plus1', 
                       style: { 
@@ -5066,8 +5201,8 @@
 
             // Shopping List 탭
             shoppingSubTab === 'list' && h('div', { key: 'list-content' }, [
-              // Employee: 쇼핑리스트 생성 버튼
-              inventoryRole === 'employee' && h('button', {
+              // Employee/Manager 모두: 쇼핑리스트 생성 버튼
+              h('button', {
                 key: 'generate-list-btn',
                 className: 'btn',
                 onClick: generateShoppingList,
@@ -5084,8 +5219,8 @@
                 }
               }, ['🛒 ', language === 'ko' ? '쇼핑리스트 생성' : language === 'es' ? 'Generar Lista de Compras' : 'Generate Shopping List']),
               
-              // Manager: 아이템 추가 버튼
-              inventoryRole !== 'employee' && h('button', {
+              // Employee/Manager 모두: 아이템 추가 버튼
+              h('button', {
                 key: 'add-item-btn',
                 className: 'btn',
                 onClick: () => setShowAddItemModal(true),
@@ -5096,9 +5231,11 @@
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '0.5rem'
+                  gap: '0.5rem',
+                  fontSize: '1rem',
+                  padding: '1rem'
                 }
-              }, ['➕ ', language === 'ko' ? '아이템 추가' : 'Add Item']),
+              }, ['➕ ', language === 'ko' ? '아이템 추가' : language === 'es' ? 'Añadir Artículo' : 'Add Item']),
               
               shoppingList.length === 0 ? h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, 'No items in shopping list') : [
                 
@@ -5252,6 +5389,10 @@
                               background: '#f8fafc',
                               cursor: 'pointer'
                             },
+                            onError: (e) => {
+                              // 이미지 로드 실패 시 숨기기
+                              e.target.style.display = 'none';
+                            },
                             onClick: () => {
                               const modal = document.createElement('div');
                               modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem;';
@@ -5307,7 +5448,19 @@
                                   fontSize: '1.5rem',
                                   textAlign: 'center'
                                 },
-                                onFocus: (e) => e.target.select(),
+                                onFocus: (e) => {
+                                  e.target.select();
+                                  if (e.target.value === '0') {
+                                    e.target.select();
+                                  }
+                                },
+                                onInput: (e) => {
+                                  let val = e.target.value;
+                                  if (val.length > 1 && val[0] === '0' && val[1] !== '.') {
+                                    val = val.substring(1);
+                                    e.target.value = val;
+                                  }
+                                },
                                 onChange: (e) => updateShoppingQuantity(globalIndex, e.target.value) 
                               }),
                               h('button', { 
@@ -5339,7 +5492,19 @@
                                 pattern: '[0-9]*',
                                 step: '0.01',
                                 value: item.price,
-                                onFocus: (e) => e.target.select(),
+                                onFocus: (e) => {
+                                  e.target.select();
+                                  if (e.target.value === '0') {
+                                    e.target.select();
+                                  }
+                                },
+                                onInput: (e) => {
+                                  let val = e.target.value;
+                                  if (val.length > 1 && val[0] === '0' && val[1] !== '.') {
+                                    val = val.substring(1);
+                                    e.target.value = val;
+                                  }
+                                },
                                 onChange: (e) => updateShoppingPrice(globalIndex, e.target.value),
                                 style: { flex: 1, background: 'white', border: '2px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', color: '#2c3e50', fontSize: '0.875rem' }
                               })
@@ -5376,7 +5541,19 @@
                               step: '0.5',
                               value: item.shortage,
                               style: { width: '80px' },
-                              onFocus: (e) => e.target.select(),
+                              onFocus: (e) => {
+                                e.target.select();
+                                if (e.target.value === '0') {
+                                  e.target.select();
+                                }
+                              },
+                              onInput: (e) => {
+                                let val = e.target.value;
+                                if (val.length > 1 && val[0] === '0' && val[1] !== '.') {
+                                  val = val.substring(1);
+                                  e.target.value = val;
+                                }
+                              },
                               onChange: (e) => updateShoppingQuantity(globalIndex, e.target.value) 
                             }),
                             h('button', { key: 'plus', className: 'counter-btn', style: { width: '40px', height: '40px' }, onClick: () => updateShoppingQuantity(globalIndex, item.shortage + 0.5) }, '+')
@@ -5717,6 +5894,10 @@
                                   borderRadius: '12px',
                                   background: '#f8fafc',
                                   cursor: 'pointer'
+                                },
+                                onError: (e) => {
+                                  // 이미지 로드 실패 시 숨기기
+                                  e.target.style.display = 'none';
                                 },
                                 onClick: () => {
                                   const modal = document.createElement('div');
