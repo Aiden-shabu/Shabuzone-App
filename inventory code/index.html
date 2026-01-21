@@ -1836,12 +1836,15 @@
         const time = now.toTimeString().split(' ')[0].slice(0, 5);
         const totalValue = tempItems.reduce((sum, item) => sum + (item.current_inventory * item.price), 0);
         
+        const userName = typeof currentUser === 'string' ? JSON.parse(currentUser).name : (currentUser ? currentUser.name : 'Unknown');
+        console.log('💾 Saving count record - User:', userName, 'currentUser:', currentUser);
+        
         const record = {
           id: Date.now(),
           date,
           time,
           timestamp: Date.now(),
-          userName: typeof currentUser === 'string' ? JSON.parse(currentUser).name : (currentUser ? currentUser.name : 'Unknown'),
+          userName: userName,
           totalValue,
           totalItems: tempItems.length,
           items: tempItems.map(item => ({
@@ -1851,6 +1854,8 @@
             vendor: item.vendor
           }))
         };
+        
+        console.log('📊 Record to save:', { userName: record.userName, date: record.date, time: record.time });
         
         const newRecords = [record, ...countRecords];
         
@@ -1884,16 +1889,23 @@
           
           // 재고 실사 기록 저장
           const now = new Date();
-          const date = now.toISOString().split('T')[0];
+          // UTC 대신 로컬 날짜 사용
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const date = `${year}-${month}-${day}`;
           const time = now.toTimeString().split(' ')[0].slice(0, 5);
           const totalValue = items.reduce((sum, item) => sum + (item.current_inventory * item.price), 0);
+          
+          const userName = typeof currentUser === 'string' ? JSON.parse(currentUser).name : (currentUser ? currentUser.name : 'Unknown');
+          console.log('💾 Saving count (Employee) - User:', userName);
           
           const record = {
             id: Date.now(),
             date,
             time,
             timestamp: Date.now(),
-            userName: 'Employee',
+            userName: userName,  // ✅ 실제 사용자 이름!
             totalValue,
             totalItems: items.length,
             items: items.map(item => ({
@@ -1903,6 +1915,8 @@
               vendor: item.vendor
             }))
           };
+          
+          console.log('📊 Employee record to save:', { userName: record.userName, date: record.date });
           
           const newRecords = [record, ...countRecords];
           setCountRecords(newRecords);
