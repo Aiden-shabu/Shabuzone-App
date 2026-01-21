@@ -1279,6 +1279,22 @@
         return currentLocation + '/inventory/' + path;
       }
       
+      // 언어에 맞는 아이템 이름 반환
+      function getItemName(item) {
+        if (!item) return '';
+        
+        // 언어별 이름 우선순위
+        if (language === 'ko' && item.name_ko) {
+          return item.name_ko;
+        }
+        if (language === 'es' && item.name_es) {
+          return item.name_es;
+        }
+        
+        // 기본값: 영어 이름
+        return item.name || '';
+      }
+      
       // 로그인 & 네비게이션 함수
       async function handleLogin(e) {
         e.preventDefault();
@@ -4409,7 +4425,7 @@
                   h('div', { key: i, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}, [
                     h('div', { key: 'left', style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
                       h('span', { key: 'icon' }, storageIcons[item.category]),
-                      h('span', { key: 'name' }, item.name)
+                      h('span', { key: 'name' }, getItemName(item))
                     ]),
                     h('span', { key: 'qty', style: { color: '#64748b' }}, item.current_inventory + ' / ' + item.par)
                   ])
@@ -5057,7 +5073,7 @@
                   h('div', { key: 'info', style: { marginBottom: '0.75rem' }}, [
                     h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2c3e50' }}, [
                       h('span', { key: 'icon', className: 'category-badge', style: { background: `${categoryColors[item.category]}20`, color: categoryColors[item.category], border: `1px solid ${categoryColors[item.category]}40` }}, storageIcons[item.category]),
-                      h('span', { key: 'text' }, item.name + ' - ' + (itemCategory === 'Uncategorized' ? itemCategory : (getCategoryIcon(itemCategory) || '') + ' ' + getCategoryName(itemCategory)))
+                      h('span', { key: 'text' }, getItemName(item) + ' - ' + (itemCategory === 'Uncategorized' ? itemCategory : (getCategoryIcon(itemCategory) || '') + ' ' + getCategoryName(itemCategory)))
                     ]),
                     h('div', { key: 'meta', style: { fontSize: '0.875rem', color: '#64748b' }}, 'PAR: ' + item.par + ' | ' + item.vendor + ' | $' + item.price)
                   ]),
@@ -5375,7 +5391,7 @@
                               fontSize: '1.2rem',
                               color: '#2c3e50' 
                             }
-                          }, item.name),
+                          }, getItemName(item)),
                           
                           // 사진
                           item.imageUrl && h('img', {
@@ -6241,7 +6257,9 @@
                         onClick: async () => {
                           // 수량 입력 받기
                           const qty = prompt(
-                            language === 'ko' ? `${item.name} 수량을 입력하세요:` : `Enter quantity for ${item.name}:`,
+                            language === 'ko' ? `${getItemName(item)} 수량을 입력하세요:` : 
+                            language === 'es' ? `Ingrese la cantidad para ${getItemName(item)}:` :
+                            `Enter quantity for ${getItemName(item)}:`,
                             '1'
                           );
                           
@@ -6258,12 +6276,12 @@
                             
                             setShowAddItemModal(false);
                             setAddItemSearch('');
-                            alert(language === 'ko' ? '추가되었습니다!' : 'Added!');
+                            alert(language === 'ko' ? '추가되었습니다!' : language === 'es' ? '¡Añadido!' : 'Added!');
                           }
                         }
                       }, [
                         h('div', { key: 'name', style: { fontWeight: '600', marginBottom: '0.25rem' }}, 
-                          storageIcons[item.category] + ' ' + item.name),
+                          storageIcons[item.category] + ' ' + getItemName(item)),
                         h('div', { key: 'info', style: { fontSize: '0.875rem', color: '#64748b' }},
                           `${item.vendor || 'No vendor'} • $${item.price}`)
                       ])
