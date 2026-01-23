@@ -514,13 +514,13 @@
     try {
       if (!firebase.apps.length) {
         firebase.initializeApp({
-          apiKey: "AIzaSyDmwgN1QiwNMCjjBp1Dlux3ljeVA1Dpxd0",
+          apiKey: "AIzaSyDmwqN1QiwNWCjjBpiDlux3ljeVA1DpxdQ",
           authDomain: "shabu-zone-inventory.firebaseapp.com",
           databaseURL: "https://shabu-zone-inventory-default-rtdb.firebaseio.com",
           projectId: "shabu-zone-inventory",
           storageBucket: "shabu-zone-inventory.firebasestorage.app",
           messagingSenderId: "50004599942",
-          appId: "1:50004599942:web:71e5571527038c44b1d07"
+          appId: "1:50004599942:web:71e55715270386c44b1d07"
         });
       }
       window.db = firebase.database();
@@ -1300,7 +1300,7 @@
         e.preventDefault();
         
         // 관리자 로그인
-        if (password === '7442') {
+        if (password === '0214') {
           // Firebase Auth 익명 로그인 (보안 규칙용)
           try {
             await firebase.auth().signInAnonymously();
@@ -2526,6 +2526,16 @@
         try {
           setUploadingImage(true);
           
+          // 인증 상태 확인
+          const user = firebase.auth().currentUser;
+          console.log('🔐 Current user:', user ? user.uid : 'Not logged in');
+          
+          if (!user) {
+            console.warn('⚠️ User not authenticated, signing in...');
+            await firebase.auth().signInAnonymously();
+            console.log('✅ Signed in anonymously');
+          }
+          
           // 이미지 리사이즈 (800x800, 품질 80%)
           const resizedBlob = await resizeImage(file, 800, 800);
           
@@ -2533,8 +2543,12 @@
           const fileName = `${currentLocation.replace(/\s+/g, '_')}_${itemName.replace(/\s+/g, '_')}.jpg`;
           const storageRef = firebase.storage().ref(`item-images/${fileName}`);
           
+          console.log('📤 Uploading to:', fileName);
+          
           // 리사이즈된 파일 업로드
           await storageRef.put(resizedBlob);
+          
+          console.log('✅ Upload successful');
           
           // 다운로드 URL 가져오기
           const imageUrl = await storageRef.getDownloadURL();
@@ -2551,7 +2565,9 @@
           setShowImageModal(false);
           setUploadingImage(false);
         } catch (error) {
-          console.error('Image upload error:', error);
+          console.error('❌ Image upload error:', error);
+          console.error('Error code:', error.code);
+          console.error('Error message:', error.message);
           alert(language === 'ko' ? '업로드 실패: ' + error.message : 'Upload failed: ' + error.message);
           setUploadingImage(false);
         }
@@ -2733,7 +2749,7 @@
       }
 
       function handleResetData() {
-        if (resetPassword === '7442') {
+        if (resetPassword === '0214') {
           const resetItems = Array.isArray(items) ? items.map(item => {
             const initial = initialItems.find(i => i.name === item.name);
             return { ...item, current_inventory: initial ? initial.current_inventory : item.current_inventory };
