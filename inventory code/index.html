@@ -1300,7 +1300,7 @@
         e.preventDefault();
         
         // 관리자 로그인
-        if (password === '0214') {
+        if (password === '7442') {
           // Firebase Auth 익명 로그인 (보안 규칙용)
           try {
             await firebase.auth().signInAnonymously();
@@ -2733,7 +2733,7 @@
       }
 
       function handleResetData() {
-        if (resetPassword === '0214') {
+        if (resetPassword === '7442') {
           const resetItems = Array.isArray(items) ? items.map(item => {
             const initial = initialItems.find(i => i.name === item.name);
             return { ...item, current_inventory: initial ? initial.current_inventory : item.current_inventory };
