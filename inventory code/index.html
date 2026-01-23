@@ -1849,7 +1849,9 @@
           totalItems: tempItems.length,
           items: tempItems.map(item => ({
             name: item.name,
+            category: item.category,  // ✅ 추가!
             current_inventory: item.current_inventory,
+            par: item.par,  // ✅ 추가!
             price: item.price,
             vendor: item.vendor
           }))
@@ -1910,7 +1912,9 @@
             totalItems: items.length,
             items: items.map(item => ({
               name: item.name,
+              category: item.category,  // ✅ 추가!
               current_inventory: item.current_inventory,
+              par: item.par,  // ✅ 추가!
               price: item.price,
               vendor: item.vendor
             }))
@@ -2781,8 +2785,6 @@
         const todayCount = countRecords[0];
         // 어제 재고실사
         const yesterdayCount = countRecords[1];
-        // 어제 구매
-        const yesterdayPurchase = purchaseHistory[0];
         
         // 어제 재고 데이터 매핑
         const yesterdayInventory = {};
@@ -2792,21 +2794,22 @@
           });
         }
         
-        // 어제 주문 데이터 매핑
-        const yesterdayOrder = {};
-        if (yesterdayPurchase && yesterdayPurchase.items) {
-          yesterdayPurchase.items.forEach(item => {
-            yesterdayOrder[item.name] = item.quantity;
-          });
-        }
-        
-        // 오늘 시작 재고 (어제 실사 + 어제 주문)
-        const currentInv = {};
-        items.forEach(item => {
-          const yesterday = yesterdayInventory[item.name] || 0;
-          const ordered = yesterdayOrder[item.name] || 0;
-          currentInv[item.name] = yesterday + ordered;
+        // 현재 주문 중인 수량 계산 (정보 표시용, Daily Usage 계산 X)
+        const onOrderQty = {};
+        orderedLists.forEach(order => {
+          if (!order.completed) {  // 진행 중인 주문만
+            order.items.forEach(orderItem => {
+              if (!orderItem.received) {  // 아직 안 받은 것만
+                if (!onOrderQty[orderItem.name]) {
+                  onOrderQty[orderItem.name] = 0;
+                }
+                onOrderQty[orderItem.name] += parseFloat(orderItem.quantity) || 0;
+              }
+            });
+          }
         });
+        
+        console.log('📦 On order (not received):', onOrderQty);
         
         // 오늘 저녁 재고 (현재 실사)
         const endOfDay = {};
@@ -2816,21 +2819,20 @@
         
         const excelData = Array.isArray(items) ? items.map(item => {
           const inventory = yesterdayInventory[item.name] || 0;
-          const order = yesterdayOrder[item.name] || 0;
-          const current = currentInv[item.name] || 0;
+          const onOrder = onOrderQty[item.name] || 0;  // 주문 중 (정보만)
           const endDay = endOfDay[item.name] || 0;
-          const dailyUsage = current - endDay;
+          const dailyUsage = inventory - endDay;  // ✅ 어제 재고 - 오늘 재고
           const dailyUsageDollar = dailyUsage * item.price;
-          const totalInstockPrice = current * item.price;
+          const totalInstockPrice = inventory * item.price;
           
           return {
             'Name': item.name,
             'Vendor': item.vendor,
             'Unit Price / Case': item.price,
             'Total Instock Price': totalInstockPrice,
-            'Inventory': inventory,
-            'Order': order,
-            'Current Inv': current,
+            'Last Time Inventory': inventory,
+            'Order': onOrder,  // 주문 중인 수량 (정보만)
+            'Current Inv': inventory,  // ✅ 어제 재고만! (오더 더하지 않음)
             'End Of day': endDay,
             'Daily Usage #': dailyUsage,
             'Daily Usage $': dailyUsageDollar
@@ -2843,7 +2845,7 @@
         const ws_data = [[`${dateStr} Daily Inventory`], [], []];
         
         // 헤더 추가
-        ws_data.push(['Name', 'Vendor', 'Unit Price / Case', 'Total Instock Price', 'Inventory', 'Order', 'Current Inv', 'End Of day', 'Daily Usage #', 'Daily Usage $']);
+        ws_data.push(['Name', 'Vendor', 'Unit Price / Case', 'Total Instock Price', 'Last Time Inventory', 'Order', 'Current Inv', 'End Of day', 'Daily Usage #', 'Daily Usage $']);
         
         // 데이터 추가
         excelData.forEach(row => {
@@ -2852,8 +2854,8 @@
             row.Vendor,
             row['Unit Price / Case'],
             row['Total Instock Price'],
-            row.Inventory,
-            row.Order,
+            row['Last Time Inventory'],
+            row.Order,  // ✅ 주문 중인 수량
             row['Current Inv'],
             row['End Of day'],
             row['Daily Usage #'],
@@ -2945,77 +2947,108 @@
       }
 
       function downloadMonthlyUsageExcel() {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth(); // 0-11
-        const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-        
-        // 이번 달 시작/끝
-        const startDate = new Date(year, month, 1);
-        const endDate = new Date(year, month + 1, 0);
-        
-        // 이번 달 구매 내역 필터
-        const monthlyPurchases = purchaseHistory.filter(p => {
-          const pDate = new Date(p.date);
-          return pDate >= startDate && pDate <= endDate;
-        });
-        
-        // 아이템별 사용량 집계
-        const itemUsage = {};
-        monthlyPurchases.forEach(purchase => {
-          purchase.items.forEach(item => {
-            if (!itemUsage[item.name]) {
-              itemUsage[item.name] = {
-                name: item.name,
-                category: item.category,
-                vendor: item.vendor,
-                totalQuantity: 0,
-                totalCost: 0,
-                avgPrice: item.price
-              };
-            }
-            itemUsage[item.name].totalQuantity += item.quantity;
-            itemUsage[item.name].totalCost += item.total || (item.quantity * item.price);
-          });
-        });
-        
         const wb = XLSX.utils.book_new();
         
-        // 월간 사용량 데이터
-        const usageData = [
-          [`${year}년 ${monthNames[month]} 사용량 리포트`],
-          [`기간: ${startDate.toISOString().split('T')[0]} ~ ${endDate.toISOString().split('T')[0]}`],
-          [],
-          ['아이템명', '카테고리', '벤더', '총 사용량', '평균 가격', '총 비용']
-        ];
-        
-        Object.values(itemUsage).sort((a, b) => b.totalCost - a.totalCost).forEach(item => {
-          usageData.push([
-            item.name,
-            item.category,
-            item.vendor,
-            item.totalQuantity,
-            '$' + item.avgPrice.toFixed(2),
-            '$' + item.totalCost.toFixed(2)
-          ]);
+        // purchaseHistory를 월별로 그룹화
+        const byMonth = {};
+        purchaseHistory.forEach(p => {
+          const date = new Date(p.date);
+          const year = date.getFullYear();
+          const month = date.getMonth() + 1; // 1-12
+          const monthKey = `${year}년 ${month}월`;
+          
+          if (!byMonth[monthKey]) {
+            byMonth[monthKey] = [];
+          }
+          byMonth[monthKey].push(p);
         });
         
-        const totalCost = Object.values(itemUsage).reduce((sum, item) => sum + item.totalCost, 0);
-        usageData.push([]);
-        usageData.push(['총 비용', '', '', '', '', '$' + totalCost.toFixed(2)]);
+        // 월별로 정렬 (최신순)
+        const sortedMonths = Object.keys(byMonth).sort((a, b) => {
+          // "2024년 1월" 형태를 비교
+          const [yearA, monthA] = a.match(/(\d+)년 (\d+)월/).slice(1);
+          const [yearB, monthB] = b.match(/(\d+)년 (\d+)월/).slice(1);
+          const dateA = new Date(yearA, monthA - 1);
+          const dateB = new Date(yearB, monthB - 1);
+          return dateB - dateA; // 최신순
+        });
         
-        const ws = XLSX.utils.aoa_to_sheet(usageData);
-        ws['!cols'] = [
-          { wch: 30 },
-          { wch: 15 },
-          { wch: 15 },
-          { wch: 12 },
-          { wch: 12 },
-          { wch: 15 }
-        ];
+        if (sortedMonths.length === 0) {
+          alert(language === 'ko' ? '구매 기록이 없습니다!' : language === 'es' ? '¡No hay historial de compras!' : 'No purchase history!');
+          return;
+        }
         
-        XLSX.utils.book_append_sheet(wb, ws, '월간 사용량');
-        XLSX.writeFile(wb, `${year}년 ${monthNames[month]} 사용량.xlsx`);
+        // 각 월별 시트 생성
+        sortedMonths.forEach(monthKey => {
+          const monthPurchases = byMonth[monthKey];
+          
+          // 해당 월의 시작/끝 날짜 계산
+          const [year, month] = monthKey.match(/(\d+)년 (\d+)월/).slice(1);
+          const startDate = new Date(year, month - 1, 1);
+          const endDate = new Date(year, month, 0);
+          
+          // 아이템별 사용량 집계
+          const itemUsage = {};
+          monthPurchases.forEach(purchase => {
+            purchase.items.forEach(item => {
+              if (!itemUsage[item.name]) {
+                itemUsage[item.name] = {
+                  name: item.name,
+                  category: item.category || '',
+                  vendor: item.vendor || '',
+                  totalQuantity: 0,
+                  totalCost: 0,
+                  avgPrice: item.price || 0
+                };
+              }
+              itemUsage[item.name].totalQuantity += item.quantity || 0;
+              itemUsage[item.name].totalCost += item.total || (item.quantity * item.price) || 0;
+            });
+          });
+          
+          // 시트 데이터 생성
+          const usageData = [
+            [monthKey + ' 사용량 리포트'],
+            [`기간: ${startDate.toISOString().split('T')[0]} ~ ${endDate.toISOString().split('T')[0]}`],
+            [],
+            ['아이템명', '카테고리', '벤더', '총 사용량', '평균 가격', '총 비용']
+          ];
+          
+          // 총 비용 순으로 정렬
+          Object.values(itemUsage).sort((a, b) => b.totalCost - a.totalCost).forEach(item => {
+            usageData.push([
+              item.name,
+              item.category,
+              item.vendor,
+              item.totalQuantity,
+              '$' + item.avgPrice.toFixed(2),
+              '$' + item.totalCost.toFixed(2)
+            ]);
+          });
+          
+          const totalCost = Object.values(itemUsage).reduce((sum, item) => sum + item.totalCost, 0);
+          usageData.push([]);
+          usageData.push(['총 비용', '', '', '', '', '$' + totalCost.toFixed(2)]);
+          
+          const ws = XLSX.utils.aoa_to_sheet(usageData);
+          ws['!cols'] = [
+            { wch: 30 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 15 }
+          ];
+          
+          // 시트 추가 (시트 이름: "2024년 1월")
+          XLSX.utils.book_append_sheet(wb, ws, monthKey);
+        });
+        
+        // 파일명 생성
+        const now = new Date();
+        const filename = `${now.getFullYear()}년_월간사용량.xlsx`;
+        
+        XLSX.writeFile(wb, filename);
       }
 
       function getItemUsageData(itemName) {
@@ -5221,12 +5254,7 @@
                     fontWeight: 'bold'
                   }
                 }, orderedLists.filter(o => !o.completed).length)
-              ]),
-              inventoryRole !== 'employee' && h('button', { 
-                key: 'stock', 
-                className: 'nav-btn' + (shoppingSubTab === 'stock' ? ' active' : ''), 
-                onClick: () => setShoppingSubTab('stock') 
-              }, '📊 Current Stock')
+              ])
             ]),
 
             // Shopping List 탭
@@ -6093,103 +6121,6 @@
             ]),
 
             // Current Stock 탭
-            shoppingSubTab === 'stock' && h('div', { key: 'stock-content' }, [
-              h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}, [
-                h('h3', { key: 'title', style: { color: '#7f1d1d' }}, '📊 Current Stock Status'),
-                h('select', {
-                  key: 'filter',
-                  value: stockStatusFilter,
-                  onChange: (e) => setStockStatusFilter(e.target.value),
-                  style: {
-                    padding: '0.5rem 1rem',
-                    borderRadius: '8px',
-                    border: '2px solid #e2e8f0',
-                    background: 'white',
-                    color: '#2c3e50',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }
-                }, [
-                  h('option', { key: 'all', value: 'all' }, '🔍 All Items'),
-                  h('option', { key: 'low', value: 'low' }, '🔴 Low Stock'),
-                  h('option', { key: 'ok', value: 'ok' }, '🟢 Sufficient'),
-                  h('option', { key: 'ordered', value: 'ordered' }, '🟡 On Order')
-                ])
-              ]),
-              
-              h('div', { key: 'table-wrapper', style: { overflowX: 'auto' }}, [
-                h('table', { key: 'table', style: { width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}, [
-                  h('thead', { key: 'head' }, [
-                    h('tr', { key: 'row', style: { background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}, [
-                      h('th', { key: 'name', style: { padding: '0.75rem', textAlign: 'left', fontWeight: '700', color: '#2c3e50' }}, 'Item'),
-                      h('th', { key: 'current', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, 'Current'),
-                      h('th', { key: 'par', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, 'PAR'),
-                      h('th', { key: 'shortage', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, 'Shortage'),
-                      h('th', { key: 'ordered', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, 'Ordered'),
-                      h('th', { key: 'status', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, 'Status')
-                    ])
-                  ]),
-                  h('tbody', { key: 'body' },
-                    (() => {
-                      return items.filter(item => {
-                        const shortage = Math.max(0, item.par - item.current_inventory);
-                        
-                        // 진행 중인 주문에서 이 아이템의 미입고 수량 계산
-                        let orderedQty = 0;
-                        orderedLists.forEach(order => {
-                          if (!order.completed) {
-                            order.items.forEach(orderItem => {
-                              if (orderItem.name === item.name && !orderItem.received) {
-                                orderedQty += orderItem.quantity;
-                              }
-                            });
-                          }
-                        });
-                        
-                        // 필터링
-                        if (stockStatusFilter === 'low') return shortage > 0;
-                        if (stockStatusFilter === 'ok') return shortage === 0;
-                        if (stockStatusFilter === 'ordered') return orderedQty > 0;
-                        return true; // 'all'
-                      }).map((item, idx) => {
-                        const shortage = Math.max(0, item.par - item.current_inventory);
-                        
-                        // 진행 중인 주문에서 이 아이템의 미입고 수량 계산
-                        let orderedQty = 0;
-                        orderedLists.forEach(order => {
-                          if (!order.completed) {
-                            order.items.forEach(orderItem => {
-                              if (orderItem.name === item.name && !orderItem.received) {
-                                orderedQty += orderItem.quantity;
-                              }
-                            });
-                          }
-                        });
-                        
-                        const statusColor = shortage > 0 ? '#ef4444' : '#22c55e';
-                        const statusText = shortage > 0 ? '🔴 Low' : '🟢 OK';
-                        
-                        return h('tr', { 
-                          key: idx,
-                          style: { borderBottom: '1px solid #e2e8f0' }
-                        }, [
-                          h('td', { key: 'name', style: { padding: '0.75rem', fontWeight: '600', color: '#2c3e50' }}, getItemName(item)),
-                          h('td', { key: 'current', style: { padding: '0.75rem', textAlign: 'center', color: '#64748b' }}, item.current_inventory.toFixed(1)),
-                          h('td', { key: 'par', style: { padding: '0.75rem', textAlign: 'center', color: '#64748b' }}, item.par.toFixed(1)),
-                          h('td', { key: 'shortage', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: shortage > 0 ? '#ef4444' : '#64748b' }}, 
-                            shortage > 0 ? `-${shortage.toFixed(1)}` : '0'
-                          ),
-                          h('td', { key: 'ordered', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: orderedQty > 0 ? '#f59e0b' : '#64748b' }}, 
-                            orderedQty > 0 ? `+${orderedQty.toFixed(1)}` : '0'
-                          ),
-                          h('td', { key: 'status', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: statusColor }}, statusText)
-                        ]);
-                      });
-                    })()
-                  )
-                ])
-              ])
-            ]),
             
             // 아이템 추가 모달
             showAddItemModal && h('div', {
@@ -6323,6 +6254,7 @@
             h('div', { key: 'tabs', style: { display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto' }}, [
               h('button', { key: 'history', className: 'nav-btn' + (reportsSubTab === 'history' ? ' active' : ''), onClick: () => setReportsSubTab('history') }, t.purchaseHistory),
               h('button', { key: 'analysis', className: 'nav-btn' + (reportsSubTab === 'analysis' ? ' active' : ''), onClick: () => setReportsSubTab('analysis') }, t.itemAnalysis),
+              h('button', { key: 'stock', className: 'nav-btn' + (reportsSubTab === 'stock' ? ' active' : ''), onClick: () => setReportsSubTab('stock') }, language === 'ko' ? '📊 현재 재고' : language === 'es' ? '📊 Stock Actual' : '📊 Current Stock'),
               h('button', { key: 'count', className: 'nav-btn' + (reportsSubTab === 'count' ? ' active' : ''), onClick: () => setReportsSubTab('count') }, t.countRecords),
               h('button', { key: 'excel', className: 'nav-btn' + (reportsSubTab === 'excel' ? ' active' : ''), onClick: () => setReportsSubTab('excel') }, t.exportExcel)
             ]),
@@ -6453,6 +6385,100 @@
                   });
               })()
             ],
+
+            reportsSubTab === 'stock' && h('div', { key: 'stock-content' }, [
+              h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}, [
+                h('h3', { key: 'title', style: { color: '#7f1d1d' }}, language === 'ko' ? '📊 현재 재고 현황' : language === 'es' ? '📊 Estado del Stock Actual' : '📊 Current Stock Status'),
+                h('select', {
+                  key: 'filter',
+                  value: stockStatusFilter,
+                  onChange: (e) => setStockStatusFilter(e.target.value),
+                  style: {
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    border: '2px solid #e2e8f0',
+                    background: 'white',
+                    color: '#2c3e50',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }
+                }, [
+                  h('option', { key: 'all', value: 'all' }, language === 'ko' ? '🔍 모든 아이템' : language === 'es' ? '🔍 Todos los Artículos' : '🔍 All Items'),
+                  h('option', { key: 'low', value: 'low' }, language === 'ko' ? '🔴 부족' : language === 'es' ? '🔴 Stock Bajo' : '🔴 Low Stock'),
+                  h('option', { key: 'ok', value: 'ok' }, language === 'ko' ? '🟢 충분' : language === 'es' ? '🟢 Suficiente' : '🟢 Sufficient'),
+                  h('option', { key: 'ordered', value: 'ordered' }, language === 'ko' ? '🟡 주문 중' : language === 'es' ? '🟡 En Pedido' : '🟡 On Order')
+                ])
+              ]),
+              
+              h('div', { key: 'table-wrapper', style: { overflowX: 'auto' }}, [
+                h('table', { key: 'table', style: { width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}, [
+                  h('thead', { key: 'head' }, [
+                    h('tr', { key: 'row', style: { background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}, [
+                      h('th', { key: 'name', style: { padding: '0.75rem', textAlign: 'left', fontWeight: '700', color: '#2c3e50' }}, language === 'ko' ? '아이템' : language === 'es' ? 'Artículo' : 'Item'),
+                      h('th', { key: 'current', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, language === 'ko' ? '현재' : language === 'es' ? 'Actual' : 'Current'),
+                      h('th', { key: 'par', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, 'PAR'),
+                      h('th', { key: 'shortage', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, language === 'ko' ? '부족' : language === 'es' ? 'Faltante' : 'Shortage'),
+                      h('th', { key: 'ordered', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, language === 'ko' ? '주문됨' : language === 'es' ? 'Pedido' : 'Ordered'),
+                      h('th', { key: 'status', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, language === 'ko' ? '상태' : language === 'es' ? 'Estado' : 'Status')
+                    ])
+                  ]),
+                  h('tbody', { key: 'body' },
+                    (() => {
+                      return items.filter(item => {
+                        const shortage = Math.max(0, item.par - item.current_inventory);
+                        
+                        // 진행 중인 주문에서 이 아이템의 미입고 수량 계산
+                        let orderedQty = 0;
+                        orderedLists.forEach(order => {
+                          if (!order.completed) {
+                            order.items.forEach(orderItem => {
+                              if (orderItem.name === item.name && !orderItem.received) {
+                                orderedQty += orderItem.quantity;
+                              }
+                            });
+                          }
+                        });
+                        
+                        // 필터링
+                        if (stockStatusFilter === 'low') return shortage > 0;
+                        if (stockStatusFilter === 'ok') return shortage === 0;
+                        if (stockStatusFilter === 'ordered') return orderedQty > 0;
+                        return true; // 'all'
+                      }).map((item, idx) => {
+                        const shortage = Math.max(0, item.par - item.current_inventory);
+                        
+                        // 진행 중인 주문에서 이 아이템의 미입고 수량 계산
+                        let orderedQty = 0;
+                        orderedLists.forEach(order => {
+                          if (!order.completed) {
+                            order.items.forEach(orderItem => {
+                              if (orderItem.name === item.name && !orderItem.received) {
+                                orderedQty += orderItem.quantity;
+                              }
+                            });
+                          }
+                        });
+                        
+                        const statusColor = shortage > 0 ? '#ef4444' : '#22c55e';
+                        const statusText = shortage > 0 ? (language === 'ko' ? '🔴 부족' : language === 'es' ? '🔴 Bajo' : '🔴 Low') : (language === 'ko' ? '🟢 OK' : language === 'es' ? '🟢 OK' : '🟢 OK');
+                        
+                        return h('tr', { 
+                          key: idx,
+                          style: { borderBottom: '1px solid #e2e8f0' }
+                        }, [
+                          h('td', { key: 'name', style: { padding: '0.75rem', fontWeight: '600', color: '#2c3e50' }}, getItemName(item)),
+                          h('td', { key: 'current', style: { padding: '0.75rem', textAlign: 'center', color: '#2c3e50' }}, item.current_inventory),
+                          h('td', { key: 'par', style: { padding: '0.75rem', textAlign: 'center', color: '#64748b' }}, item.par),
+                          h('td', { key: 'shortage', style: { padding: '0.75rem', textAlign: 'center', color: shortage > 0 ? '#ef4444' : '#64748b', fontWeight: shortage > 0 ? '700' : '400' }}, shortage),
+                          h('td', { key: 'ordered', style: { padding: '0.75rem', textAlign: 'center', color: orderedQty > 0 ? '#f59e0b' : '#64748b' }}, orderedQty || '-'),
+                          h('td', { key: 'status', style: { padding: '0.75rem', textAlign: 'center', color: statusColor, fontWeight: '700' }}, statusText)
+                        ]);
+                      })
+                    })()
+                  )
+                ])
+              ])
+            ]),
 
             reportsSubTab === 'count' && (
               countRecords.length === 0 ? h('div', { key: 'empty', className: 'card', style: { textAlign: 'center', padding: '2rem', color: '#64748b' }}, t.noData) :
