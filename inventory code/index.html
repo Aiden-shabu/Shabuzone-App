@@ -921,23 +921,72 @@
       }); // 'manager' or 'employee'
       
       // 사용자 관리
-      const [currentUser, setCurrentUser] = useState(() => {
-        const saved = localStorage.getItem('currentUser');
-        const lastActive = localStorage.getItem('lastActiveTime');
-        if (saved && lastActive) {
+      const [currentUser, setCurrentUser] = useState(null); // 초기값은 null
+      
+      // 저장된 사용자 검증
+      useEffect(() => {
+        const validateSavedUser = async () => {
+          const saved = localStorage.getItem('currentUser');
+          const lastActive = localStorage.getItem('lastActiveTime');
+          
+          if (!saved || !lastActive) return;
+          
           const elapsed = Date.now() - parseInt(lastActive);
-          // 2시간 (7200000ms) 이상 비활성 시 자동 로그아웃
+          
+          // 2시간 이상 비활성 시 자동 로그아웃
           if (elapsed > 7200000) {
+            console.log('⏰ Session expired (>2 hours)');
             localStorage.removeItem('currentUser');
             localStorage.removeItem('lastActiveTime');
             localStorage.removeItem('currentLocation');
             localStorage.removeItem('currentModule');
-            return null;
+            return;
           }
-          return saved;
-        }
-        return null;
-      });
+          
+          try {
+            const savedUser = JSON.parse(saved);
+            console.log('🔍 Validating saved user:', savedUser.name, savedUser.id);
+            
+            // Admin은 항상 유효
+            if (savedUser.isAdmin && !savedUser.id) {
+              console.log('✅ Admin user is valid');
+              setCurrentUser(savedUser);
+              return;
+            }
+            
+            // 일반 사용자는 DB에 존재하는지 확인
+            if (savedUser.id) {
+              const usersSnap = await window.db.ref('users').once('value');
+              const usersData = usersSnap.val();
+              
+              let userExists = false;
+              
+              if (Array.isArray(usersData)) {
+                userExists = usersData.some(user => user && user.id === savedUser.id);
+              } else if (usersData) {
+                userExists = !!usersData[savedUser.id];
+              }
+              
+              if (userExists) {
+                console.log('✅ User exists in database');
+                setCurrentUser(savedUser);
+              } else {
+                console.log('❌ User not found in database - logging out');
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('lastActiveTime');
+                localStorage.removeItem('currentLocation');
+                localStorage.removeItem('currentModule');
+                setScreen('login');
+              }
+            }
+          } catch (error) {
+            console.error('Error validating user:', error);
+            localStorage.removeItem('currentUser');
+          }
+        };
+        
+        validateSavedUser();
+      }, []);
       const [isAdmin, setIsAdmin] = useState(false);
       const [users, setUsers] = useState([]);
       const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -1337,7 +1386,7 @@
         e.preventDefault();
         
         // 관리자 로그인
-        if (password === '0214') {
+        if (password === '7442') {
           // Firebase Auth 익명 로그인 (보안 규칙용)
           try {
             await firebase.auth().signInAnonymously();
@@ -1578,7 +1627,30 @@
       // 사용자 등록
       async function handleRegister() {
         if (!registerData.name || !registerData.password) {
-          alert('이름과 비밀번호를 입력해주세요');
+          alert(language === 'ko' ? '이름과 비밀번호를 입력해주세요' : language === 'es' ? 'Ingrese nombre y contraseña' : 'Please enter name and password');
+          return;
+        }
+        
+        // 비밀번호 중복 체크
+        const duplicatePassword = users.find(u => u.password === registerData.password);
+        if (duplicatePassword) {
+          alert(language === 'ko' 
+            ? `이미 사용 중인 비밀번호입니다!\n사용자: ${duplicatePassword.name}\n다른 비밀번호를 사용해주세요.`
+            : language === 'es'
+            ? `¡Esta contraseña ya está en uso!\nUsuario: ${duplicatePassword.name}\nPor favor, use otra contraseña.`
+            : `This password is already in use!\nUser: ${duplicatePassword.name}\nPlease use a different password.`
+          );
+          return;
+        }
+        
+        // 관리자 비밀번호(7442)와 중복 체크
+        if (registerData.password === '7442') {
+          alert(language === 'ko'
+            ? '관리자 비밀번호는 사용할 수 없습니다!\n다른 비밀번호를 사용해주세요.'
+            : language === 'es'
+            ? '¡No se puede usar la contraseña de administrador!\nPor favor, use otra contraseña.'
+            : 'Cannot use admin password!\nPlease use a different password.'
+          );
           return;
         }
         
@@ -1586,22 +1658,31 @@
         if (!registerData.isAdmin) {
           const hasAnyPermission = Object.values(registerData.permissions).some(v => v);
           if (!hasAnyPermission) {
-            alert('최소 하나 이상의 권한을 선택하거나 관리자 권한을 부여하세요');
+            alert(language === 'ko' 
+              ? '최소 하나 이상의 권한을 선택하거나 관리자 권한을 부여하세요'
+              : language === 'es'
+              ? 'Seleccione al menos un permiso o asigne permisos de administrador'
+              : 'Please select at least one permission or grant admin access'
+            );
             return;
           }
         }
         
         try {
           const newUserId = Date.now().toString();
-          await window.db.ref(`users/${newUserId}`).set({
+          const newUser = {
+            id: newUserId,
             name: registerData.name,
             password: registerData.password,
             isAdmin: registerData.isAdmin || false,
             permissions: registerData.permissions,
+            preferredLanguage: registerData.preferredLanguage || 'ko',
             createdAt: new Date().toISOString()
-          });
+          };
           
-          alert('사용자가 등록되었습니다');
+          await window.db.ref(`users/${newUserId}`).set(newUser);
+          
+          alert(language === 'ko' ? '사용자가 등록되었습니다' : language === 'es' ? 'Usuario registrado' : 'User registered');
           setShowRegisterModal(false);
           setRegisterData({
             name: '',
@@ -1613,7 +1694,7 @@
           loadUsers();
         } catch (error) {
           console.error('Error registering user:', error);
-          alert('사용자 등록 중 오류가 발생했습니다');
+          alert(language === 'ko' ? '사용자 등록 중 오류가 발생했습니다' : language === 'es' ? 'Error al registrar usuario' : 'Error registering user');
         }
       }
 
@@ -2834,7 +2915,7 @@
       }
 
       function handleResetData() {
-        if (resetPassword === '0214') {
+        if (resetPassword === '7442') {
           const resetItems = Array.isArray(items) ? items.map(item => {
             const initial = initialItems.find(i => i.name === item.name);
             return { ...item, current_inventory: initial ? initial.current_inventory : item.current_inventory };
