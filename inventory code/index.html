@@ -432,6 +432,7 @@
     .checkbox-item {
       display: flex;
       align-items: center;
+      gap: 0.75rem;
       padding: 0.75rem;
       background: white;
       border-radius: 8px;
@@ -444,8 +445,9 @@
     .checkbox-item input[type="checkbox"] {
       width: 20px;
       height: 20px;
-      margin-right: 0.75rem;
+      flex-shrink: 0;
       cursor: pointer;
+      margin: 0;
     }
     .checkbox-item label {
       flex: 1;
@@ -453,6 +455,7 @@
       font-size: 0.875rem;
       font-weight: 500;
       margin: 0;
+      line-height: 1.4;
     }
     .user-list {
       margin-top: 1.5rem;
@@ -1227,17 +1230,51 @@
 
       async function loadUsers() {
         try {
+          console.log('📥 Loading users from database...');
           const usersSnap = await window.db.ref('users').once('value');
+          
           if (usersSnap.exists()) {
             const usersData = usersSnap.val();
-            const usersList = Object.keys(usersData).map(key => ({
-              id: key,
-              ...usersData[key]
-            }));
+            console.log('📦 Raw users data:', usersData);
+            console.log('📦 Raw users data (JSON):', JSON.stringify(usersData, null, 2));
+            console.log('📦 Is Array?', Array.isArray(usersData));
+            
+            let usersList;
+            
+            if (Array.isArray(usersData)) {
+              // 배열 형태인 경우
+              console.log('⚠️ Users data is an array - filtering null/undefined');
+              
+              usersList = [];
+              for (let i = 0; i < usersData.length; i++) {
+                const user = usersData[i];
+                if (user && typeof user === 'object') {
+                  console.log(`  ✅ Index ${i}: Found user`, user.name || 'No name');
+                  usersList.push({ id: String(i), ...user });
+                } else {
+                  console.log(`  ❌ Index ${i}: Empty (${user})`);
+                }
+              }
+            } else {
+              // 객체 형태인 경우 (정상)
+              console.log('✅ Users data is an object');
+              usersList = Object.keys(usersData).map(key => ({
+                id: key,
+                ...usersData[key]
+              }));
+            }
+            
+            console.log('👥 Users list:', usersList);
+            console.log('📊 Total users:', usersList.length);
+            
             setUsers(usersList);
+            console.log('✅ Users state updated');
+          } else {
+            console.log('⚠️ No users found in database');
+            setUsers([]);
           }
         } catch (error) {
-          console.error('Error loading users:', error);
+          console.error('❌ Error loading users:', error);
         }
       }
 
@@ -1582,15 +1619,63 @@
 
       // 사용자 삭제
       async function handleDeleteUser(userId) {
-        if (!confirm('이 사용자를 삭제하시겠습니까?')) return;
+        console.log('🗑️ Attempting to delete user:', userId);
+        
+        if (!confirm('이 사용자를 삭제하시겠습니까?')) {
+          console.log('❌ User canceled deletion');
+          return;
+        }
         
         try {
-          await window.db.ref(`users/${userId}`).remove();
+          console.log('📤 Deleting user from database...');
+          
+          // 먼저 전체 users 데이터 가져오기
+          const usersSnap = await window.db.ref('users').once('value');
+          const usersData = usersSnap.val();
+          
+          if (Array.isArray(usersData)) {
+            console.log('🔍 Users is an array, finding correct index...');
+            
+            // 배열에서 해당 ID를 가진 사용자의 실제 인덱스 찾기
+            const targetIndex = usersData.findIndex(user => user && user.id === userId);
+            
+            if (targetIndex !== -1) {
+              console.log(`✅ Found user at index ${targetIndex}, deleting...`);
+              
+              // 해당 인덱스를 null로 설정
+              usersData[targetIndex] = null;
+              
+              // 전체 배열 다시 저장 (null 제거하고 객체로 변환)
+              const usersObject = {};
+              usersData.forEach((user, index) => {
+                if (user && user.id) {
+                  usersObject[user.id] = user;
+                }
+              });
+              
+              console.log('💾 Converting array to object and saving...');
+              await window.db.ref('users').set(usersObject);
+              console.log('✅ User deleted and database converted to object format');
+            } else {
+              console.error('❌ User not found in array');
+              alert('사용자를 찾을 수 없습니다');
+              return;
+            }
+          } else {
+            console.log('✅ Users is an object, direct delete');
+            await window.db.ref(`users/${userId}`).remove();
+            console.log('✅ User deleted from database');
+          }
+          
           alert('사용자가 삭제되었습니다');
-          loadUsers();
+          
+          console.log('🔄 Reloading users list...');
+          await loadUsers();
+          console.log('✅ Users list reloaded');
         } catch (error) {
-          console.error('Error deleting user:', error);
-          alert('사용자 삭제 중 오류가 발생했습니다');
+          console.error('❌ Error deleting user:', error);
+          console.error('Error details:', error.message, error.code);
+          alert('사용자 삭제 중 오류가 발생했습니다: ' + error.message);
         }
       }
 
