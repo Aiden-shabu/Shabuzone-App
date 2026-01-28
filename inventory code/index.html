@@ -3735,6 +3735,59 @@
                             border: '2px solid #3b82f6'
                           }
                         }, [
+                          // 이름 수정
+                          h('div', { key: 'name-group', style: { marginBottom: '1.5rem' }}, [
+                            h('label', { 
+                              key: 'label',
+                              style: { 
+                                display: 'block',
+                                fontWeight: '600',
+                                marginBottom: '0.5rem',
+                                color: '#2c3e50'
+                              }
+                            }, '👤 이름 (Name)'),
+                            h('input', {
+                              key: 'input',
+                              type: 'text',
+                              value: user.name,
+                              onChange: (e) => {
+                                const newName = e.target.value;
+                                const updatedUsers = users.map(u => 
+                                  u.id === user.id 
+                                    ? { ...u, name: newName }
+                                    : u
+                                );
+                                setUsers(updatedUsers);
+                              },
+                              onBlur: async (e) => {
+                                const newName = e.target.value.trim();
+                                if (!newName) {
+                                  alert(language === 'ko' ? '이름을 입력해주세요!' : language === 'es' ? '¡Ingrese un nombre!' : 'Please enter a name!');
+                                  const updatedUsers = users.map(u => 
+                                    u.id === user.id 
+                                      ? { ...u, name: user.name }
+                                      : u
+                                  );
+                                  setUsers(updatedUsers);
+                                  return;
+                                }
+                                
+                                // Firebase에 저장
+                                await window.db.ref(`users/${user.id}/name`).set(newName);
+                                alert(language === 'ko' ? '✅ 이름이 변경되었습니다!' : language === 'es' ? '¡Nombre actualizado!' : '✅ Name updated!');
+                              },
+                              placeholder: language === 'ko' ? '이름 입력' : language === 'es' ? 'Ingrese nombre' : 'Enter name',
+                              style: {
+                                width: '100%',
+                                padding: '0.75rem',
+                                border: '2px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '1rem',
+                                background: 'white'
+                              }
+                            })
+                          ]),
+                          
                           // 선호 언어
                           h('div', { key: 'language-group', style: { marginBottom: '1.5rem' }}, [
                             h('label', { 
@@ -5421,7 +5474,7 @@
                 onClick: () => setShoppingSubTab('confirm'),
                 style: orderedLists.filter(o => !o.completed).length > 0 ? { position: 'relative' } : {}
               }, [
-                '✅ Confirm Delivery',
+                language === 'ko' ? '✅ Confirm Order' : language === 'es' ? '✅ Confirmar Pedido' : '✅ Confirm Order',
                 orderedLists.filter(o => !o.completed).length > 0 && h('span', { 
                   key: 'badge',
                   style: { 
@@ -5457,7 +5510,7 @@
                   fontSize: '1.1rem',
                   padding: '1rem'
                 }
-              }, ['🛒 ', language === 'ko' ? '쇼핑리스트 생성' : language === 'es' ? 'Generar Lista de Compras' : 'Generate Shopping List']),
+              }, ['🛒 ', language === 'ko' ? '(1) 쇼핑리스트 생성' : language === 'es' ? '(1) Generar Lista de Compras' : '(1) Generate Shopping List']),
               
               // Employee/Manager 모두: 아이템 추가 버튼
               h('button', {
@@ -5839,7 +5892,7 @@
                   className: 'btn', 
                   onClick: completeOrder,
                   style: { marginTop: '1.5rem', background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }
-                }, '📦 Complete Order')
+                }, language === 'ko' ? '📦 (2) 주문 확인' : language === 'es' ? '📦 (2) Verificar Pedido' : '📦 (2) Check Order')
               ]
             ]),
 
@@ -6569,8 +6622,8 @@
             ],
 
             reportsSubTab === 'stock' && h('div', { key: 'stock-content' }, [
-              h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}, [
-                h('h3', { key: 'title', style: { color: '#7f1d1d' }}, language === 'ko' ? '📊 현재 재고 현황' : language === 'es' ? '📊 Estado del Stock Actual' : '📊 Current Stock Status'),
+              h('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}, [
+                h('h3', { key: 'title', style: { color: '#7f1d1d', flex: '1 1 auto', minWidth: '200px' }}, language === 'ko' ? '📊 현재재고 현황' : language === 'es' ? '📊 Estado del Stock Actual' : '📊 Current Stock Status'),
                 h('select', {
                   key: 'filter',
                   value: stockStatusFilter,
@@ -6582,7 +6635,8 @@
                     background: 'white',
                     color: '#2c3e50',
                     fontWeight: '600',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    flex: '0 0 auto'
                   }
                 }, [
                   h('option', { key: 'all', value: 'all' }, language === 'ko' ? '🔍 모든 아이템' : language === 'es' ? '🔍 Todos los Artículos' : '🔍 All Items'),
@@ -6592,16 +6646,16 @@
                 ])
               ]),
               
-              h('div', { key: 'table-wrapper', style: { overflowX: 'auto' }}, [
+              h('div', { key: 'table-wrapper', style: { overflowX: 'auto', maxHeight: '70vh', overflowY: 'auto' }}, [
                 h('table', { key: 'table', style: { width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}, [
-                  h('thead', { key: 'head' }, [
+                  h('thead', { key: 'head', style: { position: 'sticky', top: 0, background: '#f8fafc', zIndex: 10 } }, [
                     h('tr', { key: 'row', style: { background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}, [
-                      h('th', { key: 'name', style: { padding: '0.75rem', textAlign: 'left', fontWeight: '700', color: '#2c3e50' }}, language === 'ko' ? '아이템' : language === 'es' ? 'Artículo' : 'Item'),
-                      h('th', { key: 'current', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, language === 'ko' ? '현재' : language === 'es' ? 'Actual' : 'Current'),
-                      h('th', { key: 'par', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, 'PAR'),
-                      h('th', { key: 'shortage', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, language === 'ko' ? '부족' : language === 'es' ? 'Faltante' : 'Shortage'),
-                      h('th', { key: 'ordered', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, language === 'ko' ? '주문됨' : language === 'es' ? 'Pedido' : 'Ordered'),
-                      h('th', { key: 'status', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50' }}, language === 'ko' ? '상태' : language === 'es' ? 'Estado' : 'Status')
+                      h('th', { key: 'name', style: { padding: '0.75rem', textAlign: 'left', fontWeight: '700', color: '#2c3e50', position: 'sticky', top: 0, background: '#f8fafc' }}, language === 'ko' ? '아이템' : language === 'es' ? 'Artículo' : 'Item'),
+                      h('th', { key: 'current', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50', position: 'sticky', top: 0, background: '#f8fafc' }}, language === 'ko' ? '현재' : language === 'es' ? 'Actual' : 'Current'),
+                      h('th', { key: 'par', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50', position: 'sticky', top: 0, background: '#f8fafc' }}, 'PAR'),
+                      h('th', { key: 'shortage', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50', position: 'sticky', top: 0, background: '#f8fafc' }}, language === 'ko' ? '부족' : language === 'es' ? 'Faltante' : 'Shortage'),
+                      h('th', { key: 'ordered', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50', position: 'sticky', top: 0, background: '#f8fafc' }}, language === 'ko' ? '주문됨' : language === 'es' ? 'Pedido' : 'Ordered'),
+                      h('th', { key: 'status', style: { padding: '0.75rem', textAlign: 'center', fontWeight: '700', color: '#2c3e50', position: 'sticky', top: 0, background: '#f8fafc' }}, language === 'ko' ? '상태' : language === 'es' ? 'Estado' : 'Status')
                     ])
                   ]),
                   h('tbody', { key: 'body' },
