@@ -608,7 +608,7 @@
           preferences: "Preferences",
           schedule: "Schedule",
           excelView: "Excel View",
-          sections: "Sections"
+          tips: "Tips"
         },
         employees: {
           title: "Employee Management",
@@ -689,7 +689,7 @@
           preferences: "희망 스케줄",
           schedule: "스케줄",
           excelView: "엑셀 뷰",
-          sections: "섹션"
+          tips: "팁 관리"
         },
         employees: {
           title: "직원 관리",
@@ -755,7 +755,7 @@
           preferences: "Mong Muốn",
           schedule: "Lịch Làm",
           excelView: "Excel",
-          sections: "Khu Vực"
+          tips: "Tips"
         },
         employees: {
           title: "Quản Lý Nhân Viên",
@@ -829,7 +829,25 @@
       showModal: false,             // 모달 표시 여부
       editingEmployee: null,        // 수정 중인 직원
       selectedEmployee: null,       // 선택된 직원 (Preferences용)
-      generating: false             // 스케줄 생성 중
+      generating: false,            // 스케줄 생성 중
+      
+      // Tips 관련
+      tipsSubTab: 'entry',          // tips 서브탭: 'entry', 'statistics', 'settlement', 'history'
+      tipsData: {},                 // 팁 데이터: { "2026-01-27": { lunch: {}, dinner: {} } }
+      tipStats: {},                 // 통계: { "John": { pending, paid, total } }
+      settlements: [],              // 정산 기록
+      selectedTipDate: null,        // 선택된 날짜
+      tipEntryStep: 'select-date',  // 'select-date', 'lunch-select', 'lunch-entry', 'dinner-select', 'dinner-entry'
+      lunchWorkers: [],             // Lunch shift 근무자
+      dinnerWorkers: [],            // Dinner shift 근무자
+      lunchTips: {},                // { "John": 150.00 }
+      dinnerTips: {},               // { "John": 200.00 }
+      settlementStart: '',          // 정산 시작일
+      settlementEnd: '',            // 정산 종료일
+      settlementSummary: null,      // 정산 요약
+      selectedSettlement: null,     // History에서 선택된 정산
+      tipCalendarMonth: new Date(),  // 달력 월
+      confirmModal: null             // 확인 모달 데이터
     };
 
     // ============================================
@@ -840,17 +858,23 @@
       render();
       
       // --- Firebase에서 데이터 불러오기 ---
-      const [employees, requirements, preferences, schedule] = await Promise.all([
+      const [employees, requirements, preferences, schedule, tipsData, tipStats, settlements] = await Promise.all([
         storage.loadData('employees', []),
         storage.loadData('requirements', getDefaultRequirements()),
         storage.loadData('preferences', {}),
-        storage.loadData('schedule', {})
+        storage.loadData('schedule', {}),
+        storage.loadData('tips', {}),
+        storage.loadData('tipStats', {}),
+        storage.loadData('settlements', [])
       ]);
       
       state.employees = employees;
       state.requirements = requirements;
       state.preferences = preferences;
       state.schedule = schedule;
+      state.tipsData = tipsData;
+      state.tipStats = tipStats;
+      state.settlements = settlements;
       state.loading = false;
       
       render();
@@ -911,6 +935,7 @@
           ${renderContent(t)}
         </div>
         ${state.showModal ? renderModal(t) : ''}
+        ${state.confirmModal ? renderConfirmModal() : ''}
       `;
 
       attachEventListeners();
@@ -940,7 +965,7 @@
     function renderTabs(t) {
       return `
         <div class="tabs">
-          ${['employees', 'requirements', 'preferences', 'schedule', 'excelView', 'sections'].map(tab => `
+          ${['employees', 'requirements', 'preferences', 'schedule', 'excelView', 'tips'].map(tab => `
             <button class="tab ${state.activeTab === tab ? 'active' : ''}" data-tab="${tab}">
               ${t.tabs[tab]}
             </button>
@@ -958,7 +983,7 @@
           ${state.activeTab === 'preferences' ? renderPreferencesTab(t) : ''}
           ${state.activeTab === 'schedule' ? renderScheduleTab(t) : ''}
           ${state.activeTab === 'excelView' ? renderExcelViewTab(t) : ''}
-          ${state.activeTab === 'sections' ? renderSectionsTab(t) : ''}
+          ${state.activeTab === 'tips' ? renderTipsTab(t) : ''}
         </div>
       `;
     }
@@ -1556,12 +1581,1032 @@
 
     // SECTIONS TAB - 섹션 탭
     // ============================================
-    function renderSectionsTab(t) {
+    function renderTipsTab(t) {
+      // Tips 서브탭
+      const tipsSubTab = state.tipsSubTab || 'entry';
+      
       return `
-        <div style="padding:60px;text-align:center;">
-          <div style="font-size:48px;margin-bottom:16px;">🏗️</div>
-          <h2 style="color:#999;margin-bottom:8px;">${t.sections.title}</h2>
-          <p style="color:#999;">${t.sections.comingSoon}</p>
+        <div style="padding:20px;">
+          <!-- 서브탭 네비게이션 -->
+          <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:10px;">
+            <button 
+              onclick="setTipsSubTab('entry')" 
+              style="padding:10px 20px;border:none;background:${tipsSubTab === 'entry' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'entry' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
+              📅 Tip Entry
+            </button>
+            <button 
+              onclick="setTipsSubTab('statistics')" 
+              style="padding:10px 20px;border:none;background:${tipsSubTab === 'statistics' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'statistics' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
+              📊 Statistics
+            </button>
+            <button 
+              onclick="setTipsSubTab('settlement')" 
+              style="padding:10px 20px;border:none;background:${tipsSubTab === 'settlement' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'settlement' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
+              💰 Settlement
+            </button>
+            <button 
+              onclick="setTipsSubTab('history')" 
+              style="padding:10px 20px;border:none;background:${tipsSubTab === 'history' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'history' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
+              📜 History
+            </button>
+          </div>
+          
+          <!-- 서브탭 내용 -->
+          ${tipsSubTab === 'entry' ? renderTipEntry(t) : ''}
+          ${tipsSubTab === 'statistics' ? renderTipStatistics(t) : ''}
+          ${tipsSubTab === 'settlement' ? renderTipSettlement(t) : ''}
+          ${tipsSubTab === 'history' ? renderTipHistory(t) : ''}
+        </div>
+      `;
+    }
+    
+    // Tip Entry 탭
+    function renderTipEntry(t) {
+      const step = state.tipEntryStep;
+      
+      // Step 0: 기존 데이터 수정/추가 모드
+      if (step === 'edit-existing') {
+        return renderEditExistingTips();
+      }
+      
+      // Step 1: 날짜 선택
+      if (step === 'select-date') {
+        return renderTipCalendar();
+      }
+      
+      // Step 2: 근무자 선택 (Lunch/Dinner 통합)
+      if (step === 'worker-select') {
+        return renderWorkerSelection();
+      }
+      
+      // Step 3: Lunch 팁 입력
+      if (step === 'lunch-entry') {
+        return renderTipInput('lunch');
+      }
+      
+      // Step 4: Dinner 팁 입력
+      if (step === 'dinner-entry') {
+        return renderTipInput('dinner');
+      }
+    }
+    
+    // 기존 팁 수정/추가 화면
+    function renderEditExistingTips() {
+      const activeEmployees = state.employees.filter(e => e.status === 'active');
+      const lunchTips = state.lunchTips || {};
+      const dinnerTips = state.dinnerTips || {};
+      
+      // 아직 추가 안 된 직원들
+      const lunchEmployees = activeEmployees.filter(emp => !lunchTips[emp.name]);
+      const dinnerEmployees = activeEmployees.filter(emp => !dinnerTips[emp.name]);
+      
+      return `
+        <div style="max-width:900px;margin:0 auto;padding:20px;">
+          <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">✏️ Edit Tips</h2>
+          <p style="text-align:center;color:#64748b;margin-bottom:30px;">
+            ${new Date(state.selectedTipDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+          
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <!-- Lunch Tips -->
+            <div>
+              <h3 style="color:#92400e;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                <span>🌞</span>
+                <span>Lunch Tips</span>
+              </h3>
+              
+              <!-- 기존 Lunch 팁 -->
+              <div style="background:white;border-radius:8px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:16px;">
+                ${Object.keys(lunchTips).length > 0 ? 
+                  Object.keys(lunchTips).map(empName => `
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:#fef3c7;border-radius:6px;">
+                      <span style="flex:1;font-weight:600;color:#2c3e50;">${empName}</span>
+                      <div style="display:flex;align-items:center;gap:4px;">
+                        <span style="color:#92400e;font-weight:600;">$</span>
+                        <input type="number" 
+                               step="0.01" 
+                               value="${lunchTips[empName]}" 
+                               onchange="updateExistingTip('lunch', '${empName}', this.value)"
+                               style="width:90px;padding:6px;border:2px solid #fbbf24;border-radius:4px;text-align:right;background:white;">
+                        <button onclick="deleteExistingTip('lunch', '${empName}')" 
+                                style="padding:6px 10px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:600;">
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  `).join('') : 
+                  '<p style="color:#64748b;text-align:center;padding:20px;font-size:0.875rem;">No lunch tips yet</p>'
+                }
+              </div>
+              
+              <!-- 새 Lunch 팁 추가 -->
+              ${lunchEmployees.length > 0 ? `
+                <div style="background:#fff7ed;border-radius:8px;padding:16px;border:2px dashed #fbbf24;">
+                  <div style="font-weight:600;color:#92400e;margin-bottom:12px;font-size:0.875rem;">➕ Add Lunch Tip</div>
+                  <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <select id="newLunchEmployee" style="flex:1;padding:8px;border:2px solid #fbbf24;border-radius:6px;background:white;">
+                      <option value="">Select employee...</option>
+                      ${lunchEmployees.map(emp => `<option value="${emp.name}">${emp.name}</option>`).join('')}
+                    </select>
+                    <div style="display:flex;align-items:center;gap:4px;">
+                      <span style="color:#92400e;font-weight:600;">$</span>
+                      <input type="number" 
+                             id="newLunchAmount" 
+                             step="0.01" 
+                             placeholder="0.00"
+                             style="width:90px;padding:8px;border:2px solid #fbbf24;border-radius:6px;text-align:right;">
+                    </div>
+                  </div>
+                  <button onclick="addNewTip('lunch')" 
+                          style="width:100%;padding:10px;background:#fbbf24;color:#92400e;border:none;border-radius:6px;cursor:pointer;font-weight:700;">
+                    ➕ Add
+                  </button>
+                </div>
+              ` : '<p style="color:#64748b;text-align:center;padding:12px;font-size:0.875rem;background:#f8fafc;border-radius:6px;">All employees added</p>'}
+            </div>
+            
+            <!-- Dinner Tips -->
+            <div>
+              <h3 style="color:#1e40af;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                <span>🌙</span>
+                <span>Dinner Tips</span>
+              </h3>
+              
+              <!-- 기존 Dinner 팁 -->
+              <div style="background:white;border-radius:8px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:16px;">
+                ${Object.keys(dinnerTips).length > 0 ? 
+                  Object.keys(dinnerTips).map(empName => `
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:#dbeafe;border-radius:6px;">
+                      <span style="flex:1;font-weight:600;color:#2c3e50;">${empName}</span>
+                      <div style="display:flex;align-items:center;gap:4px;">
+                        <span style="color:#1e40af;font-weight:600;">$</span>
+                        <input type="number" 
+                               step="0.01" 
+                               value="${dinnerTips[empName]}" 
+                               onchange="updateExistingTip('dinner', '${empName}', this.value)"
+                               style="width:90px;padding:6px;border:2px solid #60a5fa;border-radius:4px;text-align:right;background:white;">
+                        <button onclick="deleteExistingTip('dinner', '${empName}')" 
+                                style="padding:6px 10px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:600;">
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  `).join('') : 
+                  '<p style="color:#64748b;text-align:center;padding:20px;font-size:0.875rem;">No dinner tips yet</p>'
+                }
+              </div>
+              
+              <!-- 새 Dinner 팁 추가 -->
+              ${dinnerEmployees.length > 0 ? `
+                <div style="background:#eff6ff;border-radius:8px;padding:16px;border:2px dashed #60a5fa;">
+                  <div style="font-weight:600;color:#1e40af;margin-bottom:12px;font-size:0.875rem;">➕ Add Dinner Tip</div>
+                  <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <select id="newDinnerEmployee" style="flex:1;padding:8px;border:2px solid #60a5fa;border-radius:6px;background:white;">
+                      <option value="">Select employee...</option>
+                      ${dinnerEmployees.map(emp => `<option value="${emp.name}">${emp.name}</option>`).join('')}
+                    </select>
+                    <div style="display:flex;align-items:center;gap:4px;">
+                      <span style="color:#1e40af;font-weight:600;">$</span>
+                      <input type="number" 
+                             id="newDinnerAmount" 
+                             step="0.01" 
+                             placeholder="0.00"
+                             style="width:90px;padding:8px;border:2px solid #60a5fa;border-radius:6px;text-align:right;">
+                    </div>
+                  </div>
+                  <button onclick="addNewTip('dinner')" 
+                          style="width:100%;padding:10px;background:#60a5fa;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;">
+                    ➕ Add
+                  </button>
+                </div>
+              ` : '<p style="color:#64748b;text-align:center;padding:12px;font-size:0.875rem;background:#f8fafc;border-radius:6px;">All employees added</p>'}
+            </div>
+          </div>
+          
+          <div style="display:flex;gap:12px;margin-top:30px;">
+            <button onclick="state.tipEntryStep='select-date';render();" 
+                    style="flex:1;padding:14px;background:white;color:#7f1d1d;border:2px solid #7f1d1d;border-radius:8px;cursor:pointer;font-weight:700;">
+              ← Back to Calendar
+            </button>
+            <button onclick="saveEditedTips()" 
+                    style="flex:2;padding:14px;background:#22c55e;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:1.1rem;">
+              💾 Save Changes
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    
+    // 기존 팁 업데이트
+    window.updateExistingTip = (shift, empName, amount) => {
+      const value = parseFloat(amount) || 0;
+      if (shift === 'lunch') {
+        state.lunchTips[empName] = value;
+      } else {
+        state.dinnerTips[empName] = value;
+      }
+    };
+    
+    // 기존 팁 삭제
+    window.deleteExistingTip = (shift, empName) => {
+      if (confirm(`Delete ${empName}'s ${shift} tip?`)) {
+        if (shift === 'lunch') {
+          delete state.lunchTips[empName];
+        } else {
+          delete state.dinnerTips[empName];
+        }
+        render();
+      }
+    };
+    
+    // 새 팁 추가
+    window.addNewTip = (shift) => {
+      const employeeSelect = document.getElementById(`new${shift === 'lunch' ? 'Lunch' : 'Dinner'}Employee`);
+      const amountInput = document.getElementById(`new${shift === 'lunch' ? 'Lunch' : 'Dinner'}Amount`);
+      
+      const empName = employeeSelect.value;
+      const amount = parseFloat(amountInput.value) || 0;
+      
+      if (!empName) {
+        alert('Please select an employee');
+        return;
+      }
+      
+      if (amount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+      }
+      
+      if (shift === 'lunch') {
+        state.lunchTips[empName] = amount;
+      } else {
+        state.dinnerTips[empName] = amount;
+      }
+      
+      render();
+    };
+    
+    // 수정된 팁 저장
+    window.saveEditedTips = async () => {
+      const date = state.selectedTipDate;
+      
+      // $0 제외
+      const filteredLunchTips = {};
+      Object.keys(state.lunchTips).forEach(empName => {
+        const amount = parseFloat(state.lunchTips[empName]) || 0;
+        if (amount > 0) {
+          filteredLunchTips[empName] = amount;
+        }
+      });
+      
+      const filteredDinnerTips = {};
+      Object.keys(state.dinnerTips).forEach(empName => {
+        const amount = parseFloat(state.dinnerTips[empName]) || 0;
+        if (amount > 0) {
+          filteredDinnerTips[empName] = amount;
+        }
+      });
+      
+      state.tipsData[date] = {
+        lunch: filteredLunchTips,
+        dinner: filteredDinnerTips
+      };
+      
+      await storage.saveData('tips', state.tipsData);
+      await updateTipStats();
+      
+      alert('✅ Tips updated successfully!');
+      state.tipEntryStep = 'select-date';
+      state.selectedTipDate = null;
+      render();
+    };
+    
+    // 달력 렌더링
+    function renderTipCalendar() {
+      const year = state.tipCalendarMonth.getFullYear();
+      const month = state.tipCalendarMonth.getMonth();
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+      
+      let calendar = '';
+      let dayCount = 1;
+      
+      for (let week = 0; week < 6; week++) {
+        let weekHtml = '<tr>';
+        for (let day = 0; day < 7; day++) {
+          if ((week === 0 && day < firstDay) || dayCount > daysInMonth) {
+            weekHtml += '<td></td>';
+          } else {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayCount).padStart(2, '0')}`;
+            const hasTips = state.tipsData[dateStr];
+            
+            // 오늘 날짜 비교 (로컬 시간대)
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            const isToday = dateStr === todayStr;
+            
+            weekHtml += `
+              <td onclick="selectTipDate('${dateStr}')" 
+                  style="padding:12px;text-align:center;cursor:pointer;border:1px solid #e2e8f0;
+                         background:${isToday ? '#fff7ed' : 'white'};
+                         position:relative;
+                         ${hasTips ? 'font-weight:700;' : ''}">
+                ${dayCount}
+                ${hasTips ? '<div style="width:6px;height:6px;background:#7f1d1d;border-radius:50%;position:absolute;bottom:4px;left:50%;transform:translateX(-50%);"></div>' : ''}
+              </td>
+            `;
+            dayCount++;
+          }
+        }
+        weekHtml += '</tr>';
+        calendar += weekHtml;
+        if (dayCount > daysInMonth) break;
+      }
+      
+      return `
+        <div style="max-width:600px;margin:0 auto;padding:20px;">
+          <h2 style="color:#7f1d1d;margin-bottom:20px;text-align:center;">📅 Select Date</h2>
+          
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <button onclick="changeCalendarMonth(-1)" style="padding:8px 16px;background:#7f1d1d;color:white;border:none;border-radius:6px;cursor:pointer;">
+              ← Prev
+            </button>
+            <h3 style="margin:0;">${monthNames[month]} ${year}</h3>
+            <button onclick="changeCalendarMonth(1)" style="padding:8px 16px;background:#7f1d1d;color:white;border:none;border-radius:6px;cursor:pointer;">
+              Next →
+            </button>
+          </div>
+          
+          <table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th style="padding:12px;color:#64748b;font-weight:600;">Sun</th>
+                <th style="padding:12px;color:#64748b;font-weight:600;">Mon</th>
+                <th style="padding:12px;color:#64748b;font-weight:600;">Tue</th>
+                <th style="padding:12px;color:#64748b;font-weight:600;">Wed</th>
+                <th style="padding:12px;color:#64748b;font-weight:600;">Thu</th>
+                <th style="padding:12px;color:#64748b;font-weight:600;">Fri</th>
+                <th style="padding:12px;color:#64748b;font-weight:600;">Sat</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${calendar}
+            </tbody>
+          </table>
+          
+          <p style="text-align:center;color:#64748b;margin-top:20px;font-size:0.875rem;">
+            • <span style="color:#7f1d1d;font-weight:700;">Bold dates</span> have tips recorded
+          </p>
+        </div>
+      `;
+    }
+    
+    // 달력 월 변경
+    window.changeCalendarMonth = (delta) => {
+      const newMonth = new Date(state.tipCalendarMonth);
+      newMonth.setMonth(newMonth.getMonth() + delta);
+      state.tipCalendarMonth = newMonth;
+      render();
+    };
+    
+    // 근무자 선택 화면 (통합)
+    function renderWorkerSelection() {
+      const workers = state.lunchWorkers; // 하나의 리스트로 통합
+      const activeEmployees = state.employees.filter(e => e.status === 'active');
+      
+      if (activeEmployees.length === 0) {
+        return `
+          <div style="text-align:center;padding:60px;">
+            <div style="font-size:48px;margin-bottom:16px;">👥</div>
+            <h2 style="color:#7f1d1d;margin-bottom:8px;">No Employees</h2>
+            <p style="color:#64748b;">Please add employees first</p>
+            <button onclick="state.tipEntryStep='select-date';render();" 
+                    style="margin-top:20px;padding:10px 20px;background:#7f1d1d;color:white;border:none;border-radius:6px;cursor:pointer;">
+              ← Back to Calendar
+            </button>
+          </div>
+        `;
+      }
+      
+      return `
+        <div style="max-width:600px;margin:0 auto;padding:20px;">
+          <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">👥 Select Workers</h2>
+          <p style="text-align:center;color:#64748b;margin-bottom:20px;">
+            ${new Date(state.selectedTipDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+          <p style="text-align:center;color:#64748b;margin-bottom:30px;font-weight:600;">
+            Select employees who worked (Lunch or Dinner)
+          </p>
+          
+          <div style="background:white;border-radius:8px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+            ${activeEmployees.map(emp => {
+              const isSelected = workers.includes(emp.name);
+              return `
+                <div onclick="toggleWorker('${emp.name}')" 
+                     style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;
+                            background:${isSelected ? '#f0fdf4' : '#f8fafc'};
+                            border:2px solid ${isSelected ? '#22c55e' : '#e2e8f0'};
+                            border-radius:8px;cursor:pointer;transition:all 0.2s;">
+                  <div style="width:24px;height:24px;border-radius:4px;
+                              background:${isSelected ? '#22c55e' : 'white'};
+                              border:2px solid ${isSelected ? '#22c55e' : '#cbd5e1'};
+                              display:flex;align-items:center;justify-content:center;
+                              color:white;font-weight:700;font-size:16px;">
+                    ${isSelected ? '✓' : ''}
+                  </div>
+                  <span style="font-weight:600;color:#2c3e50;">${emp.name}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+          
+          <div style="display:flex;gap:12px;margin-top:30px;">
+            <button onclick="state.tipEntryStep='select-date';render();" 
+                    style="flex:1;padding:12px;background:white;color:#7f1d1d;border:2px solid #7f1d1d;border-radius:8px;cursor:pointer;font-weight:600;">
+              ← Back
+            </button>
+            <button onclick="proceedToLunchEntry()" 
+                    style="flex:1;padding:12px;background:#7f1d1d;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;
+                           ${workers.length === 0 ? 'opacity:0.5;cursor:not-allowed;' : ''}"
+                    ${workers.length === 0 ? 'disabled' : ''}>
+              Next: Enter Tips →
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    
+    // 근무자 토글 (통합)
+    window.toggleWorker = (empName) => {
+      const index = state.lunchWorkers.indexOf(empName);
+      if (index === -1) {
+        state.lunchWorkers.push(empName);
+      } else {
+        state.lunchWorkers.splice(index, 1);
+      }
+      render();
+    };
+    
+    // Lunch 입력으로 진행
+    window.proceedToLunchEntry = () => {
+      if (state.lunchWorkers.length === 0) {
+        alert('Please select at least one employee');
+        return;
+      }
+      state.tipEntryStep = 'lunch-entry';
+      render();
+    };
+    
+    // 팁 입력 화면
+    function renderTipInput(shift) {
+      const shiftName = shift === 'lunch' ? '🌞 Lunch' : '🌙 Dinner';
+      const workers = state.lunchWorkers; // 선택된 전체 근무자 사용
+      const tips = shift === 'lunch' ? state.lunchTips : state.dinnerTips;
+      
+      return `
+        <div style="max-width:600px;margin:0 auto;padding:20px;">
+          <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">${shiftName} Tips</h2>
+          <p style="text-align:center;color:#64748b;margin-bottom:30px;">
+            ${new Date(state.selectedTipDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+          
+          <div style="background:white;border-radius:8px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+            ${workers.map(empName => `
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <span style="flex:1;font-weight:600;color:#2c3e50;">${empName}</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="color:#64748b;font-size:1.2rem;font-weight:600;">$</span>
+                  <input type="number" 
+                         step="0.01" 
+                         value="${tips[empName] || ''}" 
+                         onchange="set${shift === 'lunch' ? 'Lunch' : 'Dinner'}Tip('${empName}', this.value)"
+                         placeholder="0.00"
+                         style="width:120px;padding:10px;border:2px solid #e2e8f0;border-radius:6px;font-size:1rem;text-align:right;">
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <p style="text-align:center;color:#64748b;margin-top:20px;font-size:0.875rem;">
+            💡 Enter $0 if they didn't work this shift
+          </p>
+          
+          <div style="display:flex;gap:12px;margin-top:30px;">
+            <button onclick="state.tipEntryStep='worker-select';render();" 
+                    style="flex:1;padding:12px;background:white;color:#7f1d1d;border:2px solid #7f1d1d;border-radius:8px;cursor:pointer;font-weight:600;">
+              ← Back
+            </button>
+            <button onclick="confirmAnd${shift === 'lunch' ? 'SaveLunch' : 'SaveDinner'}Tips()" 
+                    style="flex:1;padding:12px;background:#22c55e;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
+              ${shift === 'lunch' ? '💾 Save & Next' : '✅ Save'}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Lunch 팁 확인 및 저장
+    window.confirmAndSaveLunchTips = () => {
+      const workers = state.lunchWorkers;
+      const tips = state.lunchTips;
+      
+      // $0 제외하고 실제 일한 사람만 필터링
+      const workedList = workers
+        .filter(name => (tips[name] || 0) > 0)
+        .map(name => ({ name, amount: tips[name] || 0 }))
+        .sort((a, b) => b.amount - a.amount); // 높은 가격순
+      
+      if (workedList.length === 0) {
+        if (confirm('No tips entered for Lunch. Skip Lunch and continue to Dinner?')) {
+          state.tipEntryStep = 'dinner-entry';
+          render();
+        }
+        return;
+      }
+      
+      // 총액 계산
+      const total = workedList.reduce((sum, w) => sum + w.amount, 0);
+      
+      // 커스텀 모달 표시
+      state.confirmModal = {
+        shift: 'lunch',
+        workers: workedList,
+        total: total,
+        onConfirm: () => {
+          state.confirmModal = null;
+          saveLunchTips();
+        },
+        onCancel: () => {
+          state.confirmModal = null;
+          render();
+        }
+      };
+      render();
+    };
+    
+    // Dinner 팁 확인 및 저장
+    window.confirmAndSaveDinnerTips = () => {
+      const workers = state.lunchWorkers;
+      const tips = state.dinnerTips;
+      
+      // $0 제외하고 실제 일한 사람만 필터링
+      const workedList = workers
+        .filter(name => (tips[name] || 0) > 0)
+        .map(name => ({ name, amount: tips[name] || 0 }))
+        .sort((a, b) => b.amount - a.amount); // 높은 가격순
+      
+      if (workedList.length === 0) {
+        if (confirm('No tips entered for Dinner. Save anyway?')) {
+          saveDinnerTips();
+        }
+        return;
+      }
+      
+      // 총액 계산
+      const total = workedList.reduce((sum, w) => sum + w.amount, 0);
+      
+      // 커스텀 모달 표시
+      state.confirmModal = {
+        shift: 'dinner',
+        workers: workedList,
+        total: total,
+        onConfirm: () => {
+          state.confirmModal = null;
+          saveDinnerTips();
+        },
+        onCancel: () => {
+          state.confirmModal = null;
+          render();
+        }
+      };
+      render();
+    };
+    
+    // Statistics 탭
+    function renderTipStatistics(t) {
+      const employees = Object.keys(state.tipStats);
+      
+      if (employees.length === 0) {
+        return `
+          <div style="text-align:center;padding:60px;">
+            <div style="font-size:48px;margin-bottom:16px;">📊</div>
+            <h2 style="color:#7f1d1d;margin-bottom:8px;">No Statistics Yet</h2>
+            <p style="color:#64748b;">Enter tips first to see statistics</p>
+          </div>
+        `;
+      }
+      
+      // 전체 합계 계산
+      let totalPending = 0;
+      let totalPaid = 0;
+      let grandTotal = 0;
+      
+      employees.forEach(empName => {
+        const stats = state.tipStats[empName];
+        totalPending += stats.pending || 0;
+        totalPaid += stats.paid || 0;
+        grandTotal += stats.total || 0;
+      });
+      
+      return `
+        <div style="max-width:800px;margin:0 auto;padding:20px;">
+          <h2 style="color:#7f1d1d;margin-bottom:30px;text-align:center;">📊 Tip Statistics</h2>
+          
+          <!-- 전체 요약 -->
+          <div style="background:linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);color:white;border-radius:12px;padding:24px;margin-bottom:30px;box-shadow:0 4px 12px rgba(127,29,29,0.2);">
+            <h3 style="margin:0 0 16px 0;font-size:1.1rem;opacity:0.9;">Overall Summary</h3>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+              <div>
+                <div style="font-size:0.875rem;opacity:0.9;margin-bottom:4px;">💰 Total (All)</div>
+                <div style="font-size:1.75rem;font-weight:700;">$${grandTotal.toFixed(2)}</div>
+              </div>
+              <div>
+                <div style="font-size:0.875rem;opacity:0.9;margin-bottom:4px;">⏳ Pending</div>
+                <div style="font-size:1.75rem;font-weight:700;">$${totalPending.toFixed(2)}</div>
+              </div>
+              <div>
+                <div style="font-size:0.875rem;opacity:0.9;margin-bottom:4px;">✅ Paid</div>
+                <div style="font-size:1.75rem;font-weight:700;">$${totalPaid.toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 직원별 통계 -->
+          <div style="display:grid;gap:16px;">
+            ${employees.map(empName => {
+              const stats = state.tipStats[empName];
+              const emp = state.employees.find(e => e.name === empName);
+              const isActive = emp && emp.status === 'active';
+              
+              return `
+                <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-left:4px solid ${isActive ? '#22c55e' : '#ef4444'};">
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <div style="font-size:1.5rem;">👤</div>
+                    <div style="flex:1;">
+                      <div style="font-size:1.25rem;font-weight:700;color:#2c3e50;">${empName}</div>
+                      <div style="font-size:0.875rem;color:${isActive ? '#22c55e' : '#ef4444'};font-weight:600;">
+                        ${isActive ? '✓ Active' : '✗ Left'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+                    <div style="text-align:center;padding:12px;background:#f8fafc;border-radius:8px;">
+                      <div style="font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600;">💰 TOTAL</div>
+                      <div style="font-size:1.25rem;font-weight:700;color:#2c3e50;">$${stats.total.toFixed(2)}</div>
+                    </div>
+                    <div style="text-align:center;padding:12px;background:#fef3c7;border-radius:8px;">
+                      <div style="font-size:0.75rem;color:#92400e;margin-bottom:4px;font-weight:600;">⏳ PENDING</div>
+                      <div style="font-size:1.25rem;font-weight:700;color:#92400e;">$${stats.pending.toFixed(2)}</div>
+                    </div>
+                    <div style="text-align:center;padding:12px;background:#d1fae5;border-radius:8px;">
+                      <div style="font-size:0.75rem;color:#065f46;margin-bottom:4px;font-weight:600;">✅ PAID</div>
+                      <div style="font-size:1.25rem;font-weight:700;color:#065f46;">$${stats.paid.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+    
+    // Settlement 탭
+    function renderTipSettlement(t) {
+      // 정산 요약이 있으면 표시
+      if (state.settlementSummary) {
+        return renderSettlementSummary();
+      }
+      
+      return `
+        <div style="max-width:700px;margin:0 auto;padding:20px;">
+          <h2 style="color:#7f1d1d;margin-bottom:30px;text-align:center;">💰 Tip Settlement</h2>
+          
+          <div style="background:white;border-radius:12px;padding:30px;box-shadow:0 2px 12px rgba(0,0,0,0.1);">
+            <h3 style="color:#2c3e50;margin:0 0 24px 0;font-size:1.1rem;">Settlement Period</h3>
+            
+            <div style="display:grid;gap:20px;margin-bottom:30px;">
+              <div>
+                <label style="display:block;color:#64748b;font-weight:600;margin-bottom:8px;font-size:0.875rem;">
+                  📅 Start Date
+                </label>
+                <input type="date" 
+                       value="${state.settlementStart}" 
+                       onchange="state.settlementStart=this.value;render();"
+                       style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:1rem;">
+              </div>
+              
+              <div>
+                <label style="display:block;color:#64748b;font-weight:600;margin-bottom:8px;font-size:0.875rem;">
+                  📅 End Date
+                </label>
+                <input type="date" 
+                       value="${state.settlementEnd}" 
+                       onchange="state.settlementEnd=this.value;render();"
+                       style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:1rem;">
+              </div>
+            </div>
+            
+            <button onclick="calculateSettlement()" 
+                    style="width:100%;padding:14px;background:#7f1d1d;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:1rem;
+                           ${!state.settlementStart || !state.settlementEnd ? 'opacity:0.5;cursor:not-allowed;' : ''}"
+                    ${!state.settlementStart || !state.settlementEnd ? 'disabled' : ''}>
+              🔍 Calculate Settlement
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    
+    // 정산 요약 화면
+    function renderSettlementSummary() {
+      const summary = state.settlementSummary;
+      const employees = Object.keys(summary.employees);
+      let grandTotal = 0;
+      
+      employees.forEach(empName => {
+        grandTotal += summary.employees[empName].total;
+      });
+      
+      return `
+        <div style="max-width:800px;margin:0 auto;padding:20px;">
+          <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">💰 Settlement Summary</h2>
+          <p style="text-align:center;color:#64748b;margin-bottom:30px;font-size:1rem;font-weight:600;">
+            ${new Date(summary.startDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})} ~ 
+            ${new Date(summary.endDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}
+          </p>
+          
+          <div style="display:grid;gap:16px;margin-bottom:30px;">
+            ${employees.map(empName => {
+              const empData = summary.employees[empName];
+              const emp = state.employees.find(e => e.name === empName);
+              const isActive = emp && emp.status === 'active';
+              
+              return `
+                <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <div style="font-size:1.5rem;">👤</div>
+                    <div style="flex:1;">
+                      <div style="font-size:1.25rem;font-weight:700;color:#2c3e50;">${empName}</div>
+                      <div style="font-size:0.875rem;color:${isActive ? '#22c55e' : '#64748b'};font-weight:600;">
+                        ${isActive ? 'Active' : 'Left'}
+                      </div>
+                    </div>
+                    <div style="font-size:1.5rem;font-weight:700;color:#7f1d1d;">
+                      $${empData.total.toFixed(2)}
+                    </div>
+                  </div>
+                  
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div style="background:#fef3c7;padding:12px;border-radius:8px;">
+                      <div style="font-size:0.75rem;color:#92400e;margin-bottom:4px;font-weight:600;">🌞 LUNCH</div>
+                      <div style="font-size:1.1rem;font-weight:700;color:#92400e;">$${empData.lunch.toFixed(2)}</div>
+                      <div style="font-size:0.75rem;color:#92400e;margin-top:4px;">
+                        Days: ${empData.lunchDays.sort((a,b) => a-b).join(', ')}
+                      </div>
+                    </div>
+                    <div style="background:#dbeafe;padding:12px;border-radius:8px;">
+                      <div style="font-size:0.75rem;color:#1e40af;margin-bottom:4px;font-weight:600;">🌙 DINNER</div>
+                      <div style="font-size:1.1rem;font-weight:700;color:#1e40af;">$${empData.dinner.toFixed(2)}</div>
+                      <div style="font-size:0.75rem;color:#1e40af;margin-top:4px;">
+                        Days: ${empData.dinnerDays.sort((a,b) => a-b).join(', ')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+          
+          <div style="background:linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);color:white;border-radius:12px;padding:24px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-size:1.25rem;font-weight:600;">🎯 Grand Total</div>
+              <div style="font-size:2rem;font-weight:700;">$${grandTotal.toFixed(2)}</div>
+            </div>
+          </div>
+          
+          <div style="display:flex;gap:12px;">
+            <button onclick="state.settlementSummary=null;render();" 
+                    style="flex:1;padding:14px;background:white;color:#7f1d1d;border:2px solid #7f1d1d;border-radius:8px;cursor:pointer;font-weight:700;">
+              ← Back
+            </button>
+            <button onclick="confirmSettlement()" 
+                    style="flex:1;padding:14px;background:#22c55e;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">
+              ✅ Confirm Settlement
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    
+    // History 탭
+    function renderTipHistory(t) {
+      // 선택된 정산 상세
+      if (state.selectedSettlement) {
+        return renderSettlementDetail();
+      }
+      
+      if (state.settlements.length === 0) {
+        return `
+          <div style="text-align:center;padding:60px;">
+            <div style="font-size:48px;margin-bottom:16px;">📜</div>
+            <h2 style="color:#7f1d1d;margin-bottom:8px;">No Settlement History</h2>
+            <p style="color:#64748b;">Complete a settlement to see history</p>
+          </div>
+        `;
+      }
+      
+      return `
+        <div style="max-width:900px;margin:0 auto;padding:20px;">
+          <h2 style="color:#7f1d1d;margin-bottom:30px;text-align:center;">📜 Settlement History</h2>
+          
+          <div style="display:grid;gap:16px;">
+            ${state.settlements.map(settlement => {
+              const startDate = new Date(settlement.startDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+              const endDate = new Date(settlement.endDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+              const settledDate = new Date(settlement.settledAt).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+              const empCount = Object.keys(settlement.employees).length;
+              
+              return `
+                <div onclick="selectSettlement('${settlement.id}')" 
+                     style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);cursor:pointer;transition:all 0.2s;border-left:4px solid #7f1d1d;"
+                     onmouseover="this.style.boxShadow='0 4px 16px rgba(127,29,29,0.2)'"
+                     onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'">
+                  <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+                    <div style="flex:1;">
+                      <div style="font-size:1.25rem;font-weight:700;color:#2c3e50;margin-bottom:4px;">
+                        ${startDate} ~ ${endDate}
+                      </div>
+                      <div style="font-size:0.875rem;color:#64748b;">
+                        Settled: ${settledDate}
+                      </div>
+                    </div>
+                    <div style="text-align:right;">
+                      <div style="font-size:1.75rem;font-weight:700;color:#7f1d1d;">
+                        $${settlement.grandTotal.toFixed(2)}
+                      </div>
+                      <div style="font-size:0.875rem;color:#64748b;">
+                        ${empCount} employee${empCount > 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div style="display:flex;gap:8px;align-items:center;color:#7f1d1d;font-weight:600;font-size:0.875rem;">
+                    <span>View Details</span>
+                    <span>→</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+    
+    // 정산 상세 화면
+    function renderSettlementDetail() {
+      const settlement = state.selectedSettlement;
+      const employees = Object.keys(settlement.employees);
+      
+      const startDate = new Date(settlement.startDate).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
+      const endDate = new Date(settlement.endDate).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
+      const settledDate = new Date(settlement.settledAt).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
+      
+      return `
+        <div style="max-width:800px;margin:0 auto;padding:20px;">
+          <button onclick="closeSettlementDetail()" 
+                  style="padding:8px 16px;background:white;color:#7f1d1d;border:2px solid #7f1d1d;border-radius:6px;cursor:pointer;font-weight:600;margin-bottom:20px;">
+            ← Back to History
+          </button>
+          
+          <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">💰 Settlement Details</h2>
+          <div style="text-align:center;margin-bottom:30px;">
+            <p style="color:#2c3e50;font-size:1.1rem;font-weight:600;margin-bottom:4px;">
+              ${startDate} ~ ${endDate}
+            </p>
+            <p style="color:#64748b;font-size:0.875rem;">
+              Settled on: ${settledDate}
+            </p>
+          </div>
+          
+          <div style="display:grid;gap:16px;margin-bottom:30px;">
+            ${employees.map(empName => {
+              const empData = settlement.employees[empName];
+              const emp = state.employees.find(e => e.name === empName);
+              const isActive = emp && emp.status === 'active';
+              
+              return `
+                <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <div style="font-size:1.5rem;">👤</div>
+                    <div style="flex:1;">
+                      <div style="font-size:1.25rem;font-weight:700;color:#2c3e50;">${empName}</div>
+                      <div style="font-size:0.875rem;color:${isActive ? '#22c55e' : '#ef4444'};font-weight:600;">
+                        ${isActive ? '✓ Active' : `✗ Left${emp && emp.leftDate ? ' (' + new Date(emp.leftDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) + ')' : ''}`}
+                      </div>
+                    </div>
+                    <div style="font-size:1.5rem;font-weight:700;color:#7f1d1d;">
+                      $${empData.total.toFixed(2)}
+                    </div>
+                  </div>
+                  
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div style="background:#fef3c7;padding:12px;border-radius:8px;">
+                      <div style="font-size:0.75rem;color:#92400e;margin-bottom:4px;font-weight:600;">🌞 LUNCH</div>
+                      <div style="font-size:1.1rem;font-weight:700;color:#92400e;margin-bottom:6px;">$${empData.lunch.toFixed(2)}</div>
+                      <div style="font-size:0.75rem;color:#92400e;">
+                        ${empData.lunchDays && empData.lunchDays.length > 0 ? 
+                          '• Days: ' + empData.lunchDays.sort((a,b) => a-b).join(', ') : 
+                          '• No shifts'}
+                      </div>
+                    </div>
+                    <div style="background:#dbeafe;padding:12px;border-radius:8px;">
+                      <div style="font-size:0.75rem;color:#1e40af;margin-bottom:4px;font-weight:600;">🌙 DINNER</div>
+                      <div style="font-size:1.1rem;font-weight:700;color:#1e40af;margin-bottom:6px;">$${empData.dinner.toFixed(2)}</div>
+                      <div style="font-size:0.75rem;color:#1e40af;">
+                        ${empData.dinnerDays && empData.dinnerDays.length > 0 ? 
+                          '• Days: ' + empData.dinnerDays.sort((a,b) => a-b).join(', ') : 
+                          '• No shifts'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+          
+          <div style="background:linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);color:white;border-radius:12px;padding:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-size:1.25rem;font-weight:600;">🎯 Grand Total</div>
+              <div style="font-size:2rem;font-weight:700;">$${settlement.grandTotal.toFixed(2)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ============================================
+    // CONFIRM MODAL - 팁 확인 모달
+    // ============================================
+    function renderConfirmModal() {
+      const modal = state.confirmModal;
+      const shiftName = modal.shift === 'lunch' ? '🌞 Lunch' : '🌙 Dinner';
+      const shiftColor = modal.shift === 'lunch' ? '#fbbf24' : '#60a5fa';
+      const shiftBg = modal.shift === 'lunch' ? '#fef3c7' : '#dbeafe';
+      
+      return `
+        <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;padding:20px;">
+          <div style="background:white;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:500px;width:100%;max-height:80vh;display:flex;flex-direction:column;">
+            <!-- 헤더 -->
+            <div style="padding:24px;border-bottom:2px solid #e2e8f0;background:${shiftBg};border-radius:16px 16px 0 0;">
+              <h2 style="margin:0;color:#2c3e50;font-size:1.5rem;display:flex;align-items:center;gap:12px;">
+                <span style="font-size:2rem;">${modal.shift === 'lunch' ? '🌞' : '🌙'}</span>
+                <span>${shiftName} Tips</span>
+              </h2>
+              <p style="margin:8px 0 0 0;color:#64748b;font-size:0.875rem;">
+                ${modal.workers.length} worker${modal.workers.length > 1 ? 's' : ''} • Total: $${modal.total.toFixed(2)}
+              </p>
+            </div>
+            
+            <!-- 직원 리스트 -->
+            <div style="flex:1;overflow-y:auto;padding:20px;">
+              ${modal.workers.map((worker, i) => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;margin-bottom:8px;background:#f8fafc;border-radius:8px;border-left:4px solid ${shiftColor};">
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="font-weight:700;color:#64748b;font-size:0.875rem;min-width:30px;">#${i + 1}</span>
+                    <span style="font-weight:600;color:#2c3e50;font-size:1rem;">${worker.name}</span>
+                  </div>
+                  <span style="font-weight:700;color:${modal.shift === 'lunch' ? '#92400e' : '#1e40af'};font-size:1.1rem;">
+                    $${worker.amount.toFixed(2)}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+            
+            <!-- 총액 -->
+            <div style="padding:20px;border-top:2px solid #e2e8f0;background:#f8fafc;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <span style="font-size:1.25rem;font-weight:700;color:#2c3e50;">Grand Total</span>
+                <span style="font-size:1.75rem;font-weight:700;color:#7f1d1d;">$${modal.total.toFixed(2)}</span>
+              </div>
+              
+              <!-- 버튼 -->
+              <div style="display:flex;gap:12px;">
+                <button onclick="state.confirmModal.onCancel()" 
+                        style="flex:1;padding:14px;background:white;color:#64748b;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;font-weight:700;font-size:1rem;">
+                  Cancel
+                </button>
+                <button onclick="state.confirmModal.onConfirm()" 
+                        style="flex:1;padding:14px;background:#22c55e;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:1rem;box-shadow:0 4px 12px rgba(34,197,94,0.3);">
+                  ✓ Confirm
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       `;
     }
@@ -1756,6 +2801,265 @@
         saveEmployees();
         render();
       }
+    };
+    
+    // ============================================
+    // TIPS 관련 함수
+    // ============================================
+    
+    // Tips 서브탭 변경
+    window.setTipsSubTab = (tab) => {
+      state.tipsSubTab = tab;
+      render();
+    };
+    
+    // 날짜 선택
+    window.selectTipDate = (dateStr) => {
+      state.selectedTipDate = dateStr;
+      
+      // 기존 팁 데이터가 있는지 확인
+      const existingTips = state.tipsData[dateStr];
+      
+      if (existingTips && (Object.keys(existingTips.lunch || {}).length > 0 || Object.keys(existingTips.dinner || {}).length > 0)) {
+        // 기존 데이터가 있으면 수정/추가 모드
+        state.tipEntryStep = 'edit-existing';
+        state.lunchTips = {...existingTips.lunch || {}};
+        state.dinnerTips = {...existingTips.dinner || {}};
+      } else {
+        // 새로 입력
+        state.tipEntryStep = 'worker-select';
+        state.lunchTips = {};
+        state.dinnerTips = {};
+      }
+      
+      state.lunchWorkers = [];
+      state.dinnerWorkers = [];
+      render();
+    };
+    
+    
+    // Lunch 팁 입력
+    window.setLunchTip = (empName, amount) => {
+      state.lunchTips[empName] = parseFloat(amount) || 0;
+    };
+    
+    // Dinner 팁 입력
+    window.setDinnerTip = (empName, amount) => {
+      state.dinnerTips[empName] = parseFloat(amount) || 0;
+    };
+    
+    // Lunch 팁 저장
+    window.saveLunchTips = async () => {
+      const date = state.selectedTipDate;
+      if (!state.tipsData[date]) {
+        state.tipsData[date] = { lunch: {}, dinner: {} };
+      }
+      
+      // $0 제외하고 저장
+      const filteredLunchTips = {};
+      Object.keys(state.lunchTips).forEach(empName => {
+        const amount = parseFloat(state.lunchTips[empName]) || 0;
+        if (amount > 0) {
+          filteredLunchTips[empName] = amount;
+        }
+      });
+      
+      state.tipsData[date].lunch = filteredLunchTips;
+      
+      await storage.saveData('tips', state.tipsData);
+      await updateTipStats();
+      
+      state.tipEntryStep = 'dinner-entry';
+      render();
+    };
+    
+    // Dinner 팁 저장
+    window.saveDinnerTips = async () => {
+      const date = state.selectedTipDate;
+      if (!state.tipsData[date]) {
+        state.tipsData[date] = { lunch: {}, dinner: {} };
+      }
+      
+      // $0 제외하고 저장
+      const filteredDinnerTips = {};
+      Object.keys(state.dinnerTips).forEach(empName => {
+        const amount = parseFloat(state.dinnerTips[empName]) || 0;
+        if (amount > 0) {
+          filteredDinnerTips[empName] = amount;
+        }
+      });
+      
+      state.tipsData[date].dinner = filteredDinnerTips;
+      
+      await storage.saveData('tips', state.tipsData);
+      await updateTipStats();
+      
+      alert('Tips saved successfully!');
+      state.tipEntryStep = 'select-date';
+      state.selectedTipDate = null;
+      render();
+    };
+    
+    // 팁 통계 업데이트
+    async function updateTipStats() {
+      const stats = {};
+      
+      // 모든 직원 초기화
+      state.employees.forEach(emp => {
+        stats[emp.name] = {
+          pending: 0,
+          paid: state.tipStats[emp.name]?.paid || 0,
+          total: 0
+        };
+      });
+      
+      // 모든 날짜의 팁 합산
+      Object.keys(state.tipsData).forEach(date => {
+        const dayTips = state.tipsData[date];
+        
+        // Lunch
+        Object.keys(dayTips.lunch || {}).forEach(empName => {
+          if (!stats[empName]) stats[empName] = { pending: 0, paid: 0, total: 0 };
+          stats[empName].pending += dayTips.lunch[empName];
+        });
+        
+        // Dinner
+        Object.keys(dayTips.dinner || {}).forEach(empName => {
+          if (!stats[empName]) stats[empName] = { pending: 0, paid: 0, total: 0 };
+          stats[empName].pending += dayTips.dinner[empName];
+        });
+      });
+      
+      // Total 계산
+      Object.keys(stats).forEach(empName => {
+        stats[empName].total = stats[empName].pending + stats[empName].paid;
+      });
+      
+      state.tipStats = stats;
+      await storage.saveData('tipStats', stats);
+    }
+    
+    // 정산 계산
+    window.calculateSettlement = () => {
+      const start = state.settlementStart;
+      const end = state.settlementEnd;
+      
+      if (!start || !end) {
+        alert('Please select start and end dates');
+        return;
+      }
+      
+      const summary = {
+        startDate: start,
+        endDate: end,
+        employees: {}
+      };
+      
+      // 기간 내 팁 합산
+      Object.keys(state.tipsData).forEach(date => {
+        if (date >= start && date <= end) {
+          const dayTips = state.tipsData[date];
+          
+          // Lunch
+          Object.keys(dayTips.lunch || {}).forEach(empName => {
+            if (!summary.employees[empName]) {
+              summary.employees[empName] = { 
+                lunch: 0, 
+                dinner: 0, 
+                total: 0,
+                lunchDays: [],
+                dinnerDays: []
+              };
+            }
+            summary.employees[empName].lunch += dayTips.lunch[empName];
+            const day = new Date(date).getDate();
+            summary.employees[empName].lunchDays.push(day);
+          });
+          
+          // Dinner
+          Object.keys(dayTips.dinner || {}).forEach(empName => {
+            if (!summary.employees[empName]) {
+              summary.employees[empName] = { 
+                lunch: 0, 
+                dinner: 0, 
+                total: 0,
+                lunchDays: [],
+                dinnerDays: []
+              };
+            }
+            summary.employees[empName].dinner += dayTips.dinner[empName];
+            const day = new Date(date).getDate();
+            summary.employees[empName].dinnerDays.push(day);
+          });
+        }
+      });
+      
+      // Total 계산
+      Object.keys(summary.employees).forEach(empName => {
+        summary.employees[empName].total = 
+          summary.employees[empName].lunch + 
+          summary.employees[empName].dinner;
+      });
+      
+      state.settlementSummary = summary;
+      render();
+    };
+    
+    // 정산 확정
+    window.confirmSettlement = async () => {
+      if (!confirm('Confirm this settlement?')) return;
+      
+      const summary = state.settlementSummary;
+      const settlementRecord = {
+        id: Date.now().toString(),
+        ...summary,
+        settledAt: new Date().toISOString(),
+        grandTotal: 0
+      };
+      
+      // Grand Total 계산
+      Object.keys(summary.employees).forEach(empName => {
+        settlementRecord.grandTotal += summary.employees[empName].total;
+        
+        // Paid에 추가
+        if (!state.tipStats[empName]) {
+          state.tipStats[empName] = { pending: 0, paid: 0, total: 0 };
+        }
+        state.tipStats[empName].paid += summary.employees[empName].total;
+      });
+      
+      // 정산 기록 저장
+      state.settlements.unshift(settlementRecord);
+      await storage.saveData('settlements', state.settlements);
+      
+      // 정산된 팁 데이터 삭제
+      Object.keys(state.tipsData).forEach(date => {
+        if (date >= summary.startDate && date <= summary.endDate) {
+          delete state.tipsData[date];
+        }
+      });
+      await storage.saveData('tips', state.tipsData);
+      
+      // 통계 업데이트
+      await updateTipStats();
+      
+      alert('Settlement completed!');
+      state.settlementSummary = null;
+      state.settlementStart = '';
+      state.settlementEnd = '';
+      render();
+    };
+    
+    // 정산 이력 선택
+    window.selectSettlement = (id) => {
+      state.selectedSettlement = state.settlements.find(s => s.id === id);
+      render();
+    };
+    
+    // 정산 이력 닫기
+    window.closeSettlementDetail = () => {
+      state.selectedSettlement = null;
+      render();
     };
 
     // --- 가능한 직원 보기 (돋보기 버튼) ---
