@@ -543,9 +543,11 @@
     const urlParams = new URLSearchParams(window.location.search);
     const LOCATION = urlParams.get('location') || 'houston';
     const INITIAL_LANG = urlParams.get('lang') || 'ko';
+    const READ_ONLY = urlParams.get('readonly') === 'true'; // 읽기 전용 모드
     
     console.log('🌍 Location:', LOCATION);
     console.log('🌐 Language:', INITIAL_LANG);
+    console.log('🔒 Read Only Mode:', READ_ONLY);
 
     // ============================================
     // STORAGE - Firebase Realtime Database 저장/불러오기 (v8)
@@ -963,9 +965,15 @@
 
     // --- 탭 네비게이션 렌더링 ---
     function renderTabs(t) {
+      // READ_ONLY 모드에서는 특정 탭만 표시
+      const allTabs = ['employees', 'requirements', 'preferences', 'schedule', 'excelView', 'tips'];
+      const visibleTabs = READ_ONLY 
+        ? ['employees', 'preferences', 'schedule', 'excelView', 'tips'] // READ_ONLY: Requirements만 숨김
+        : allTabs;
+      
       return `
         <div class="tabs">
-          ${['employees', 'requirements', 'preferences', 'schedule', 'excelView', 'tips'].map(tab => `
+          ${visibleTabs.map(tab => `
             <button class="tab ${state.activeTab === tab ? 'active' : ''}" data-tab="${tab}">
               ${t.tabs[tab]}
             </button>
@@ -996,9 +1004,11 @@
       return `
         <div style="display:flex;justify-content:space-between;margin-bottom:24px;">
           <h2 style="margin:0;font-size:24px;font-weight:600;">${t.employees.title} (${state.employees.length})</h2>
-          <button class="btn-primary" id="add-employee-btn">
-            ➕ ${t.employees.addEmployee}
-          </button>
+          ${!READ_ONLY ? `
+            <button class="btn-primary" id="add-employee-btn">
+              ➕ ${t.employees.addEmployee}
+            </button>
+          ` : ''}
         </div>
 
         ${state.employees.length === 0 ? `
@@ -1029,14 +1039,16 @@
                       </div>
                     ` : ''}
                   </div>
-                  <div style="display:flex;gap:8px;">
-                    <button onclick="editEmployee(${emp.id})" style="padding:6px;background:white;border:1px solid #ddd;border-radius:6px;cursor:pointer;" title="Edit">
-                      ✏️
-                    </button>
-                    <button onclick="deleteEmployee(${emp.id})" style="padding:6px;background:white;border:1px solid #ddd;border-radius:6px;cursor:pointer;color:#FF6B6B;" title="Delete">
-                      🗑️
-                    </button>
-                  </div>
+                  ${!READ_ONLY ? `
+                    <div style="display:flex;gap:8px;">
+                      <button onclick="editEmployee(${emp.id})" style="padding:6px;background:white;border:1px solid #ddd;border-radius:6px;cursor:pointer;" title="Edit">
+                        ✏️
+                      </button>
+                      <button onclick="deleteEmployee(${emp.id})" style="padding:6px;background:white;border:1px solid #ddd;border-radius:6px;cursor:pointer;color:#FF6B6B;" title="Delete">
+                        🗑️
+                      </button>
+                    </div>
+                  ` : ''}
                 </div>
               </div>
             `).join('')}
@@ -1117,10 +1129,22 @@
       const empPrefs = selectedEmp ? (state.preferences[selectedEmp.id] || {}) : {};
 
       return `
+        ${READ_ONLY ? `
+          <div style="padding:16px;background:#fff7ed;border-radius:8px;margin-bottom:20px;border:2px solid #fbbf24;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:1.5rem;">🔒</span>
+              <div>
+                <div style="font-weight:700;color:#92400e;margin-bottom:4px;">Read-Only Mode</div>
+                <div style="color:#64748b;font-size:0.875rem;">You can view preferences but cannot modify them</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+        
         <div style="margin-bottom:24px;">
           <h2 style="margin:0 0 16px 0;font-size:24px;font-weight:600;">${t.preferences.title}</h2>
           
-          <select id="employee-selector" style="width:300px;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px;">
+          <select id="employee-selector" style="width:300px;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:15px;" ${READ_ONLY ? 'disabled' : ''}>
             <option value="">${t.preferences.selectEmployee}</option>
             ${activeEmployees.map(emp => `
               <option value="${emp.id}" ${selectedEmp?.id === emp.id ? 'selected' : ''}>${emp.name}</option>
@@ -1131,7 +1155,7 @@
         ${!selectedEmp ? `
           <div style="padding:60px;text-align:center;background:#f9f9f9;border-radius:12px;border:2px dashed #ddd;">
             <div style="font-size:48px;margin-bottom:16px;">👤</div>
-            <p style="color:#999;font-size:16px;">Select an employee to set preferences</p>
+            <p style="color:#999;font-size:16px;">Select an employee to ${READ_ONLY ? 'view' : 'set'} preferences</p>
           </div>
         ` : `
           <div style="padding:24px;background:white;border-radius:12px;border:2px solid #7f1d1d;">
@@ -1154,29 +1178,31 @@
                     <tr>
                       <td style="font-weight:500;">${t.days?.[day] || day}</td>
                       <td style="text-align:center;">
-                        <button class="pref-button" onclick="cyclePreference('${day}', 'morning')" 
-                                style="background:${getPrefColor(dayPrefs.morning, 'morning')};">
+                        <button class="pref-button" 
+                                ${READ_ONLY ? '' : `onclick="cyclePreference('${day}', 'morning')"`}
+                                style="background:${getPrefColor(dayPrefs.morning, 'morning')};${READ_ONLY ? 'cursor:not-allowed;opacity:0.7;' : ''}">
                           ${getPrefEmoji(dayPrefs.morning, 'morning')}
                         </button>
                       </td>
                       <td style="text-align:center;">
                         <input type="checkbox" 
                                ${dayPrefs.morningFixed ? 'checked' : ''} 
-                               onchange="toggleFixed('${day}', 'morning')"
-                               style="width:20px;height:20px;cursor:pointer;"
+                               ${READ_ONLY ? 'disabled' : `onchange="toggleFixed('${day}', 'morning')"`}
+                               style="width:20px;height:20px;${READ_ONLY ? 'cursor:not-allowed;' : 'cursor:pointer;'}"
                                ${dayPrefs.morning === 0 ? 'disabled' : ''}>
                       </td>
                       <td style="text-align:center;">
-                        <button class="pref-button" onclick="cyclePreference('${day}', 'evening')" 
-                                style="background:${getPrefColor(dayPrefs.evening, 'evening')};">
+                        <button class="pref-button" 
+                                ${READ_ONLY ? '' : `onclick="cyclePreference('${day}', 'evening')"`}
+                                style="background:${getPrefColor(dayPrefs.evening, 'evening')};${READ_ONLY ? 'cursor:not-allowed;opacity:0.7;' : ''}">
                           ${getPrefEmoji(dayPrefs.evening, 'evening')}
                         </button>
                       </td>
                       <td style="text-align:center;">
                         <input type="checkbox" 
                                ${dayPrefs.eveningFixed ? 'checked' : ''} 
-                               onchange="toggleFixed('${day}', 'evening')"
-                               style="width:20px;height:20px;cursor:pointer;"
+                               ${READ_ONLY ? 'disabled' : `onchange="toggleFixed('${day}', 'evening')"`}
+                               style="width:20px;height:20px;${READ_ONLY ? 'cursor:not-allowed;' : 'cursor:pointer;'}"
                                ${dayPrefs.evening === 0 ? 'disabled' : ''}>
                       </td>
                     </tr>
@@ -1201,15 +1227,18 @@
                 ${t.preferences.minGuarantee}:
               </label>
               <input type="number" min="0" id="min-guarantee" value="${empPrefs.minGuarantee || 0}" 
-                     style="width:100px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:15px;">
+                     style="width:100px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:15px;"
+                     ${READ_ONLY ? 'disabled' : ''}>
               <div style="margin-top:8px;font-size:12px;color:#666;">
                 (Applies only to non-fixed shifts. Fixed shifts are always assigned.)
               </div>
             </div>
 
-            <button class="btn-primary" onclick="saveCurrentPreferences()" style="margin-top:24px;">
-              💾 ${t.preferences.savePreferences}
-            </button>
+            ${!READ_ONLY ? `
+              <button class="btn-primary" onclick="saveCurrentPreferences()" style="margin-top:24px;">
+                💾 ${t.preferences.savePreferences}
+              </button>
+            ` : ''}
 
             ${empPrefs.savedAt ? `
               <div style="margin-top:12px;color:#4CAF50;font-size:14px;">
@@ -1245,9 +1274,11 @@
       return `
         <div style="display:flex;justify-content:space-between;margin-bottom:24px;">
           <h2 style="margin:0;font-size:24px;font-weight:600;">${t.schedule.title}</h2>
-          <button class="btn-primary" onclick="runScheduleGeneration()" ${state.generating ? 'disabled' : ''}>
-            ${state.generating ? '⏳' : '▶️'} ${state.generating ? t.schedule.generating : t.schedule.runSchedule}
-          </button>
+          ${!READ_ONLY ? `
+            <button class="btn-primary" onclick="runScheduleGeneration()" ${state.generating ? 'disabled' : ''}>
+              ${state.generating ? '⏳' : '▶️'} ${state.generating ? t.schedule.generating : t.schedule.runSchedule}
+            </button>
+          ` : ''}
         </div>
 
         ${!hasSchedule ? `
@@ -1588,34 +1619,49 @@
       return `
         <div style="padding:20px;">
           <!-- 서브탭 네비게이션 -->
-          <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:10px;">
-            <button 
-              onclick="setTipsSubTab('entry')" 
-              style="padding:10px 20px;border:none;background:${tipsSubTab === 'entry' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'entry' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
-              📅 Tip Entry
-            </button>
-            <button 
-              onclick="setTipsSubTab('statistics')" 
-              style="padding:10px 20px;border:none;background:${tipsSubTab === 'statistics' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'statistics' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
-              📊 Statistics
-            </button>
-            <button 
-              onclick="setTipsSubTab('settlement')" 
-              style="padding:10px 20px;border:none;background:${tipsSubTab === 'settlement' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'settlement' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
-              💰 Settlement
-            </button>
-            <button 
-              onclick="setTipsSubTab('history')" 
-              style="padding:10px 20px;border:none;background:${tipsSubTab === 'history' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'history' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
-              📜 History
-            </button>
-          </div>
+          ${READ_ONLY ? `
+            <!-- READ_ONLY 모드: Statistics만 표시 -->
+            <div style="padding:20px;background:#fff7ed;border-radius:8px;margin-bottom:20px;border:2px solid #fbbf24;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:1.5rem;">🔒</span>
+                <div>
+                  <div style="font-weight:700;color:#92400e;margin-bottom:4px;">Read-Only Mode</div>
+                  <div style="color:#64748b;font-size:0.875rem;">You can only view tip statistics</div>
+                </div>
+              </div>
+            </div>
+          ` : `
+            <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:10px;">
+              <button 
+                onclick="setTipsSubTab('entry')" 
+                style="padding:10px 20px;border:none;background:${tipsSubTab === 'entry' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'entry' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
+                📅 Tip Entry
+              </button>
+              <button 
+                onclick="setTipsSubTab('statistics')" 
+                style="padding:10px 20px;border:none;background:${tipsSubTab === 'statistics' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'statistics' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
+                📊 Statistics
+              </button>
+              <button 
+                onclick="setTipsSubTab('settlement')" 
+                style="padding:10px 20px;border:none;background:${tipsSubTab === 'settlement' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'settlement' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
+                💰 Settlement
+              </button>
+              <button 
+                onclick="setTipsSubTab('history')" 
+                style="padding:10px 20px;border:none;background:${tipsSubTab === 'history' ? '#7f1d1d' : 'transparent'};color:${tipsSubTab === 'history' ? 'white' : '#64748b'};border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;">
+                📜 History
+              </button>
+            </div>
+          `}
           
           <!-- 서브탭 내용 -->
-          ${tipsSubTab === 'entry' ? renderTipEntry(t) : ''}
-          ${tipsSubTab === 'statistics' ? renderTipStatistics(t) : ''}
-          ${tipsSubTab === 'settlement' ? renderTipSettlement(t) : ''}
-          ${tipsSubTab === 'history' ? renderTipHistory(t) : ''}
+          ${READ_ONLY ? renderTipStatistics(t) : `
+            ${tipsSubTab === 'entry' ? renderTipEntry(t) : ''}
+            ${tipsSubTab === 'statistics' ? renderTipStatistics(t) : ''}
+            ${tipsSubTab === 'settlement' ? renderTipSettlement(t) : ''}
+            ${tipsSubTab === 'history' ? renderTipHistory(t) : ''}
+          `}
         </div>
       `;
     }
@@ -1652,11 +1698,13 @@
     
     // 기존 팁 수정/추가 화면
     function renderEditExistingTips() {
-      const activeEmployees = state.employees.filter(e => e.status === 'active');
+      const activeEmployees = state.employees
+        .filter(e => e.status === 'active')
+        .sort((a, b) => a.name.localeCompare(b.name)); // 알파벳순 정렬
       const lunchTips = state.lunchTips || {};
       const dinnerTips = state.dinnerTips || {};
       
-      // 아직 추가 안 된 직원들
+      // 아직 추가 안 된 직원들 (알파벳순 유지)
       const lunchEmployees = activeEmployees.filter(emp => !lunchTips[emp.name]);
       const dinnerEmployees = activeEmployees.filter(emp => !dinnerTips[emp.name]);
       
@@ -1678,7 +1726,7 @@
               <!-- 기존 Lunch 팁 -->
               <div style="background:white;border-radius:8px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:16px;">
                 ${Object.keys(lunchTips).length > 0 ? 
-                  Object.keys(lunchTips).map(empName => `
+                  Object.keys(lunchTips).sort((a, b) => a.localeCompare(b)).map(empName => `
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:#fef3c7;border-radius:6px;">
                       <span style="flex:1;font-weight:600;color:#2c3e50;">${empName}</span>
                       <div style="display:flex;align-items:center;gap:4px;">
@@ -1735,7 +1783,7 @@
               <!-- 기존 Dinner 팁 -->
               <div style="background:white;border-radius:8px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:16px;">
                 ${Object.keys(dinnerTips).length > 0 ? 
-                  Object.keys(dinnerTips).map(empName => `
+                  Object.keys(dinnerTips).sort((a, b) => a.localeCompare(b)).map(empName => `
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px;background:#dbeafe;border-radius:6px;">
                       <span style="flex:1;font-weight:600;color:#2c3e50;">${empName}</span>
                       <div style="display:flex;align-items:center;gap:4px;">
@@ -1975,7 +2023,9 @@
     // 근무자 선택 화면 (통합)
     function renderWorkerSelection() {
       const workers = state.lunchWorkers; // 하나의 리스트로 통합
-      const activeEmployees = state.employees.filter(e => e.status === 'active');
+      const activeEmployees = state.employees
+        .filter(e => e.status === 'active')
+        .sort((a, b) => a.name.localeCompare(b.name)); // 알파벳순 정렬
       
       if (activeEmployees.length === 0) {
         return `
