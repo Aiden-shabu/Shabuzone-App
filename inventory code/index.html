@@ -592,7 +592,7 @@
             preferences: '희망 스케줄',
             schedule: '스케줄',
             excelView: '엑셀 뷰',
-            sections: '섹션'
+            tips: '팁 관리'
           },
           employees: {
             title: '직원 관리',
@@ -659,9 +659,56 @@
             availableEmployees: '교체 가능 직원',
             swapWith: '클릭하여 교체'
           },
-          sections: {
-            title: '섹션 배정',
-            comingSoon: '준비 중입니다!'
+          tips: {
+            title: '팁 관리',
+            tabs: {
+              entry: '팁 입력',
+              statistics: '통계',
+              settlement: '정산',
+              history: '정산 이력'
+            },
+            entry: {
+              selectDate: '날짜를 선택하세요',
+              lunchShift: 'Lunch Shift',
+              dinnerShift: 'Dinner Shift',
+              selectWorkers: '근무한 직원을 선택하세요',
+              enterTips: '팁을 입력하세요',
+              save: '저장',
+              cancel: '취소',
+              next: '다음',
+              back: '뒤로',
+              lunch: '점심',
+              dinner: '저녁',
+              noEmployees: '등록된 직원이 없습니다'
+            },
+            statistics: {
+              title: '팁 통계',
+              overallSummary: '전체 요약',
+              total: '총액',
+              pending: '미정산',
+              paid: '정산완료',
+              active: '근무중',
+              left: '퇴사'
+            },
+            settlement: {
+              title: '정산하기',
+              period: '정산 기간',
+              startDate: '시작일',
+              endDate: '종료일',
+              calculate: '계산',
+              confirm: '정산 확정',
+              summary: '정산 요약',
+              periodTips: '기간 내 팁',
+              remaining: '미정산 잔액',
+              grandTotal: '총 정산액'
+            },
+            history: {
+              title: '정산 이력',
+              settled: '정산일',
+              details: '상세 내역',
+              days: '근무일',
+              noHistory: '정산 이력이 없습니다'
+            }
           }
         }
       },
@@ -713,7 +760,7 @@
             preferences: 'Preferences',
             schedule: 'Schedule',
             excelView: 'Excel View',
-            sections: 'Sections'
+            tips: 'Tips'
           },
           employees: {
             title: 'Employee Management',
@@ -780,9 +827,56 @@
             availableEmployees: 'Available Employees',
             swapWith: 'Click to swap with'
           },
-          sections: {
-            title: 'Section Assignment',
-            comingSoon: 'Coming soon!'
+          tips: {
+            title: 'Tip Management',
+            tabs: {
+              entry: 'Tip Entry',
+              statistics: 'Statistics',
+              settlement: 'Settlement',
+              history: 'History'
+            },
+            entry: {
+              selectDate: 'Select a date',
+              lunchShift: 'Lunch Shift',
+              dinnerShift: 'Dinner Shift',
+              selectWorkers: 'Select employees who worked',
+              enterTips: 'Enter tips',
+              save: 'Save',
+              cancel: 'Cancel',
+              next: 'Next',
+              back: 'Back',
+              lunch: 'Lunch',
+              dinner: 'Dinner',
+              noEmployees: 'No employees registered'
+            },
+            statistics: {
+              title: 'Tip Statistics',
+              overallSummary: 'Overall Summary',
+              total: 'Total',
+              pending: 'Pending',
+              paid: 'Paid',
+              active: 'Active',
+              left: 'Left'
+            },
+            settlement: {
+              title: 'Settlement',
+              period: 'Settlement Period',
+              startDate: 'Start Date',
+              endDate: 'End Date',
+              calculate: 'Calculate',
+              confirm: 'Confirm Settlement',
+              summary: 'Settlement Summary',
+              periodTips: 'Period Tips',
+              remaining: 'Remaining',
+              grandTotal: 'Grand Total'
+            },
+            history: {
+              title: 'Settlement History',
+              settled: 'Settled',
+              details: 'Details',
+              days: 'Days',
+              noHistory: 'No settlement history'
+            }
           }
         },
         manageItems: 'Manage Items', save: 'Save', edit: 'Edit', delete: 'Delete',
@@ -824,6 +918,12 @@
         resetWarning: 'Esto restablecerá las cantidades de inventario, lista de compras e historial.',
         dataReset: '¡Datos restablecidos!',
         saveAndContinue: 'Guardar', backToEdit: '← Editar',
+        tips: {
+          entry: 'Entrada', statistics: 'Estadísticas', settlement: 'Liquidación', history: 'Historial',
+          lunch: 'Almuerzo', dinner: 'Cena', total: 'Total', pending: 'Pendiente', paid: 'Pagado',
+          save: 'Guardar', cancel: 'Cancelar', next: 'Siguiente', back: 'Atrás', calculate: 'Calcular',
+          confirm: 'Confirmar', days: 'Días'
+        },
         itemAnalysis: 'Análisis de Artículos', exportExcel: 'Exportar Excel',
         lastUsed: 'Último Uso', weeklyAvg: 'Promedio Semanal', showChart: 'Mostrar Gráfico', hideChart: 'Ocultar',
         usageChart: 'Gráfico de Uso (7 Días)', noHistory: 'No hay historial para análisis',
@@ -1041,6 +1141,24 @@
       const [stockStatusFilter, setStockStatusFilter] = useState('all'); // 'all', 'low', 'ok', 'ordered'
       const [selectedDeliveryItems, setSelectedDeliveryItems] = useState({}); // {orderId: [itemIdx1, itemIdx2, ...]}
       const [expandedOrders, setExpandedOrders] = useState({}); // {orderId: true/false}
+      
+      // Tips 관련 state
+      const [tipsSubTab, setTipsSubTab] = useState('entry'); // 'entry', 'statistics', 'settlement', 'history'
+      const [tipsData, setTipsData] = useState({}); // { "2026-01-27": { lunch: {}, dinner: {} } }
+      const [tipStats, setTipStats] = useState({}); // { "John": { pending, paid, total } }
+      const [settlements, setSettlements] = useState([]); // 정산 기록 리스트
+      const [selectedTipDate, setSelectedTipDate] = useState(null); // 선택된 날짜
+      const [lunchWorkers, setLunchWorkers] = useState([]); // Lunch shift 근무자
+      const [dinnerWorkers, setDinnerWorkers] = useState([]); // Dinner shift 근무자
+      const [tipEntryStep, setTipEntryStep] = useState('select-date'); // 'select-date', 'lunch-select', 'lunch-entry', 'dinner-select', 'dinner-entry'
+      const [lunchTips, setLunchTips] = useState({}); // { "John": 150.00 }
+      const [dinnerTips, setDinnerTips] = useState({}); // { "John": 200.00 }
+      const [settlementStart, setSettlementStart] = useState('');
+      const [settlementEnd, setSettlementEnd] = useState('');
+      const [settlementSummary, setSettlementSummary] = useState(null);
+      const [selectedSettlement, setSelectedSettlement] = useState(null); // History에서 선택된 정산
+      const [tipCalendarMonth, setTipCalendarMonth] = useState(new Date());
+      
       const [vendors, setVendors] = useState([]);
       const [newVendor, setNewVendor] = useState('');
       const [vendorToDelete, setVendorToDelete] = useState(null);
@@ -3585,6 +3703,27 @@
                         htmlFor: `${location}_server`
                       }, '👔 Server Management (서버 관리)')
                     ]),
+                    h('div', { 
+                      key: `${location}_server_view`, 
+                      className: 'checkbox-item',
+                      style: {
+                        background: 'rgba(59, 130, 246, 0.05)',
+                        border: '1px solid rgba(59, 130, 246, 0.2)'
+                      }
+                    }, [
+                      h('input', {
+                        key: 'checkbox',
+                        type: 'checkbox',
+                        id: `${location}_server_view`,
+                        checked: registerData.permissions[`${location}_server_view`] || false,
+                        onChange: (e) => updatePermission(`${location}_server_view`, e.target.checked)
+                      }),
+                      h('label', { 
+                        key: 'label',
+                        htmlFor: `${location}_server_view`,
+                        style: { color: '#2563eb' }
+                      }, '👁️ Server View Only (팁 통계 조회 전용)')
+                    ]),
                     h('div', { key: `${location}_kitchen`, className: 'checkbox-item' }, [
                       h('input', {
                         key: 'checkbox',
@@ -4528,7 +4667,23 @@
           // 스케줄러 iframe
           h('iframe', {
             key: 'scheduler',
-            src: (managementType === 'kitchen' ? 'scheduler-kitchen.html' : 'scheduler.html') + '?location=' + currentLocation + '&lang=' + language,
+            src: (() => {
+              const baseUrl = managementType === 'kitchen' ? 'scheduler-kitchen.html' : 'scheduler.html';
+              const params = new URLSearchParams({
+                location: currentLocation,
+                lang: language
+              });
+              
+              // Server View Only 권한인 경우 readonly 파라미터 추가
+              const user = typeof currentUser === 'string' ? JSON.parse(currentUser) : currentUser;
+              const isServerViewOnly = user && user.permissions && user.permissions[`${currentLocation}_server_view`];
+              
+              if (isServerViewOnly) {
+                params.append('readonly', 'true');
+              }
+              
+              return `${baseUrl}?${params.toString()}`;
+            })(),
             style: {
               width: '100%',
               height: 'calc(100vh - 60px)',
