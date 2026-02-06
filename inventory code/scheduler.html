@@ -541,9 +541,16 @@
     
     // --- URL 파라미터에서 location과 language 읽기 ---
     const urlParams = new URLSearchParams(window.location.search);
-    const LOCATION = urlParams.get('location') || 'houston';
+    const LOCATION = urlParams.get('location');
     const INITIAL_LANG = urlParams.get('lang') || 'ko';
     const READ_ONLY = urlParams.get('readonly') === 'true'; // 읽기 전용 모드
+    
+    // 🔒 보안: location 파라미터 없으면 index.html로 리다이렉트
+    if (!LOCATION) {
+      console.log('⚠️ No location parameter - redirecting to index.html');
+      window.location.href = 'index.html';
+      throw new Error('Unauthorized access');
+    }
     
     console.log('🌍 Location:', LOCATION);
     console.log('🌐 Language:', INITIAL_LANG);
@@ -1712,7 +1719,11 @@
         <div style="max-width:900px;margin:0 auto;padding:20px;">
           <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">✏️ Edit Tips</h2>
           <p style="text-align:center;color:#64748b;margin-bottom:30px;">
-            ${new Date(state.selectedTipDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            ${(() => {
+              const [year, month, day] = state.selectedTipDate.split('-');
+              const date = new Date(year, month - 1, day);
+              return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            })()}
           </p>
           
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
@@ -2045,7 +2056,11 @@
         <div style="max-width:600px;margin:0 auto;padding:20px;">
           <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">👥 Select Workers</h2>
           <p style="text-align:center;color:#64748b;margin-bottom:20px;">
-            ${new Date(state.selectedTipDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            ${(() => {
+              const [year, month, day] = state.selectedTipDate.split('-');
+              const date = new Date(year, month - 1, day);
+              return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            })()}
           </p>
           <p style="text-align:center;color:#64748b;margin-bottom:30px;font-weight:600;">
             Select employees who worked (Lunch or Dinner)
@@ -2120,7 +2135,11 @@
         <div style="max-width:600px;margin:0 auto;padding:20px;">
           <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">${shiftName} Tips</h2>
           <p style="text-align:center;color:#64748b;margin-bottom:30px;">
-            ${new Date(state.selectedTipDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            ${(() => {
+              const [year, month, day] = state.selectedTipDate.split('-');
+              const date = new Date(year, month - 1, day);
+              return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            })()}
           </p>
           
           <div style="background:white;border-radius:8px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
