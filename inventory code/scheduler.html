@@ -1513,8 +1513,8 @@
                         const lunchShift = (daySchedule.lunch || []).find(e => e.id === emp.id);
                         
                         return `
-                          <td onclick="editShift('${emp.id}', '${day}', 'lunch')" 
-                              style="padding:8px;border:2px solid #333;cursor:pointer;text-align:center;
+                          <td ${!READ_ONLY ? `onclick="editShift('${emp.id}', '${day}', 'lunch')"` : ''}
+                              style="padding:8px;border:2px solid #333;${!READ_ONLY ? 'cursor:pointer;' : ''}text-align:center;
                                      background:${getShiftColor(lunchShift?.shift)};
                                      ${lunchShift ? 'font-weight:600;' : ''}
                                      transition:background 0.2s;">
@@ -1534,8 +1534,8 @@
                         const dinnerShift = (daySchedule.dinner || []).find(e => e.id === emp.id);
                         
                         return `
-                          <td onclick="editShift('${emp.id}', '${day}', 'dinner')" 
-                              style="padding:8px;border:2px solid #333;cursor:pointer;text-align:center;
+                          <td ${!READ_ONLY ? `onclick="editShift('${emp.id}', '${day}', 'dinner')"` : ''}
+                              style="padding:8px;border:2px solid #333;${!READ_ONLY ? 'cursor:pointer;' : ''}text-align:center;
                                      background:${getShiftColor(dinnerShift?.shift)};
                                      ${dinnerShift ? 'font-weight:600;' : ''}
                                      transition:background 0.2s;">
