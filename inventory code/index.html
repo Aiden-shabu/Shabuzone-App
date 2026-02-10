@@ -1576,7 +1576,11 @@
           
           // 동적으로 사용 가능한 페이지 생성
           locations.forEach(location => {
+            console.log(`🔍 Checking location: ${location}`);
+            console.log(`🔍 Permissions for ${location}:`, perms);
+            
             if (perms[`${location}_inventory_employee`]) {
+              console.log(`✅ Adding: ${location} inventory_employee`);
               availablePages.push({ 
                 location, 
                 module: 'inventory',
@@ -1585,6 +1589,7 @@
               });
             }
             if (perms[`${location}_inventory_manager`]) {
+              console.log(`✅ Adding: ${location} inventory_manager`);
               availablePages.push({ 
                 location, 
                 module: 'inventory',
@@ -1593,6 +1598,7 @@
               });
             }
             if (perms[`${location}_server`]) {
+              console.log(`✅ Adding: ${location} server`);
               availablePages.push({ 
                 location, 
                 module: 'management', 
@@ -1600,7 +1606,18 @@
                 name: `${formatLocationName(location)} - Server` 
               });
             }
+            if (perms[`${location}_server_view`]) {
+              console.log(`✅ Adding: ${location} server_view`);
+              availablePages.push({ 
+                location, 
+                module: 'management', 
+                type: 'server',
+                readonly: true,
+                name: `${formatLocationName(location)} - Server View` 
+              });
+            }
             if (perms[`${location}_kitchen`]) {
+              console.log(`✅ Adding: ${location} kitchen`);
               availablePages.push({ 
                 location, 
                 module: 'management', 
@@ -1609,6 +1626,8 @@
               });
             }
           });
+          
+          console.log(`📋 Total availablePages: ${availablePages.length}`, availablePages);
           
           if (availablePages.length === 0) {
             setLoginError('접근 권한이 없습니다. 관리자에게 문의하세요.');
@@ -4215,6 +4234,17 @@
               desc: `${locationName} 서버 업무 관리`
             });
           }
+          if (perms[`${location}_server_view`]) {
+            availablePages.push({ 
+              location, 
+              module: 'management', 
+              type: 'server',
+              readonly: true,
+              icon: '👁️',
+              name: `${locationName} - Server View`,
+              desc: `${locationName} 서버 통계 조회 (읽기 전용)`
+            });
+          }
           if (perms[`${location}_kitchen`]) {
             availablePages.push({ 
               location, 
@@ -4676,13 +4706,23 @@
               
               // Server View Only 권한인 경우 readonly 파라미터 추가
               const user = typeof currentUser === 'string' ? JSON.parse(currentUser) : currentUser;
+              console.log('🔍 Checking readonly - user:', user);
+              console.log('🔍 User permissions:', user && user.permissions);
+              console.log('🔍 Current location:', currentLocation);
+              console.log('🔍 Checking permission:', `${currentLocation}_server_view`);
+              
               const isServerViewOnly = user && user.permissions && user.permissions[`${currentLocation}_server_view`];
+              console.log('🔍 Is Server View Only:', isServerViewOnly);
               
               if (isServerViewOnly) {
+                console.log('✅ Adding readonly=true parameter');
                 params.append('readonly', 'true');
               }
               
-              return `${baseUrl}?${params.toString()}`;
+              const finalUrl = `${baseUrl}?${params.toString()}`;
+              console.log('🔗 Final iframe URL:', finalUrl);
+              
+              return finalUrl;
             })(),
             style: {
               width: '100%',
