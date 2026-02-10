@@ -854,6 +854,8 @@
       settlementStart: '',          // 정산 시작일
       settlementEnd: '',            // 정산 종료일
       settlementSummary: null,      // 정산 요약
+      tipDetailModal: null,         // 팁 상세내역 팝업 (직원 이름)
+      wageHours: {},                // 직원별 근무 시간 입력 { empName: hours }
       selectedSettlement: null,     // History에서 선택된 정산
       tipCalendarMonth: new Date(),  // 달력 월
       confirmModal: null             // 확인 모달 데이터
@@ -2320,6 +2322,15 @@
                         ${isActive ? '✓ Active' : '✗ Left'}
                       </div>
                     </div>
+                    <!-- 상세내역 버튼 -->
+                    <button onclick="showTipDetail('${empName}')"
+                      style="width:40px;height:40px;border-radius:50%;border:2px solid #e2e8f0;background:white;cursor:pointer;
+                             display:flex;align-items:center;justify-content:center;font-size:1.2rem;
+                             transition:all 0.2s;flex-shrink:0;"
+                      onmouseover="this.style.background='#f8fafc';this.style.borderColor='#7f1d1d';"
+                      onmouseout="this.style.background='white';this.style.borderColor='#e2e8f0';">
+                      📋
+                    </button>
                   </div>
                   
                   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
@@ -2341,7 +2352,145 @@
             }).join('')}
           </div>
         </div>
+
+        <!-- 상세내역 팝업 -->
+        ${state.tipDetailModal ? renderTipDetailModal() : ''}
       `;
+    }
+
+    function renderTipDetailModal() {
+      const empName = state.tipDetailModal;
+      
+      // 정산 완료된 날짜 범위 수집
+      const settledRanges = (state.settlements || []).map(s => ({
+        start: s.startDate,
+        end: s.endDate
+      }));
+
+      // 날짜가 정산된 범위에 포함되는지 체크
+      function isSettled(date) {
+        return settledRanges.some(range => date >= range.start && date <= range.end);
+      }
+      
+      // tipsData에서 이 직원의 날짜별 내역 추출 (pending만)
+      const records = [];
+      Object.keys(state.tipsData).sort().reverse().forEach(date => {
+        if (isSettled(date)) return; // 정산된 날짜 제외!
+        const dayData = state.tipsData[date];
+        const lunch = (dayData.lunch || {})[empName] || 0;
+        const dinner = (dayData.dinner || {})[empName] || 0;
+        if (lunch > 0 || dinner > 0) {
+          records.push({ date, lunch, dinner, total: lunch + dinner });
+        }
+      });
+
+      const grandTotal = records.reduce((sum, r) => sum + r.total, 0);
+
+      return `
+        <!-- 배경 오버레이 -->
+        <div onclick="closeTipDetail()" 
+             style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);
+                    z-index:1000;display:flex;align-items:center;justify-content:center;">
+          
+          <!-- 팝업 카드 -->
+          <div onclick="event.stopPropagation()"
+               style="background:white;border-radius:16px;width:90%;max-width:480px;max-height:80vh;
+                      display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);
+                      animation:slideUp 0.2s ease;">
+            
+            <!-- 헤더 -->
+            <div style="background:linear-gradient(135deg,#7f1d1d,#991b1b);color:white;
+                        padding:20px 24px;border-radius:16px 16px 0 0;
+                        display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div style="font-size:0.8rem;opacity:0.8;margin-bottom:2px;">Tip Detail</div>
+                <div style="font-size:1.25rem;font-weight:700;">👤 ${empName}</div>
+              </div>
+              <button onclick="closeTipDetail()"
+                      style="background:rgba(255,255,255,0.2);border:none;color:white;
+                             width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;">
+                ✕
+              </button>
+            </div>
+
+            <!-- 합계 요약 -->
+            <div style="padding:16px 24px;background:#fef9f9;border-bottom:1px solid #f1e0e0;
+                        display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-size:0.875rem;color:#64748b;font-weight:600;">
+                ⏳ ${records.length} days pending
+              </div>
+              <div style="font-size:1.25rem;font-weight:700;color:#7f1d1d;">
+                Pending: $${grandTotal.toFixed(2)}
+              </div>
+            </div>
+
+            <!-- 날짜별 내역 (스크롤) -->
+            <div style="overflow-y:auto;padding:12px 24px;flex:1;">
+              ${records.length === 0 ? `
+                <div style="text-align:center;padding:40px;color:#64748b;">
+                  <div style="font-size:2rem;margin-bottom:8px;">✅</div>
+                  <div style="font-weight:600;margin-bottom:4px;">All settled!</div>
+                  <div style="font-size:0.875rem;">No pending tips</div>
+                </div>
+              ` : records.map((r, i) => {
+                // 날짜 포맷
+                const [y, m, d] = r.date.split('-');
+                const dateObj = new Date(y, m-1, d);
+                const dateStr = dateObj.toLocaleDateString('en-US', { 
+                  weekday: 'short', month: 'short', day: 'numeric' 
+                });
+                return `
+                  <div style="padding:12px 0;border-bottom:${i < records.length-1 ? '1px solid #f1f5f9' : 'none'};
+                              display:flex;align-items:center;gap:12px;">
+                    <!-- 날짜 -->
+                    <div style="min-width:100px;">
+                      <div style="font-weight:600;color:#2c3e50;font-size:0.9rem;">${dateStr}</div>
+                      <div style="font-size:0.75rem;color:#94a3b8;">${r.date}</div>
+                    </div>
+                    <!-- Lunch/Dinner -->
+                    <div style="flex:1;display:flex;gap:8px;">
+                      <div style="flex:1;text-align:center;padding:6px 8px;background:#FFF9E6;border-radius:6px;">
+                        <div style="font-size:0.7rem;color:#92400e;font-weight:600;">🌞 Lunch</div>
+                        <div style="font-size:0.9rem;font-weight:700;color:${r.lunch > 0 ? '#92400e' : '#94a3b8'};">
+                          ${r.lunch > 0 ? '$' + r.lunch.toFixed(2) : '-'}
+                        </div>
+                      </div>
+                      <div style="flex:1;text-align:center;padding:6px 8px;background:#EFF6FF;border-radius:6px;">
+                        <div style="font-size:0.7rem;color:#1e40af;font-weight:600;">🌙 Dinner</div>
+                        <div style="font-size:0.9rem;font-weight:700;color:${r.dinner > 0 ? '#1e40af' : '#94a3b8'};">
+                          ${r.dinner > 0 ? '$' + r.dinner.toFixed(2) : '-'}
+                        </div>
+                      </div>
+                    </div>
+                    <!-- 일일 합계 -->
+                    <div style="min-width:70px;text-align:right;">
+                      <div style="font-size:0.7rem;color:#64748b;font-weight:600;">TOTAL</div>
+                      <div style="font-size:1rem;font-weight:700;color:#7f1d1d;">$${r.total.toFixed(2)}</div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+
+        <style>
+          @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+        </style>
+      `;
+    }
+
+    function showTipDetail(empName) {
+      state.tipDetailModal = empName;
+      render();
+    }
+
+    function closeTipDetail() {
+      state.tipDetailModal = null;
+      render();
     }
     
     // Settlement 탭
@@ -2395,18 +2544,28 @@
     function renderSettlementSummary() {
       const summary = state.settlementSummary;
       const employees = Object.keys(summary.employees);
-      let grandTotal = 0;
+      const WAGE_RATE = 2.13; // 시급
+      
+      let grandTipTotal = 0;
+      let grandWageTotal = 0;
       
       employees.forEach(empName => {
-        grandTotal += summary.employees[empName].total;
+        const hours = parseFloat(state.wageHours[empName] || 0);
+        grandTipTotal += summary.employees[empName].total;
+        grandWageTotal += hours * WAGE_RATE;
       });
+
+      const grandTotal = grandTipTotal + grandWageTotal;
       
       return `
         <div style="max-width:800px;margin:0 auto;padding:20px;">
           <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">💰 Settlement Summary</h2>
-          <p style="text-align:center;color:#64748b;margin-bottom:30px;font-size:1rem;font-weight:600;">
+          <p style="text-align:center;color:#64748b;margin-bottom:8px;font-size:1rem;font-weight:600;">
             ${new Date(summary.startDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})} ~ 
             ${new Date(summary.endDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}
+          </p>
+          <p style="text-align:center;color:#94a3b8;margin-bottom:24px;font-size:0.875rem;">
+            💵 Wage rate: $${WAGE_RATE}/hr &nbsp;|&nbsp; Enter hours worked for each employee
           </p>
           
           <div style="display:grid;gap:16px;margin-bottom:30px;">
@@ -2414,52 +2573,95 @@
               const empData = summary.employees[empName];
               const emp = state.employees.find(e => e.name === empName);
               const isActive = emp && emp.status === 'active';
+              const hours = parseFloat(state.wageHours[empName] || 0);
+              const wage = hours * WAGE_RATE;
+              const checkTotal = empData.total + wage;
               
               return `
                 <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                  
+                  <!-- 직원 이름 + 체크 총액 -->
                   <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
                     <div style="font-size:1.5rem;">👤</div>
                     <div style="flex:1;">
-                      <div style="font-size:1.25rem;font-weight:700;color:#2c3e50;">${empName}</div>
-                      <div style="font-size:0.875rem;color:${isActive ? '#22c55e' : '#64748b'};font-weight:600;">
+                      <div style="font-size:1.1rem;font-weight:700;color:#2c3e50;">${empName}</div>
+                      <div style="font-size:0.8rem;color:${isActive ? '#22c55e' : '#64748b'};font-weight:600;">
                         ${isActive ? 'Active' : 'Left'}
                       </div>
                     </div>
-                    <div style="font-size:1.5rem;font-weight:700;color:#7f1d1d;">
-                      $${empData.total.toFixed(2)}
+                    <!-- 최종 체크 금액 -->
+                    <div style="text-align:right;">
+                      <div style="font-size:0.7rem;color:#64748b;font-weight:600;margin-bottom:2px;">CHECK AMOUNT</div>
+                      <div style="font-size:1.5rem;font-weight:700;color:#7f1d1d;">
+                        $${checkTotal.toFixed(2)}
+                      </div>
                     </div>
                   </div>
                   
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div style="background:#fef3c7;padding:12px;border-radius:8px;">
-                      <div style="font-size:0.75rem;color:#92400e;margin-bottom:4px;font-weight:600;">🌞 LUNCH</div>
-                      <div style="font-size:1.1rem;font-weight:700;color:#92400e;">$${empData.lunch.toFixed(2)}</div>
-                      <div style="font-size:0.75rem;color:#92400e;margin-top:4px;">
-                        Days: ${empData.lunchDays.sort((a,b) => a-b).join(', ')}
-                      </div>
+                  <!-- 팁 + 시급 -->
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+                    <!-- 팁 -->
+                    <div style="background:#fef3c7;padding:10px;border-radius:8px;text-align:center;">
+                      <div style="font-size:0.7rem;color:#92400e;font-weight:600;margin-bottom:2px;">💰 TIPS</div>
+                      <div style="font-size:1rem;font-weight:700;color:#92400e;">$${empData.total.toFixed(2)}</div>
                     </div>
-                    <div style="background:#dbeafe;padding:12px;border-radius:8px;">
-                      <div style="font-size:0.75rem;color:#1e40af;margin-bottom:4px;font-weight:600;">🌙 DINNER</div>
-                      <div style="font-size:1.1rem;font-weight:700;color:#1e40af;">$${empData.dinner.toFixed(2)}</div>
-                      <div style="font-size:0.75rem;color:#1e40af;margin-top:4px;">
-                        Days: ${empData.dinnerDays.sort((a,b) => a-b).join(', ')}
+                    <!-- 시간 입력 -->
+                    <div style="background:#f0f9ff;padding:10px;border-radius:8px;text-align:center;">
+                      <div style="font-size:0.7rem;color:#0369a1;font-weight:600;margin-bottom:4px;">⏱ HOURS</div>
+                      <input type="number" 
+                             value="${state.wageHours[empName] || ''}"
+                             placeholder="0.0"
+                             step="0.1" min="0"
+                             onchange="state.wageHours['${empName}']=this.value;render();"
+                             style="width:100%;border:none;background:transparent;text-align:center;
+                                    font-size:1rem;font-weight:700;color:#0369a1;outline:none;
+                                    border-bottom:2px solid #0369a1;padding:2px 0;">
+                    </div>
+                    <!-- 시급 계산 -->
+                    <div style="background:#f0fdf4;padding:10px;border-radius:8px;text-align:center;">
+                      <div style="font-size:0.7rem;color:#166534;font-weight:600;margin-bottom:2px;">💵 WAGE</div>
+                      <div style="font-size:1rem;font-weight:700;color:#166534;">
+                        ${hours > 0 ? '$' + wage.toFixed(2) : '-'}
                       </div>
                     </div>
                   </div>
+
+                  <!-- 계산식 표시 -->
+                  ${hours > 0 ? `
+                    <div style="background:#f8fafc;border-radius:6px;padding:8px 12px;font-size:0.8rem;color:#64748b;text-align:center;">
+                      $${empData.total.toFixed(2)} tips + ${hours}h × $${WAGE_RATE} = 
+                      <strong style="color:#7f1d1d;">$${checkTotal.toFixed(2)}</strong>
+                    </div>
+                  ` : `
+                    <div style="background:#f8fafc;border-radius:6px;padding:8px 12px;font-size:0.8rem;color:#94a3b8;text-align:center;">
+                      Enter hours to calculate total check amount
+                    </div>
+                  `}
                 </div>
               `;
             }).join('')}
           </div>
           
+          <!-- Grand Total -->
           <div style="background:linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);color:white;border-radius:12px;padding:24px;margin-bottom:20px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div style="font-size:1.25rem;font-weight:600;">🎯 Grand Total</div>
-              <div style="font-size:2rem;font-weight:700;">$${grandTotal.toFixed(2)}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+              <div style="text-align:center;">
+                <div style="font-size:0.8rem;opacity:0.8;margin-bottom:4px;">💰 Total Tips</div>
+                <div style="font-size:1.25rem;font-weight:700;">$${grandTipTotal.toFixed(2)}</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:0.8rem;opacity:0.8;margin-bottom:4px;">💵 Total Wages</div>
+                <div style="font-size:1.25rem;font-weight:700;">$${grandWageTotal.toFixed(2)}</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:0.8rem;opacity:0.8;margin-bottom:4px;">🎯 Grand Total</div>
+                <div style="font-size:1.5rem;font-weight:700;">$${grandTotal.toFixed(2)}</div>
+              </div>
             </div>
           </div>
           
           <div style="display:flex;gap:12px;">
-            <button onclick="state.settlementSummary=null;render();" 
+            <button onclick="state.settlementSummary=null;state.wageHours={};render();" 
                     style="flex:1;padding:14px;background:white;color:#7f1d1d;border:2px solid #7f1d1d;border-radius:8px;cursor:pointer;font-weight:700;">
               ← Back
             </button>
@@ -2540,10 +2742,15 @@
     function renderSettlementDetail() {
       const settlement = state.selectedSettlement;
       const employees = Object.keys(settlement.employees);
+      const WAGE_RATE = settlement.wageRate || 2.13;
       
       const startDate = new Date(settlement.startDate).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
       const endDate = new Date(settlement.endDate).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
       const settledDate = new Date(settlement.settledAt).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
+
+      const grandTipTotal = settlement.grandTipTotal || settlement.grandTotal;
+      const grandWageTotal = settlement.grandWageTotal || 0;
+      const grandTotal = settlement.grandTotal;
       
       return `
         <div style="max-width:800px;margin:0 auto;padding:20px;">
@@ -2558,7 +2765,7 @@
               ${startDate} ~ ${endDate}
             </p>
             <p style="color:#64748b;font-size:0.875rem;">
-              Settled on: ${settledDate}
+              Settled on: ${settledDate} &nbsp;|&nbsp; Wage rate: $${WAGE_RATE}/hr
             </p>
           </div>
           
@@ -2567,51 +2774,69 @@
               const empData = settlement.employees[empName];
               const emp = state.employees.find(e => e.name === empName);
               const isActive = emp && emp.status === 'active';
+              const hours = empData.hours || 0;
+              const wage = empData.wage || 0;
+              const checkTotal = empData.checkTotal || empData.total;
               
               return `
                 <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                  <!-- 이름 + 최종 체크 -->
                   <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
                     <div style="font-size:1.5rem;">👤</div>
                     <div style="flex:1;">
-                      <div style="font-size:1.25rem;font-weight:700;color:#2c3e50;">${empName}</div>
-                      <div style="font-size:0.875rem;color:${isActive ? '#22c55e' : '#ef4444'};font-weight:600;">
+                      <div style="font-size:1.1rem;font-weight:700;color:#2c3e50;">${empName}</div>
+                      <div style="font-size:0.8rem;color:${isActive ? '#22c55e' : '#ef4444'};font-weight:600;">
                         ${isActive ? '✓ Active' : `✗ Left${emp && emp.leftDate ? ' (' + new Date(emp.leftDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) + ')' : ''}`}
                       </div>
                     </div>
-                    <div style="font-size:1.5rem;font-weight:700;color:#7f1d1d;">
-                      $${empData.total.toFixed(2)}
+                    <div style="text-align:right;">
+                      <div style="font-size:0.7rem;color:#64748b;font-weight:600;">CHECK AMOUNT</div>
+                      <div style="font-size:1.5rem;font-weight:700;color:#7f1d1d;">$${checkTotal.toFixed(2)}</div>
                     </div>
                   </div>
-                  
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div style="background:#fef3c7;padding:12px;border-radius:8px;">
-                      <div style="font-size:0.75rem;color:#92400e;margin-bottom:4px;font-weight:600;">🌞 LUNCH</div>
-                      <div style="font-size:1.1rem;font-weight:700;color:#92400e;margin-bottom:6px;">$${empData.lunch.toFixed(2)}</div>
-                      <div style="font-size:0.75rem;color:#92400e;">
-                        ${empData.lunchDays && empData.lunchDays.length > 0 ? 
-                          '• Days: ' + empData.lunchDays.sort((a,b) => a-b).join(', ') : 
-                          '• No shifts'}
-                      </div>
+
+                  <!-- Tips + Hours + Wage -->
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+                    <div style="background:#fef3c7;padding:10px;border-radius:8px;text-align:center;">
+                      <div style="font-size:0.7rem;color:#92400e;font-weight:600;margin-bottom:2px;">💰 TIPS</div>
+                      <div style="font-size:1rem;font-weight:700;color:#92400e;">$${empData.total.toFixed(2)}</div>
                     </div>
-                    <div style="background:#dbeafe;padding:12px;border-radius:8px;">
-                      <div style="font-size:0.75rem;color:#1e40af;margin-bottom:4px;font-weight:600;">🌙 DINNER</div>
-                      <div style="font-size:1.1rem;font-weight:700;color:#1e40af;margin-bottom:6px;">$${empData.dinner.toFixed(2)}</div>
-                      <div style="font-size:0.75rem;color:#1e40af;">
-                        ${empData.dinnerDays && empData.dinnerDays.length > 0 ? 
-                          '• Days: ' + empData.dinnerDays.sort((a,b) => a-b).join(', ') : 
-                          '• No shifts'}
-                      </div>
+                    <div style="background:#f0f9ff;padding:10px;border-radius:8px;text-align:center;">
+                      <div style="font-size:0.7rem;color:#0369a1;font-weight:600;margin-bottom:2px;">⏱ HOURS</div>
+                      <div style="font-size:1rem;font-weight:700;color:#0369a1;">${hours > 0 ? hours + 'h' : '-'}</div>
                     </div>
+                    <div style="background:#f0fdf4;padding:10px;border-radius:8px;text-align:center;">
+                      <div style="font-size:0.7rem;color:#166534;font-weight:600;margin-bottom:2px;">💵 WAGE</div>
+                      <div style="font-size:1rem;font-weight:700;color:#166534;">${wage > 0 ? '$' + wage.toFixed(2) : '-'}</div>
+                    </div>
+                  </div>
+
+                  <!-- 계산식 -->
+                  <div style="background:#f8fafc;border-radius:6px;padding:8px 12px;font-size:0.8rem;color:#64748b;text-align:center;">
+                    $${empData.total.toFixed(2)} tips
+                    ${hours > 0 ? `+ ${hours}h × $${WAGE_RATE} ($${wage.toFixed(2)})` : ''}
+                    = <strong style="color:#7f1d1d;">$${checkTotal.toFixed(2)}</strong>
                   </div>
                 </div>
               `;
             }).join('')}
           </div>
           
+          <!-- Grand Total -->
           <div style="background:linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);color:white;border-radius:12px;padding:24px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div style="font-size:1.25rem;font-weight:600;">🎯 Grand Total</div>
-              <div style="font-size:2rem;font-weight:700;">$${settlement.grandTotal.toFixed(2)}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+              <div style="text-align:center;">
+                <div style="font-size:0.8rem;opacity:0.8;margin-bottom:4px;">💰 Total Tips</div>
+                <div style="font-size:1.1rem;font-weight:700;">$${grandTipTotal.toFixed(2)}</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:0.8rem;opacity:0.8;margin-bottom:4px;">💵 Total Wages</div>
+                <div style="font-size:1.1rem;font-weight:700;">$${grandWageTotal.toFixed(2)}</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:0.8rem;opacity:0.8;margin-bottom:4px;">🎯 Grand Total</div>
+                <div style="font-size:1.5rem;font-weight:700;">$${grandTotal.toFixed(2)}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -3079,22 +3304,39 @@
       if (!confirm('Confirm this settlement?')) return;
       
       const summary = state.settlementSummary;
+      const WAGE_RATE = 2.13;
+      
       const settlementRecord = {
         id: Date.now().toString(),
         ...summary,
         settledAt: new Date().toISOString(),
-        grandTotal: 0
+        grandTotal: 0,
+        grandTipTotal: 0,
+        grandWageTotal: 0,
+        wageRate: WAGE_RATE
       };
       
-      // Grand Total 계산
+      // Grand Total 계산 (팁 + 시급)
       Object.keys(summary.employees).forEach(empName => {
-        settlementRecord.grandTotal += summary.employees[empName].total;
+        const tipAmount = summary.employees[empName].total;
+        const hours = parseFloat(state.wageHours[empName] || 0);
+        const wage = hours * WAGE_RATE;
+        const checkTotal = tipAmount + wage;
+
+        // wage 정보를 employee 데이터에 저장
+        settlementRecord.employees[empName].hours = hours;
+        settlementRecord.employees[empName].wage = wage;
+        settlementRecord.employees[empName].checkTotal = checkTotal;
+
+        settlementRecord.grandTipTotal += tipAmount;
+        settlementRecord.grandWageTotal += wage;
+        settlementRecord.grandTotal += checkTotal;
         
-        // Paid에 추가
+        // Paid에 추가 (팁만)
         if (!state.tipStats[empName]) {
           state.tipStats[empName] = { pending: 0, paid: 0, total: 0 };
         }
-        state.tipStats[empName].paid += summary.employees[empName].total;
+        state.tipStats[empName].paid += tipAmount;
       });
       
       // 정산 기록 저장
@@ -3116,6 +3358,7 @@
       state.settlementSummary = null;
       state.settlementStart = '';
       state.settlementEnd = '';
+      state.wageHours = {};
       render();
     };
     
