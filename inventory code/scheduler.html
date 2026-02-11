@@ -2283,68 +2283,68 @@
       });
       
       return `
-        <div style="max-width:800px;margin:0 auto;padding:20px;">
-          <h2 style="color:#7f1d1d;margin-bottom:30px;text-align:center;">📊 Tip Statistics</h2>
+        <div style="max-width:800px;margin:0 auto;padding:16px;">
+          <h2 style="color:#7f1d1d;margin-bottom:20px;text-align:center;font-size:1.3rem;">📊 Tip Statistics</h2>
           
-          <!-- 전체 요약 -->
-          <div style="background:linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);color:white;border-radius:12px;padding:24px;margin-bottom:30px;box-shadow:0 4px 12px rgba(127,29,29,0.2);">
-            <h3 style="margin:0 0 16px 0;font-size:1.1rem;opacity:0.9;">Overall Summary</h3>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
-              <div>
-                <div style="font-size:0.875rem;opacity:0.9;margin-bottom:4px;">💰 Total (All)</div>
-                <div style="font-size:1.75rem;font-weight:700;">$${grandTotal.toFixed(2)}</div>
+          <!-- 전체 요약 - 모바일: 세로 배치 -->
+          <div style="background:linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);color:white;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 4px 12px rgba(127,29,29,0.2);">
+            <h3 style="margin:0 0 16px 0;font-size:1rem;opacity:0.9;">Overall Summary</h3>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.1);border-radius:8px;padding:12px 16px;">
+                <div style="font-size:0.9rem;opacity:0.9;">💰 Total (All)</div>
+                <div style="font-size:1.4rem;font-weight:700;">$${grandTotal.toFixed(2)}</div>
               </div>
-              <div>
-                <div style="font-size:0.875rem;opacity:0.9;margin-bottom:4px;">⏳ Pending</div>
-                <div style="font-size:1.75rem;font-weight:700;">$${totalPending.toFixed(2)}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.1);border-radius:8px;padding:12px 16px;">
+                <div style="font-size:0.9rem;opacity:0.9;">⏳ Pending</div>
+                <div style="font-size:1.4rem;font-weight:700;">$${totalPending.toFixed(2)}</div>
               </div>
-              <div>
-                <div style="font-size:0.875rem;opacity:0.9;margin-bottom:4px;">✅ Paid</div>
-                <div style="font-size:1.75rem;font-weight:700;">$${totalPaid.toFixed(2)}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.1);border-radius:8px;padding:12px 16px;">
+                <div style="font-size:0.9rem;opacity:0.9;">✅ Paid</div>
+                <div style="font-size:1.4rem;font-weight:700;">$${totalPaid.toFixed(2)}</div>
               </div>
             </div>
           </div>
           
           <!-- 직원별 통계 -->
-          <div style="display:grid;gap:16px;">
+          <div style="display:grid;gap:12px;">
             ${employees.map(empName => {
               const stats = state.tipStats[empName];
               const emp = state.employees.find(e => e.name === empName);
               const isActive = emp && emp.status === 'active';
               
               return `
-                <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-left:4px solid ${isActive ? '#22c55e' : '#ef4444'};">
-                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-                    <div style="font-size:1.5rem;">👤</div>
+                <div style="background:white;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-left:4px solid ${isActive ? '#22c55e' : '#ef4444'};">
+                  <!-- 이름 + 상세 버튼 -->
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                    <div style="font-size:1.3rem;">👤</div>
                     <div style="flex:1;">
-                      <div style="font-size:1.25rem;font-weight:700;color:#2c3e50;">${empName}</div>
-                      <div style="font-size:0.875rem;color:${isActive ? '#22c55e' : '#ef4444'};font-weight:600;">
+                      <div style="font-size:1.1rem;font-weight:700;color:#2c3e50;">${empName}</div>
+                      <div style="font-size:0.8rem;color:${isActive ? '#22c55e' : '#ef4444'};font-weight:600;">
                         ${isActive ? '✓ Active' : '✗ Left'}
                       </div>
                     </div>
-                    <!-- 상세내역 버튼 -->
                     <button onclick="showTipDetail('${empName}')"
-                      style="width:40px;height:40px;border-radius:50%;border:2px solid #e2e8f0;background:white;cursor:pointer;
-                             display:flex;align-items:center;justify-content:center;font-size:1.2rem;
-                             transition:all 0.2s;flex-shrink:0;"
-                      onmouseover="this.style.background='#f8fafc';this.style.borderColor='#7f1d1d';"
-                      onmouseout="this.style.background='white';this.style.borderColor='#e2e8f0';">
+                      style="width:36px;height:36px;border-radius:50%;border:2px solid #e2e8f0;background:white;cursor:pointer;
+                             display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;"
+                      onmouseover="this.style.borderColor='#7f1d1d';"
+                      onmouseout="this.style.borderColor='#e2e8f0';">
                       📋
                     </button>
                   </div>
                   
-                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
-                    <div style="text-align:center;padding:12px;background:#f8fafc;border-radius:8px;">
-                      <div style="font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600;">💰 TOTAL</div>
-                      <div style="font-size:1.25rem;font-weight:700;color:#2c3e50;">$${stats.total.toFixed(2)}</div>
+                  <!-- TOTAL / PENDING / PAID - 세로 리스트 -->
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+                      <div style="font-size:0.8rem;color:#64748b;font-weight:600;">💰 TOTAL</div>
+                      <div style="font-size:1.1rem;font-weight:700;color:#2c3e50;">$${stats.total.toFixed(2)}</div>
                     </div>
-                    <div style="text-align:center;padding:12px;background:#fef3c7;border-radius:8px;">
-                      <div style="font-size:0.75rem;color:#92400e;margin-bottom:4px;font-weight:600;">⏳ PENDING</div>
-                      <div style="font-size:1.25rem;font-weight:700;color:#92400e;">$${stats.pending.toFixed(2)}</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fef3c7;border-radius:8px;">
+                      <div style="font-size:0.8rem;color:#92400e;font-weight:600;">⏳ PENDING</div>
+                      <div style="font-size:1.1rem;font-weight:700;color:#92400e;">$${stats.pending.toFixed(2)}</div>
                     </div>
-                    <div style="text-align:center;padding:12px;background:#d1fae5;border-radius:8px;">
-                      <div style="font-size:0.75rem;color:#065f46;margin-bottom:4px;font-weight:600;">✅ PAID</div>
-                      <div style="font-size:1.25rem;font-weight:700;color:#065f46;">$${stats.paid.toFixed(2)}</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#d1fae5;border-radius:8px;">
+                      <div style="font-size:0.8rem;color:#065f46;font-weight:600;">✅ PAID</div>
+                      <div style="font-size:1.1rem;font-weight:700;color:#065f46;">$${stats.paid.toFixed(2)}</div>
                     </div>
                   </div>
                 </div>
