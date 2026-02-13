@@ -1717,16 +1717,60 @@
       const lunchEmployees = activeEmployees.filter(emp => !lunchTips[emp.name]);
       const dinnerEmployees = activeEmployees.filter(emp => !dinnerTips[emp.name]);
       
+      // 합계 계산
+      const lunchTotal = Object.values(lunchTips).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
+      const dinnerTotal = Object.values(dinnerTips).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
+      const lunchCount = Object.keys(lunchTips).length;
+      const dinnerCount = Object.keys(dinnerTips).length;
+
       return `
         <div style="max-width:900px;margin:0 auto;padding:20px;">
           <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">✏️ Edit Tips</h2>
-          <p style="text-align:center;color:#64748b;margin-bottom:30px;">
+          <p style="text-align:center;color:#64748b;margin-bottom:16px;">
             ${(() => {
               const [year, month, day] = state.selectedTipDate.split('-');
               const date = new Date(year, month - 1, day);
               return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             })()}
           </p>
+
+          <!-- 요약 카드 -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
+            <!-- Lunch 요약 -->
+            <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:10px;padding:14px;border:2px solid #fbbf24;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                <span style="font-size:1.1rem;">🌞</span>
+                <span style="font-weight:700;color:#92400e;font-size:0.9rem;">Lunch</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+                <div>
+                  <div style="font-size:0.75rem;color:#92400e;margin-bottom:2px;">👥 People</div>
+                  <div style="font-size:1.4rem;font-weight:700;color:#92400e;">${lunchCount}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:0.75rem;color:#92400e;margin-bottom:2px;">💰 Total</div>
+                  <div style="font-size:1.4rem;font-weight:700;color:#92400e;">$${lunchTotal.toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+            <!-- Dinner 요약 -->
+            <div style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);border-radius:10px;padding:14px;border:2px solid #60a5fa;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                <span style="font-size:1.1rem;">🌙</span>
+                <span style="font-weight:700;color:#1e40af;font-size:0.9rem;">Dinner</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+                <div>
+                  <div style="font-size:0.75rem;color:#1e40af;margin-bottom:2px;">👥 People</div>
+                  <div style="font-size:1.4rem;font-weight:700;color:#1e40af;">${dinnerCount}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:0.75rem;color:#1e40af;margin-bottom:2px;">💰 Total</div>
+                  <div style="font-size:1.4rem;font-weight:700;color:#1e40af;">$${dinnerTotal.toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+          </div>
           
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
             <!-- Lunch Tips -->
@@ -1866,6 +1910,7 @@
       } else {
         state.dinnerTips[empName] = value;
       }
+      render(); // 합계 실시간 업데이트
     };
     
     // 기존 팁 삭제
