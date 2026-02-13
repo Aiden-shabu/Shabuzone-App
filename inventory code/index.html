@@ -1120,6 +1120,7 @@
       const [shoppingList, setShoppingList] = useState([]);
       const [orderedLists, setOrderedLists] = useState([]); // 주문 완료된 리스트들
       const [shoppingSubTab, setShoppingSubTab] = useState('list'); // 'list' or 'confirm'
+      const [useWeekendPar, setUseWeekendPar] = useState(false); // 주말 PAR 사용 여부
       const [showAddItemModal, setShowAddItemModal] = useState(false);
       const [addItemSearch, setAddItemSearch] = useState('');
       const [addItemQuantity, setAddItemQuantity] = useState(1);
@@ -2315,7 +2316,10 @@
         
         const list = Array.isArray(items) ? items.map(item => {
           const currentInv = parseFloat(item.current_inventory) || 0;
-          const parValue = parseFloat(item.par) || 0;
+          // Weekend PAR 모드: weekend_par가 있으면 사용, 없으면 일반 par 사용
+          const parValue = useWeekendPar && item.weekend_par !== undefined
+            ? parseFloat(item.weekend_par) || 0
+            : parseFloat(item.par) || 0;
           
           // Vendor 매핑 적용
           let mappedVendor = item.vendor;
@@ -5689,6 +5693,47 @@
 
             // Shopping List 탭
             shoppingSubTab === 'list' && h('div', { key: 'list-content' }, [
+              
+              // Weekend PAR 토글
+              h('div', { 
+                key: 'weekend-toggle',
+                style: { 
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: useWeekendPar ? '#fef3c7' : '#f8fafc',
+                  border: `2px solid ${useWeekendPar ? '#f59e0b' : '#e2e8f0'}`,
+                  borderRadius: '10px', padding: '0.75rem 1rem', marginBottom: '0.75rem',
+                  cursor: 'pointer', transition: 'all 0.2s'
+                },
+                onClick: () => setUseWeekendPar(!useWeekendPar)
+              }, [
+                h('div', { key: 'label', style: { display: 'flex', alignItems: 'center', gap: '0.5rem' }}, [
+                  h('span', { key: 'icon', style: { fontSize: '1.2rem' }}, '🏖️'),
+                  h('div', { key: 'text' }, [
+                    h('div', { key: 'title', style: { fontWeight: '700', color: useWeekendPar ? '#92400e' : '#64748b', fontSize: '0.95rem' }}, 'Weekend PAR'),
+                    h('div', { key: 'sub', style: { fontSize: '0.75rem', color: useWeekendPar ? '#b45309' : '#94a3b8' }}, 
+                      useWeekendPar ? 'Using Weekend PAR values' : 'Using regular PAR values')
+                  ])
+                ]),
+                h('div', { 
+                  key: 'toggle',
+                  style: {
+                    width: '48px', height: '26px', borderRadius: '13px',
+                    background: useWeekendPar ? '#f59e0b' : '#e2e8f0',
+                    position: 'relative', transition: 'background 0.2s', flexShrink: 0
+                  }
+                }, [
+                  h('div', {
+                    key: 'knob',
+                    style: {
+                      width: '22px', height: '22px', borderRadius: '50%',
+                      background: 'white', position: 'absolute', top: '2px',
+                      left: useWeekendPar ? '24px' : '2px',
+                      transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                    }
+                  })
+                ])
+              ]),
+
               // Employee/Manager 모두: 쇼핑리스트 생성 버튼
               h('button', {
                 key: 'generate-list-btn',
@@ -5697,7 +5742,9 @@
                 style: {
                   width: '100%',
                   marginBottom: '1rem',
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  background: useWeekendPar 
+                    ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                    : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -5705,7 +5752,11 @@
                   fontSize: '1.1rem',
                   padding: '1rem'
                 }
-              }, ['🛒 ', language === 'ko' ? '(1) 쇼핑리스트 생성' : language === 'es' ? '(1) Generar Lista de Compras' : '(1) Generate Shopping List']),
+              }, [useWeekendPar ? '🏖️ ' : '🛒 ', language === 'ko' 
+                ? (useWeekendPar ? '(1) 주말 쇼핑리스트 생성' : '(1) 쇼핑리스트 생성')
+                : language === 'es' 
+                ? '(1) Generar Lista de Compras' 
+                : (useWeekendPar ? '(1) Generate Weekend List' : '(1) Generate Shopping List')]),
               
               // Employee/Manager 모두: 아이템 추가 버튼
               h('button', {
@@ -7116,7 +7167,7 @@
                     h('select', { key: 'item-category', value: itemCategories[item.name] || '', onChange: (e) => updateItemCategory(item.name, e.target.value) },
                       [h('option', { key: 'empty', value: '' }, t.itemCategory || '분류 선택')].concat(categories.map(c => h('option', { key: c, value: c }, c)))
                     ),
-                    h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', alignItems: 'center' }}, [
+                    h('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', alignItems: 'center' }}, [
                       h('div', { key: 'price-wrapper', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
                         h('label', { key: 'label', style: { fontWeight: '600', color: '#2c3e50', fontSize: '0.75rem', whiteSpace: 'nowrap' }}, '$'),
                         h('input', { 
@@ -7143,6 +7194,20 @@
                           onChange: (e) => { const u = [...items]; u[idx].par = parseFloat(e.target.value) || 0; setItems(u); }, 
                           placeholder: '0', 
                           style: { flex: 1, minWidth: '50px' }
+                        })
+                      ]),
+                      h('div', { key: 'wpar-wrapper', style: { display: 'flex', alignItems: 'center', gap: '0.25rem' }}, [
+                        h('label', { key: 'label', style: { fontWeight: '600', color: '#f59e0b', fontSize: '0.7rem', whiteSpace: 'nowrap' }}, '🏖️WKD'),
+                        h('input', { 
+                          key: 'weekend-par', 
+                          type: 'number',
+                          inputMode: 'decimal',
+                          pattern: '[0-9]*',
+                          value: item.weekend_par !== undefined ? item.weekend_par : '',
+                          onFocus: (e) => e.target.select(),
+                          onChange: (e) => { const u = [...items]; u[idx].weekend_par = e.target.value === '' ? undefined : parseFloat(e.target.value) || 0; setItems(u); }, 
+                          placeholder: 'same', 
+                          style: { flex: 1, minWidth: '50px', borderColor: '#f59e0b' }
                         })
                       ]),
                       h('select', { key: 'category', value: item.category, onChange: (e) => { const u = [...items]; u[idx].category = e.target.value; setItems(u); }}, [
