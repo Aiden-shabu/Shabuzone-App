@@ -2589,7 +2589,7 @@
     function renderSettlementSummary() {
       const summary = state.settlementSummary;
       const employees = Object.keys(summary.employees);
-      const WAGE_RATE = 2.13; // 시급
+      const WAGE_RATE = 2.30; // 시급
       
       let grandTipTotal = 0;
       let grandWageTotal = 0;
@@ -2787,7 +2787,7 @@
     function renderSettlementDetail() {
       const settlement = state.selectedSettlement;
       const employees = Object.keys(settlement.employees);
-      const WAGE_RATE = settlement.wageRate || 2.13;
+      const WAGE_RATE = settlement.wageRate || 2.30;
       
       const startDate = new Date(settlement.startDate).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
       const endDate = new Date(settlement.endDate).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
@@ -3349,7 +3349,7 @@
       if (!confirm('Confirm this settlement?')) return;
       
       const summary = state.settlementSummary;
-      const WAGE_RATE = 2.13;
+      const WAGE_RATE = 2.30;
       
       const settlementRecord = {
         id: Date.now().toString(),
