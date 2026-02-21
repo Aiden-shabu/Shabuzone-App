@@ -2606,8 +2606,14 @@
         <div style="max-width:800px;margin:0 auto;padding:20px;">
           <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">💰 Settlement Summary</h2>
           <p style="text-align:center;color:#64748b;margin-bottom:8px;font-size:1rem;font-weight:600;">
-            ${new Date(summary.startDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})} ~ 
-            ${new Date(summary.endDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}
+            ${(() => {
+              const [y1, m1, d1] = summary.startDate.split('-');
+              const [y2, m2, d2] = summary.endDate.split('-');
+              const start = new Date(y1, m1-1, d1);
+              const end = new Date(y2, m2-1, d2);
+              return start.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) + ' ~ ' + 
+                     end.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+            })()}
           </p>
           <p style="text-align:center;color:#94a3b8;margin-bottom:24px;font-size:0.875rem;">
             💵 Wage rate: $${WAGE_RATE}/hr &nbsp;|&nbsp; Enter hours worked for each employee
@@ -2742,8 +2748,10 @@
           
           <div style="display:grid;gap:16px;">
             ${state.settlements.map(settlement => {
-              const startDate = new Date(settlement.startDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
-              const endDate = new Date(settlement.endDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+              const [y1, m1, d1] = settlement.startDate.split('-');
+              const [y2, m2, d2] = settlement.endDate.split('-');
+              const startDate = new Date(y1, m1-1, d1).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+              const endDate = new Date(y2, m2-1, d2).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
               const settledDate = new Date(settlement.settledAt).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
               const empCount = Object.keys(settlement.employees).length;
               
@@ -2789,8 +2797,10 @@
       const employees = Object.keys(settlement.employees);
       const WAGE_RATE = settlement.wageRate || 2.30;
       
-      const startDate = new Date(settlement.startDate).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
-      const endDate = new Date(settlement.endDate).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
+      const [y1, m1, d1] = settlement.startDate.split('-');
+      const [y2, m2, d2] = settlement.endDate.split('-');
+      const startDate = new Date(y1, m1-1, d1).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
+      const endDate = new Date(y2, m2-1, d2).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
       const settledDate = new Date(settlement.settledAt).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
 
       const grandTipTotal = settlement.grandTipTotal || settlement.grandTotal;
