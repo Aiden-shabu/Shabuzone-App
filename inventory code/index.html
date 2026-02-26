@@ -1455,18 +1455,23 @@
           const employeesData = {};
           
           for (const location of locations) {
-            const empSnap = await window.db.ref(`${location}/employees`).once('value');
+            const path = `${location}/management/employees`;
+            const empSnap = await window.db.ref(path).once('value');
+            console.log(`  🔍 Checking path: ${path}`);
+            
             if (empSnap.exists()) {
               const employees = empSnap.val();
+              console.log(`  📦 Raw data for ${location}:`, employees);
+              
               // active 직원만 필터링 & 알파벳순 정렬
               employeesData[location] = employees
                 .filter(e => e && e.status === 'active')
                 .map(e => e.name)
                 .sort();
-              console.log(`  ✅ ${location}: ${employeesData[location].length} active employees`);
+              console.log(`  ✅ ${location}: ${employeesData[location].length} active employees`, employeesData[location]);
             } else {
               employeesData[location] = [];
-              console.log(`  ⚠️ ${location}: No employees found`);
+              console.log(`  ⚠️ ${location}: No employees found at ${path}`);
             }
           }
           
