@@ -1089,6 +1089,7 @@
       }, []);
       const [isAdmin, setIsAdmin] = useState(false);
       const [users, setUsers] = useState([]);
+      const [serverEmployees, setServerEmployees] = useState({}); // {houston: [...], seattle: [...]}
       const [showRegisterModal, setShowRegisterModal] = useState(false);
       const [showUserManagement, setShowUserManagement] = useState(false);
       const [editingUser, setEditingUser] = useState(null); // 편집 중인 사용자 ID
@@ -1444,6 +1445,35 @@
           }
         } catch (error) {
           console.error('❌ Error loading users:', error);
+        }
+      }
+
+      // 서버 직원 목록 불러오기 (Server View 등록 시 드롭다운용)
+      async function loadServerEmployees() {
+        try {
+          console.log('👥 Loading server employees from all locations...');
+          const employeesData = {};
+          
+          for (const location of locations) {
+            const empSnap = await window.db.ref(`${location}/employees`).once('value');
+            if (empSnap.exists()) {
+              const employees = empSnap.val();
+              // active 직원만 필터링 & 알파벳순 정렬
+              employeesData[location] = employees
+                .filter(e => e && e.status === 'active')
+                .map(e => e.name)
+                .sort();
+              console.log(`  ✅ ${location}: ${employeesData[location].length} active employees`);
+            } else {
+              employeesData[location] = [];
+              console.log(`  ⚠️ ${location}: No employees found`);
+            }
+          }
+          
+          setServerEmployees(employeesData);
+          console.log('✅ Server employees loaded:', employeesData);
+        } catch (error) {
+          console.error('❌ Error loading server employees:', error);
         }
       }
 
@@ -3580,7 +3610,10 @@
             h('button', {
               key: 'register',
               className: 'btn',
-              onClick: () => setShowRegisterModal(true),
+              onClick: async () => {
+                await loadServerEmployees(); // 직원 목록 먼저 로드
+                setShowRegisterModal(true);
+              },
               style: { padding: '1.5rem' }
             }, '➕ 새 사용자 등록'),
             h('button', {
@@ -3771,10 +3804,8 @@
                           marginBottom: '6px'
                         }
                       }, '📎 Linked Employee Name (실제 직원 이름):'),
-                      h('input', {
-                        key: 'input',
-                        type: 'text',
-                        placeholder: 'e.g., Alan, Aiden, Carlos...',
+                      h('select', {
+                        key: 'select',
                         value: registerData.linkedEmployee || '',
                         onChange: (e) => setRegisterData({...registerData, linkedEmployee: e.target.value}),
                         style: {
@@ -3782,9 +3813,15 @@
                           padding: '8px 12px',
                           border: '1px solid #cbd5e1',
                           borderRadius: '4px',
-                          fontSize: '0.875rem'
+                          fontSize: '0.875rem',
+                          background: 'white'
                         }
-                      }),
+                      }, [
+                        h('option', { key: 'empty', value: '' }, '-- 선택 (선택사항) --'),
+                        ...(serverEmployees[location] || []).map(empName => 
+                          h('option', { key: empName, value: empName }, empName)
+                        )
+                      ]),
                       h('div', {
                         key: 'hint',
                         style: {
