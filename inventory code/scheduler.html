@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -544,6 +544,7 @@
     const LOCATION = urlParams.get('location');
     const INITIAL_LANG = urlParams.get('lang') || 'ko';
     const READ_ONLY = urlParams.get('readonly') === 'true'; // 읽기 전용 모드
+    const LINKED_EMPLOYEE = urlParams.get('linkedEmployee'); // 연결된 직원 이름 (개인 팁만 표시)
     
     // 🔒 보안: location 파라미터 없으면 index.html로 리다이렉트
     if (!LOCATION) {
@@ -555,6 +556,7 @@
     console.log('🌍 Location:', LOCATION);
     console.log('🌐 Language:', INITIAL_LANG);
     console.log('🔒 Read Only Mode:', READ_ONLY);
+    console.log('📎 Linked Employee:', LINKED_EMPLOYEE || 'None (show all)');
 
     // ============================================
     // STORAGE - Firebase Realtime Database 저장/불러오기 (v8)
@@ -2303,7 +2305,23 @@
     
     // Statistics 탭
     function renderTipStatistics(t) {
-      const employees = Object.keys(state.tipStats);
+      let employees = Object.keys(state.tipStats);
+      
+      // LINKED_EMPLOYEE가 있으면 해당 직원만 필터링
+      if (LINKED_EMPLOYEE) {
+        employees = employees.filter(name => name === LINKED_EMPLOYEE);
+        
+        // 연결된 직원 이름이 tipStats에 없으면 빈 배열
+        if (employees.length === 0 && !state.tipStats[LINKED_EMPLOYEE]) {
+          return `
+            <div style="text-align:center;padding:60px;">
+              <div style="font-size:48px;margin-bottom:16px;">👤</div>
+              <h2 style="color:#7f1d1d;margin-bottom:8px;">Welcome, ${LINKED_EMPLOYEE}!</h2>
+              <p style="color:#64748b;">No tip statistics yet. Tips will appear here once entered.</p>
+            </div>
+          `;
+        }
+      }
       
       if (employees.length === 0) {
         return `
@@ -2315,7 +2333,7 @@
         `;
       }
       
-      // 전체 합계 계산
+      // 전체 합계 계산 (필터링된 직원들만)
       let totalPending = 0;
       let totalPaid = 0;
       let grandTotal = 0;
