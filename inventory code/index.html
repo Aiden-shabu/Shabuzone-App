@@ -4813,9 +4813,14 @@
                 params.append('readonly', 'true');
                 
                 // Linked Employee가 있으면 파라미터 추가
+                console.log('🔍 Checking linkedEmployee in user:', user);
+                console.log('🔍 user.linkedEmployee value:', user.linkedEmployee);
+                
                 if (user.linkedEmployee) {
                   console.log('📎 Adding linkedEmployee parameter:', user.linkedEmployee);
                   params.append('linkedEmployee', user.linkedEmployee);
+                } else {
+                  console.log('⚠️ No linkedEmployee found in user object');
                 }
               }
               
