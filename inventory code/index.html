@@ -3924,9 +3924,19 @@
                                 fontSize: '1.3rem',
                                 fontWeight: '700',
                                 color: '#2c3e50',
-                                marginBottom: '0.5rem'
+                                marginBottom: '0.25rem'
                               }
                             }, user.name),
+                            h('div', { 
+                              key: 'password', 
+                              style: {
+                                fontSize: '0.9rem',
+                                color: '#7f1d1d',
+                                fontWeight: '600',
+                                marginBottom: '0.5rem',
+                                fontFamily: 'monospace'
+                              }
+                            }, `🔑 ${user.password}`),
                             h('div', { 
                               key: 'perms', 
                               style: {
@@ -4037,6 +4047,54 @@
                                 border: '2px solid #e2e8f0',
                                 borderRadius: '8px',
                                 fontSize: '1rem',
+                                background: 'white'
+                              }
+                            })
+                          ]),
+                          
+                          // 비밀번호 수정
+                          h('div', { key: 'password-group', style: { marginBottom: '1.5rem' }}, [
+                            h('label', { 
+                              key: 'label',
+                              style: { 
+                                display: 'block',
+                                fontWeight: '600',
+                                marginBottom: '0.5rem',
+                                color: '#2c3e50'
+                              }
+                            }, '🔑 비밀번호 (Password)'),
+                            h('input', {
+                              key: 'input',
+                              type: 'text',
+                              value: user.password,
+                              onChange: (e) => {
+                                const newPassword = e.target.value;
+                                const updatedUsers = users.map(u => 
+                                  u.id === user.id 
+                                    ? { ...u, password: newPassword }
+                                    : u
+                                );
+                                setUsers(updatedUsers);
+                              },
+                              onBlur: async (e) => {
+                                const newPassword = e.target.value.trim();
+                                if (!newPassword) {
+                                  alert(language === 'ko' ? '비밀번호를 입력해주세요!' : language === 'es' ? '¡Ingrese contraseña!' : 'Please enter a password!');
+                                  return;
+                                }
+                                
+                                // Firebase에 저장
+                                await window.db.ref(`users/${user.id}/password`).set(newPassword);
+                                alert(language === 'ko' ? '✅ 비밀번호가 변경되었습니다!' : language === 'es' ? '¡Contraseña actualizada!' : '✅ Password updated!');
+                              },
+                              placeholder: language === 'ko' ? '비밀번호 입력' : language === 'es' ? 'Ingrese contraseña' : 'Enter password',
+                              style: {
+                                width: '100%',
+                                padding: '0.75rem',
+                                border: '2px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '1rem',
+                                fontFamily: 'monospace',
                                 background: 'white'
                               }
                             })
