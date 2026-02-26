@@ -1100,6 +1100,7 @@
         password: '',
         isAdmin: false,
         preferredLanguage: 'ko',
+        linkedEmployee: '', // 서버 직원 이름 매칭
         permissions: {
           houston_inventory_employee: false,
           houston_inventory_manager: false,
@@ -3747,6 +3748,53 @@
                         style: { color: '#2563eb' }
                       }, '👁️ Server View Only (팁 통계 조회 전용)')
                     ]),
+                    
+                    // Server View인 경우 Linked Employee 입력란 표시
+                    registerData.permissions[`${location}_server_view`] && h('div', { 
+                      key: `${location}_linked`, 
+                      style: { 
+                        marginLeft: '24px', 
+                        marginTop: '8px',
+                        padding: '12px',
+                        background: '#eff6ff',
+                        borderRadius: '6px',
+                        border: '2px solid #2563eb'
+                      }
+                    }, [
+                      h('label', { 
+                        key: 'label',
+                        style: { 
+                          display: 'block',
+                          fontSize: '0.875rem', 
+                          fontWeight: '600', 
+                          color: '#1e40af',
+                          marginBottom: '6px'
+                        }
+                      }, '📎 Linked Employee Name (실제 직원 이름):'),
+                      h('input', {
+                        key: 'input',
+                        type: 'text',
+                        placeholder: 'e.g., Alan, Aiden, Carlos...',
+                        value: registerData.linkedEmployee || '',
+                        onChange: (e) => setRegisterData({...registerData, linkedEmployee: e.target.value}),
+                        style: {
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }
+                      }),
+                      h('div', {
+                        key: 'hint',
+                        style: {
+                          fontSize: '0.75rem',
+                          color: '#64748b',
+                          marginTop: '4px'
+                        }
+                      }, '💡 입력하면 해당 직원의 팁만 볼 수 있습니다. 비워두면 모든 직원 팁 표시.')
+                    ]),
+                    
                     h('div', { key: `${location}_kitchen`, className: 'checkbox-item' }, [
                       h('input', {
                         key: 'checkbox',
@@ -4721,6 +4769,12 @@
               if (isServerViewOnly) {
                 console.log('✅ Adding readonly=true parameter');
                 params.append('readonly', 'true');
+                
+                // Linked Employee가 있으면 파라미터 추가
+                if (user.linkedEmployee) {
+                  console.log('📎 Adding linkedEmployee parameter:', user.linkedEmployee);
+                  params.append('linkedEmployee', user.linkedEmployee);
+                }
               }
               
               const finalUrl = `${baseUrl}?${params.toString()}`;
