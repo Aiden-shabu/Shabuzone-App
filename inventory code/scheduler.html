@@ -1558,9 +1558,23 @@
                   </td>
                   ${DAYS.map(day => {
                     const daySchedule = state.schedule[day] || {};
-                    const lunchCount = (daySchedule.lunch || []).length;
+                    const lunchEmployees = daySchedule.lunch || [];
+                    const lunchCount = lunchEmployees.length;
+                    
+                    // 성별 통계 계산
+                    const femaleCount = lunchEmployees.filter(e => {
+                      const emp = state.employees.find(emp => emp.name === e.name);
+                      return emp && emp.gender === 'female';
+                    }).length;
+                    const maleCount = lunchEmployees.filter(e => {
+                      const emp = state.employees.find(emp => emp.name === e.name);
+                      return emp && emp.gender === 'male';
+                    }).length;
+                    
                     return `
-                      <td style="padding:10px;border:2px solid #333;text-align:center;color:#2E7D32;">${lunchCount}</td>
+                      <td style="padding:10px;border:2px solid #333;text-align:center;color:#2E7D32;">
+                        ${lunchCount > 0 ? `${lunchCount} (${femaleCount}+${maleCount})` : lunchCount}
+                      </td>
                     `;
                   }).join('')}
                 </tr>
@@ -1570,9 +1584,23 @@
                   </td>
                   ${DAYS.map(day => {
                     const daySchedule = state.schedule[day] || {};
-                    const dinnerCount = (daySchedule.dinner || []).length;
+                    const dinnerEmployees = daySchedule.dinner || [];
+                    const dinnerCount = dinnerEmployees.length;
+                    
+                    // 성별 통계 계산
+                    const femaleCount = dinnerEmployees.filter(e => {
+                      const emp = state.employees.find(emp => emp.name === e.name);
+                      return emp && emp.gender === 'female';
+                    }).length;
+                    const maleCount = dinnerEmployees.filter(e => {
+                      const emp = state.employees.find(emp => emp.name === e.name);
+                      return emp && emp.gender === 'male';
+                    }).length;
+                    
                     return `
-                      <td style="padding:10px;border:2px solid #333;text-align:center;color:#1565C0;">${dinnerCount}</td>
+                      <td style="padding:10px;border:2px solid #333;text-align:center;color:#1565C0;">
+                        ${dinnerCount > 0 ? `${dinnerCount} (${femaleCount}+${maleCount})` : dinnerCount}
+                      </td>
                     `;
                   }).join('')}
                 </tr>
@@ -1681,7 +1709,12 @@
     function renderTipEntry(t) {
       const step = state.tipEntryStep;
       
-      // Step 0: 기존 데이터 수정/추가 모드
+      // Step 0-1: 정산 완료된 날짜 보기 (Read-Only)
+      if (step === 'view-settled') {
+        return renderSettledTips();
+      }
+      
+      // Step 0-2: 기존 데이터 수정/추가 모드
       if (step === 'edit-existing') {
         return renderEditExistingTips();
       }
@@ -1705,6 +1738,83 @@
       if (step === 'dinner-entry') {
         return renderTipInput('dinner');
       }
+    }
+    
+    // 정산 완료된 팁 보기 (Read-Only)
+    function renderSettledTips() {
+      const lunchTips = state.lunchTips || {};
+      const dinnerTips = state.dinnerTips || {};
+      const existingTips = state.tipsData[state.selectedTipDate];
+      
+      return `
+        <div style="max-width:900px;margin:0 auto;padding:20px;">
+          <div style="background:#fef3c7;border:2px solid #f59e0b;border-radius:12px;padding:16px;margin-bottom:20px;text-align:center;">
+            <div style="font-size:1.2rem;margin-bottom:4px;">🔒</div>
+            <div style="font-weight:700;color:#92400e;margin-bottom:4px;">Settlement Completed</div>
+            <div style="font-size:0.875rem;color:#b45309;">
+              Settled on ${new Date(existingTips.settledAt).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}
+            </div>
+          </div>
+
+          <h2 style="color:#7f1d1d;margin-bottom:8px;text-align:center;">📋 View Tips (Read-Only)</h2>
+          <p style="text-align:center;color:#64748b;margin-bottom:30px;">
+            ${(() => {
+              const [year, month, day] = state.selectedTipDate.split('-');
+              const date = new Date(year, month - 1, day);
+              return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            })()}
+          </p>
+          
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <!-- Lunch Tips -->
+            <div>
+              <h3 style="color:#92400e;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                <span>🌞</span>
+                <span>Lunch Tips</span>
+              </h3>
+              
+              <div style="background:white;border-radius:8px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                ${Object.keys(lunchTips).length > 0 ? 
+                  Object.keys(lunchTips).sort((a, b) => a.localeCompare(b)).map(empName => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;margin-bottom:8px;background:#fef3c7;border-radius:6px;">
+                      <span style="font-weight:600;color:#2c3e50;">${empName}</span>
+                      <span style="font-size:1.1rem;font-weight:700;color:#92400e;">$${lunchTips[empName].toFixed(2)}</span>
+                    </div>
+                  `).join('') : 
+                  '<p style="color:#64748b;text-align:center;padding:20px;">No lunch tips</p>'
+                }
+              </div>
+            </div>
+            
+            <!-- Dinner Tips -->
+            <div>
+              <h3 style="color:#1e40af;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                <span>🌙</span>
+                <span>Dinner Tips</span>
+              </h3>
+              
+              <div style="background:white;border-radius:8px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                ${Object.keys(dinnerTips).length > 0 ? 
+                  Object.keys(dinnerTips).sort((a, b) => a.localeCompare(b)).map(empName => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;margin-bottom:8px;background:#dbeafe;border-radius:6px;">
+                      <span style="font-weight:600;color:#2c3e50;">${empName}</span>
+                      <span style="font-size:1.1rem;font-weight:700;color:#1e40af;">$${dinnerTips[empName].toFixed(2)}</span>
+                    </div>
+                  `).join('') : 
+                  '<p style="color:#64748b;text-align:center;padding:20px;">No dinner tips</p>'
+                }
+              </div>
+            </div>
+          </div>
+          
+          <div style="margin-top:30px;">
+            <button onclick="state.tipEntryStep='select-date';render();" 
+                    style="width:100%;padding:14px;background:#7f1d1d;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">
+              ← Back to Calendar
+            </button>
+          </div>
+        </div>
+      `;
     }
     
     // 기존 팁 수정/추가 화면
@@ -3199,10 +3309,18 @@
       const existingTips = state.tipsData[dateStr];
       
       if (existingTips && (Object.keys(existingTips.lunch || {}).length > 0 || Object.keys(existingTips.dinner || {}).length > 0)) {
-        // 기존 데이터가 있으면 수정/추가 모드
-        state.tipEntryStep = 'edit-existing';
-        state.lunchTips = {...existingTips.lunch || {}};
-        state.dinnerTips = {...existingTips.dinner || {}};
+        // Settled 확인
+        if (existingTips.settled) {
+          // 정산 완료된 날짜 → Read-Only 모드
+          state.tipEntryStep = 'view-settled';
+          state.lunchTips = {...existingTips.lunch || {}};
+          state.dinnerTips = {...existingTips.dinner || {}};
+        } else {
+          // 아직 정산 안 됨 → 수정/추가 모드
+          state.tipEntryStep = 'edit-existing';
+          state.lunchTips = {...existingTips.lunch || {}};
+          state.dinnerTips = {...existingTips.dinner || {}};
+        }
       } else {
         // 새로 입력
         state.tipEntryStep = 'worker-select';
@@ -3427,10 +3545,12 @@
       state.settlements.unshift(settlementRecord);
       await storage.saveData('settlements', state.settlements);
       
-      // 정산된 팁 데이터 삭제
+      // 정산된 팁 데이터에 settled 표시 (삭제하지 않음)
       Object.keys(state.tipsData).forEach(date => {
         if (date >= summary.startDate && date <= summary.endDate) {
-          delete state.tipsData[date];
+          state.tipsData[date].settled = true;
+          state.tipsData[date].settlementId = settlementRecord.id;
+          state.tipsData[date].settledAt = settlementRecord.settledAt;
         }
       });
       await storage.saveData('tips', state.tipsData);
