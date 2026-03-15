@@ -3409,9 +3409,14 @@
         };
       });
       
-      // 모든 날짜의 팁 합산
+      // 모든 날짜의 팁 합산 (settled 제외)
       Object.keys(state.tipsData).forEach(date => {
         const dayTips = state.tipsData[date];
+        
+        // ⚠️ settled된 팁은 pending에서 제외
+        if (dayTips.settled) {
+          return; // 건너뛰기
+        }
         
         // Lunch
         Object.keys(dayTips.lunch || {}).forEach(empName => {
