@@ -2090,6 +2090,7 @@
           const categoriesSnap = await window.db.ref(getPath('categories')).once('value');
           const itemCategoriesSnap = await window.db.ref(getPath('itemCategories')).once('value');
           const categoryDataSnap = await window.db.ref(getPath('categoryData')).once('value');
+          const selectedItemsSnap = await window.db.ref(getPath('selectedDeliveryItems')).once('value');
           
           console.log('✅ 모든 snapshot 받음');
           
@@ -2102,6 +2103,7 @@
           const categoriesData = categoriesSnap.val() || [];
           const itemCategoriesData = itemCategoriesSnap.val() || {};
           const categoryDataData = categoryDataSnap.val() || {};
+          const selectedItemsData = selectedItemsSnap.val() || {};
           
           console.log('✅ 데이터 로드 완료:', {
             items: Object.keys(itemsData).length,
@@ -2151,6 +2153,8 @@
           console.log('📋 Sample mappings:', Object.entries(itemCategoriesData).slice(0, 5));
           setCategoryData(categoryDataData);
           console.log('🎨 CategoryData loaded:', Object.keys(categoryDataData).length);
+          setSelectedDeliveryItems(selectedItemsData);
+          console.log('✅ Selected items loaded:', Object.keys(selectedItemsData).length);
           
           console.log('✅ State 업데이트 완료');
           
@@ -5019,19 +5023,27 @@
                 onClick: async () => {
                   // Count 탭 클릭 시: 어제 재고 저장 + 입력칸 초기화
                   if (tab === 'count' && activeTab !== 'count') {
+                    console.log('🔥 Count 탭 클릭! 초기화 시작...');
+                    console.log('  현재 items:', items.slice(0, 3).map(i => ({name: i.name, current: i.current_inventory})));
+                    
                     const original = {};
                     items.forEach(item => {
                       original[item.id] = item.current_inventory || 0;
                     });
                     setOriginalInventory(original);
+                    console.log('  originalInventory 저장:', Object.keys(original).length);
                     
                     // 입력칸 초기화 (current_inventory를 0으로)
                     const resetItems = items.map(item => ({
                       ...item,
                       current_inventory: 0
                     }));
+                    console.log('  resetItems 생성:', resetItems.slice(0, 3).map(i => ({name: i.name, current: i.current_inventory})));
+                    
                     setItems(resetItems);
                     setTempItems(resetItems); // tempItems도 함께 초기화
+                    
+                    console.log('✅ Count 탭 초기화 완료!');
                   }
                   
                   setActiveTab(tab);
@@ -6683,6 +6695,8 @@
                                       }
                                       
                                       setSelectedDeliveryItems(newSelected);
+                                      // Firebase에 저장
+                                      window.db.ref(getPath('selectedDeliveryItems')).set(newSelected);
                                     }
                                   },
                                   style: { 
@@ -6795,6 +6809,8 @@
                                   }
                                   
                                   setSelectedDeliveryItems(newSelected);
+                                  // Firebase에 저장
+                                  window.db.ref(getPath('selectedDeliveryItems')).set(newSelected);
                                 }
                               },
                               style: { 
