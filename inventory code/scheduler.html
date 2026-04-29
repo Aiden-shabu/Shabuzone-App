@@ -978,9 +978,18 @@
     function renderTabs(t) {
       // READ_ONLY 모드에서는 특정 탭만 표시
       const allTabs = ['employees', 'requirements', 'preferences', 'schedule', 'excelView', 'tips'];
-      const visibleTabs = READ_ONLY 
-        ? ['employees', 'preferences', 'schedule', 'excelView', 'tips'] // READ_ONLY: Requirements만 숨김
-        : allTabs;
+      
+      let visibleTabs;
+      if (LINKED_EMPLOYEE) {
+        // Server View (권한 제한): 팁 탭 완전히 제거
+        visibleTabs = ['employees', 'preferences', 'schedule', 'excelView'];
+      } else if (READ_ONLY) {
+        // READ_ONLY: Requirements만 숨김
+        visibleTabs = ['employees', 'preferences', 'schedule', 'excelView', 'tips'];
+      } else {
+        // Manager: 모든 탭 표시
+        visibleTabs = allTabs;
+      }
       
       return `
         <div class="tabs">
