@@ -1516,9 +1516,13 @@
                 ${orderedEmployees.map((emp, idx) => {
                   const isProbation = emp.probation;
                   const probationBg = isProbation ? '#fed7aa' : ''; // 주황 형광색
-                  const probationNote = isProbation && emp.probationStart 
-                    ? `Probation Start: ${emp.probationStart}` 
-                    : '';
+                  
+                  // 날짜를 월/일 포맷으로 변환 (예: "2024-01-15" → "1/15")
+                  let probationNote = '';
+                  if (isProbation && emp.probationStart) {
+                    const date = new Date(emp.probationStart);
+                    probationNote = `${date.getMonth() + 1}/${date.getDate()}`;
+                  }
                   
                   return `
                     <!-- Lunch Row -->
@@ -3822,7 +3826,11 @@
           // Notes 셀 값 설정
           const notesCell = worksheet.getCell(notesCol+currentRow);
           if (isProbation && emp.probationStart) {
-            notesCell.value = `Probation Start: ${emp.probationStart}`;
+            // 날짜를 월/일 포맷으로 변환
+            const date = new Date(emp.probationStart);
+            const shortDate = `${date.getMonth() + 1}/${date.getDate()}`;
+            
+            notesCell.value = shortDate;
             notesCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFFED7AA'}};
             notesCell.font = {size:9,bold:false};
             notesCell.alignment = {horizontal:'center',vertical:'middle',wrapText:true};
