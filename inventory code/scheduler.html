@@ -1509,16 +1509,23 @@
                       </th>
                     `;
                   }).join('')}
+                  <th style="padding:10px;border:2px solid #333;min-width:150px;">Notes</th>
                 </tr>
               </thead>
               <tbody>
                 ${orderedEmployees.map((emp, idx) => {
+                  const isProbation = emp.probation;
+                  const probationBg = isProbation ? '#fed7aa' : ''; // 주황 형광색
+                  const probationNote = isProbation && emp.probationStart 
+                    ? `Probation Start: ${emp.probationStart}` 
+                    : '';
+                  
                   return `
                     <!-- Lunch Row -->
-                    <tr>
-                      <td rowspan="2" style="padding:8px;border:2px solid #333;text-align:center;background:#f0f0f0;font-weight:700;position:sticky;left:0;z-index:5;">${idx + 1}</td>
-                      <td style="padding:8px;border:2px solid #333;font-weight:600;background:#FFF9E6;position:sticky;left:35px;z-index:5;">
-                        ${emp.name}
+                    <tr style="${isProbation ? 'background:#fed7aa;' : ''}">
+                      <td rowspan="2" style="padding:8px;border:2px solid #333;text-align:center;background:${isProbation ? '#fed7aa' : '#f0f0f0'};font-weight:700;position:sticky;left:0;z-index:5;">${idx + 1}</td>
+                      <td style="padding:8px;border:2px solid #333;font-weight:600;background:${isProbation ? '#fed7aa' : '#FFF9E6'};position:sticky;left:35px;z-index:5;">
+                        ${emp.name}${isProbation ? ' 🔶' : ''}
                         <div style="font-size:10px;color:#666;font-weight:400;">Lunch</div>
                       </td>
                       ${DAYS.map(day => {
@@ -1528,17 +1535,20 @@
                         return `
                           <td ${!READ_ONLY ? `onclick="editShift('${emp.id}', '${day}', 'lunch')"` : ''}
                               style="padding:8px;border:2px solid #333;${!READ_ONLY ? 'cursor:pointer;' : ''}text-align:center;
-                                     background:${getShiftColor(lunchShift?.shift)};
+                                     background:${isProbation ? '#fed7aa' : getShiftColor(lunchShift?.shift)};
                                      ${lunchShift ? 'font-weight:600;' : ''}
                                      transition:background 0.2s;">
                             ${lunchShift ? lunchShift.shift : ''}
                           </td>
                         `;
                       }).join('')}
+                      <td rowspan="2" style="padding:8px;border:2px solid #333;font-size:11px;background:${isProbation ? '#fed7aa' : 'white'};">
+                        ${probationNote}
+                      </td>
                     </tr>
                     <!-- Dinner Row -->
-                    <tr>
-                      <td style="padding:8px;border:2px solid #333;font-weight:600;background:#E6F3FF;position:sticky;left:35px;z-index:5;">
+                    <tr style="${isProbation ? 'background:#fed7aa;' : ''}">
+                      <td style="padding:8px;border:2px solid #333;font-weight:600;background:${isProbation ? '#fed7aa' : '#E6F3FF'};position:sticky;left:35px;z-index:5;">
                         ${emp.name}
                         <div style="font-size:10px;color:#666;font-weight:400;">Dinner</div>
                       </td>
@@ -1549,7 +1559,7 @@
                         return `
                           <td ${!READ_ONLY ? `onclick="editShift('${emp.id}', '${day}', 'dinner')"` : ''}
                               style="padding:8px;border:2px solid #333;${!READ_ONLY ? 'cursor:pointer;' : ''}text-align:center;
-                                     background:${getShiftColor(dinnerShift?.shift)};
+                                     background:${isProbation ? '#fed7aa' : getShiftColor(dinnerShift?.shift)};
                                      ${dinnerShift ? 'font-weight:600;' : ''}
                                      transition:background 0.2s;">
                             ${dinnerShift ? dinnerShift.shift : ''}
@@ -3144,6 +3154,24 @@
                 </div>
               </div>
 
+              <!-- Probation 체크박스 -->
+              <div class="form-group" style="margin-bottom:16px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                  <input type="checkbox" id="emp-probation" 
+                    ${state.editingEmployee?.probation ? 'checked' : ''}
+                    onchange="document.getElementById('probation-date-group').style.display = this.checked ? 'block' : 'none';">
+                  <span style="font-weight:600;">🔶 Probation Period</span>
+                </label>
+              </div>
+
+              <!-- Probation 시작 날짜 -->
+              <div id="probation-date-group" style="display:${state.editingEmployee?.probation ? 'block' : 'none'};padding:16px;background:#FFF3E0;border-radius:8px;margin-bottom:16px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Probation Start Date</label>
+                  <input type="date" id="emp-probation-start" value="${state.editingEmployee?.probationStart || ''}">
+                </div>
+              </div>
+
               <div id="cant-work-details" style="display:${currentStatus === 'cantWork' ? 'block' : 'none'};padding:16px;background:#FFF3E0;border-radius:8px;margin-bottom:16px;">
                 <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;">${t.employees.cantWorkDetails}</h4>
                 
@@ -3236,6 +3264,10 @@
             name: document.getElementById('emp-name').value.trim(),
             gender: document.getElementById('emp-gender').value,
             status: status,
+            probation: document.getElementById('emp-probation').checked,
+            probationStart: document.getElementById('emp-probation').checked 
+              ? document.getElementById('emp-probation-start').value 
+              : null,
             availableSections: {
               'A-F': true,
               'G+Room': true,
@@ -3710,9 +3742,10 @@
     
         const columns = [{width:5},{width:15}];
         DAYS.forEach(() => columns.push({width:14}));
+        columns.push({width:20}); // Notes 열
         worksheet.columns = columns;
     
-        const totalCols = 2 + DAYS.length;
+        const totalCols = 2 + DAYS.length + 1; // +1 for Notes
         const lastCol = String.fromCharCode(65 + totalCols - 1);
         
         // 다음 주 월요일 계산
@@ -3743,7 +3776,7 @@
     
         const dayHeaderRow = worksheet.getRow(2);
         dayHeaderRow.height = 20;
-        dayHeaderRow.values = ['','Name',...DAYS];
+        dayHeaderRow.values = ['','Name',...DAYS, 'Notes'];
         dayHeaderRow.eachCell((cell)=>{
           cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF667eea'}};
           cell.font = {bold:true,color:{argb:'FFFFFFFF'},size:11};
@@ -3753,7 +3786,7 @@
     
         const shortDayRow = worksheet.getRow(3);
         shortDayRow.height = 18;
-        shortDayRow.values = ['','', ...DAYS.map(d=>d.substring(0,3))];
+        shortDayRow.values = ['','', ...DAYS.map(d=>d.substring(0,3)), ''];
         shortDayRow.eachCell((cell)=>{
           cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF9D4EDD'}};
           cell.font = {bold:true,color:{argb:'FFFFFFFF'},size:10};
@@ -3763,9 +3796,12 @@
     
         let currentRow = 4;
         orderedEmployees.forEach((emp,idx)=>{
+          // Probation 체크
+          const isProbation = emp.probation;
+          
           // 짝수/홀수로 배경색 변경
           const isEven = idx % 2 === 0;
-          const groupBgColor = isEven ? 'FFFFFFFF' : 'FFE0E0E0'; // 흰색 / 연한 회색
+          const groupBgColor = isProbation ? 'FFFED7AA' : (isEven ? 'FFFFFFFF' : 'FFE0E0E0'); // Probation: 주황 형광 / 흰색 / 연한 회색
     
           // Lunch Row
           const lunchRow = worksheet.getRow(currentRow);
@@ -3775,9 +3811,30 @@
           worksheet.mergeCells('A'+currentRow+':A'+(currentRow+1));
           worksheet.mergeCells('B'+currentRow+':B'+(currentRow+1));
           
+          // Notes 열도 병합 (마지막 열)
+          const notesCol = String.fromCharCode(65 + 2 + DAYS.length); // C부터 시작하므로 +2
+          worksheet.mergeCells(notesCol+currentRow+':'+notesCol+(currentRow+1));
+          
           // 병합 후 절대 좌표로 값 설정
           worksheet.getCell('A'+currentRow).value = idx+1;
-          worksheet.getCell('B'+currentRow).value = emp.name;
+          worksheet.getCell('B'+currentRow).value = emp.name + (isProbation ? ' 🔶' : '');
+          
+          // Notes 셀 값 설정
+          const notesCell = worksheet.getCell(notesCol+currentRow);
+          if (isProbation && emp.probationStart) {
+            notesCell.value = `Probation Start: ${emp.probationStart}`;
+            notesCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFFED7AA'}};
+            notesCell.font = {size:9,bold:false};
+            notesCell.alignment = {horizontal:'center',vertical:'middle',wrapText:true};
+          } else {
+            notesCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : groupBgColor}};
+          }
+          notesCell.border = {
+            top:{style:'thick'},
+            left:{style:'thin'},
+            bottom:{style:'thick'},
+            right:{style:'thick'}
+          };
           
           // Lunch shift 값 설정
           DAYS.forEach((day, i)=>{
@@ -3788,7 +3845,7 @@
     
           // 번호 셀 스타일
           const numCell = worksheet.getCell('A'+currentRow);
-          numCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F0F0'}};
+          numCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : 'FFF0F0F0'}};
           numCell.font = {bold:true,size:10};
           numCell.alignment = {horizontal:'center',vertical:'middle'};
           numCell.border = {
@@ -3800,7 +3857,7 @@
     
           // 이름 셀 스타일
           const nameCell = worksheet.getCell('B'+currentRow);
-          nameCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF9F9F9'}};
+          nameCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : 'FFF9F9F9'}};
           nameCell.font = {bold:true,size:14};
           nameCell.alignment = {horizontal:'center',vertical:'middle'};
           nameCell.border = {
@@ -3844,13 +3901,13 @@
                 }
                 
                 // 일반 shift
-                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:getShiftColorARGB(shiftText)}};
+                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : getShiftColorARGB(shiftText)}};
                 cell.font = {bold:true,size:9};
                 cell.value = displayText;
               }
             } else {
-              // 빈 셀도 그룹 배경색
-              cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:groupBgColor}};
+              // 빈 셀도 그룹 배경색 (Probation이면 주황)
+              cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : groupBgColor}};
             }
             
             cell.alignment = {horizontal:'center',vertical:'middle'};
@@ -3910,12 +3967,12 @@
                 }
                 
                 // 일반 shift
-                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:getShiftColorARGB(shiftText)}};
+                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : getShiftColorARGB(shiftText)}};
                 cell.font = {bold:true,size:9};
                 cell.value = displayText;
               }
             } else {
-              cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:groupBgColor}};
+              cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : groupBgColor}};
             }
             
             cell.alignment = {horizontal:'center',vertical:'middle'};
