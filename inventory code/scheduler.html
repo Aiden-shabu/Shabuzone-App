@@ -1535,7 +1535,7 @@
                         return `
                           <td ${!READ_ONLY ? `onclick="editShift('${emp.id}', '${day}', 'lunch')"` : ''}
                               style="padding:8px;border:2px solid #333;${!READ_ONLY ? 'cursor:pointer;' : ''}text-align:center;
-                                     background:${isProbation ? '#fed7aa' : getShiftColor(lunchShift?.shift)};
+                                     background:${lunchShift ? getShiftColor(lunchShift.shift) : (isProbation ? '#fed7aa' : getShiftColor(null))};
                                      ${lunchShift ? 'font-weight:600;' : ''}
                                      transition:background 0.2s;">
                             ${lunchShift ? lunchShift.shift : ''}
@@ -1559,7 +1559,7 @@
                         return `
                           <td ${!READ_ONLY ? `onclick="editShift('${emp.id}', '${day}', 'dinner')"` : ''}
                               style="padding:8px;border:2px solid #333;${!READ_ONLY ? 'cursor:pointer;' : ''}text-align:center;
-                                     background:${isProbation ? '#fed7aa' : getShiftColor(dinnerShift?.shift)};
+                                     background:${dinnerShift ? getShiftColor(dinnerShift.shift) : (isProbation ? '#fed7aa' : getShiftColor(null))};
                                      ${dinnerShift ? 'font-weight:600;' : ''}
                                      transition:background 0.2s;">
                             ${dinnerShift ? dinnerShift.shift : ''}
@@ -3900,13 +3900,13 @@
                   displayText = '';  // 6~Close 제거
                 }
                 
-                // 일반 shift
-                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : getShiftColorARGB(shiftText)}};
+                // 일반 shift - Shift 색깔 우선!
+                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: getShiftColorARGB(shiftText)}};
                 cell.font = {bold:true,size:9};
                 cell.value = displayText;
               }
             } else {
-              // 빈 셀도 그룹 배경색 (Probation이면 주황)
+              // 빈 셀만 Probation 배경색
               cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : groupBgColor}};
             }
             
@@ -3966,12 +3966,13 @@
                   displayText = '';  // 6~Close 제거
                 }
                 
-                // 일반 shift
-                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : getShiftColorARGB(shiftText)}};
+                // 일반 shift - Shift 색깔 우선!
+                cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: getShiftColorARGB(shiftText)}};
                 cell.font = {bold:true,size:9};
                 cell.value = displayText;
               }
             } else {
+              // 빈 셀만 Probation 배경색
               cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isProbation ? 'FFFED7AA' : groupBgColor}};
             }
             
